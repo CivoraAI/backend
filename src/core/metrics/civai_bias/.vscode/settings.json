@@ -1,0 +1,18 @@
+{
+    "python.defaultInterpreter": "/opt/anaconda3/envs/civai_py310/bin/python",
+    "python.pythonPath": "/opt/anaconda3/envs/civai_py310/bin/python",
+    "python.terminal.activateEnvironment": true,
+    "python.terminal.activateEnvInCurrentTerminal": true,
+    "python.interpreter.infoVisibility": "always",
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.typeCheckingMode": "basic",
+    "files.associations": {
+        "*.py": "python"
+    },
+    "terminal.integrated.env.osx": {
+        "TOKENIZERS_PARALLELISM": "false",
+        "OMP_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1",
+        "CUDA_VISIBLE_DEVICES": ""
+    }
+}

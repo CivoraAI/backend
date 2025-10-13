@@ -1,0 +1,21 @@
+{
+  "id": "B_right",
+  "url": "https://www.foxnews.com/2025/09/25/state-x-mail-voting.html",
+  "domain": "foxnews.com",
+  "title": "Officials Defend Mail-Ballot Rules After Expansion in State X",
+  "published_at": "2025-09-25",
+  "text": "State X’s 2020 decision to expand mail voting triggered months of confusion and costly adjustments for local officials. Conservative groups warned that loosening verification procedures would make it easier for errors or fraud to occur. A court later upheld the mail-ballot verification system, ruling that it met constitutional standards, though Republican leaders said the safeguards were barely sufficient. County officials said hiring and training temporary staff was difficult and expensive, and several counties reported delays in counting ballots. Election integrity advocates said stricter signature matching should be mandatory to prevent potential abuse. While turnout increased modestly, critics said the process strained local budgets and left voters uncertain. Officials defended the effort as necessary during the pandemic but acknowledged the rollout was challenging.",
+  "sentences": [
+    "State X’s 2020 decision to expand mail voting triggered months of confusion and costly adjustments for local officials.",
+    "Conservative groups warned that loosening verification procedures would make it easier for errors or fraud to occur.",
+    "A court later upheld the mail-ballot verification system, ruling that it met constitutional standards, though Republican leaders said the safeguards were barely sufficient.",
+    "County officials said hiring and training temporary staff was difficult and expensive, and several counties reported delays in counting ballots.",
+    "Election integrity advocates said stricter signature matching should be mandatory to prevent potential abuse.",
+    "While turnout increased modestly, critics said the process strained local budgets and left voters uncertain.",
+    "Officials defended the effort as necessary during the pandemic but acknowledged the rollout was challenging."
+  ],
+  "quotes": [
+    { "speaker": "State GOP chair", "text": "We faced major staffing burdens during the expansion." },
+    { "speaker": "Conservative policy institute", "text": "Extra verification was essential to prevent mistakes." }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "topic_id": "trial_topic",
+  "core_facts": [
+    { "id": "F1", "text": "State X expanded mail voting in 2020." },
+    { "id": "F2", "text": "Turnout increased by about 5 percent in State X." },
+    { "id": "F3", "text": "Over two million ballots were cast by mail in State X." },
+    { "id": "F4", "text": "Independent reviews found no widespread voter fraud in State X." },
+    { "id": "F5", "text": "Election officials certified results within two weeks of Election Day." },
+    { "id": "F6", "text": "A court upheld the mail-ballot verification process used in State X." }
+  ],
+  "claims_left": [
+    { "id": "CL1", "text": "Mail-voting expansion boosted access for shift workers and rural voters.", "attribution": "Voting-rights coalition" },
+    { "id": "CL2", "text": "Shorter lines and safer options increased participation without harming integrity.", "attribution": "Democratic state senator" }
+  ],
+  "claims_right": [
+    { "id": "CR1", "text": "Expanded mail voting increased administrative errors and staffing burdens.", "attribution": "State GOP chair" },
+    { "id": "CR2", "text": "Verification rules should be stricter to prevent potential abuse.", "attribution": "Conservative policy institute" }
+  ],
+  "bs_claims": [
+    { "id": "BS1", "text": "Massive fraud changed the election outcome.", "attribution": "Anonymous online posts" }
+  ]
+}
+
