@@ -1,0 +1,54 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {"name":"Python Debugger: Module","type":"debugpy","request":"launch","module":"metrics.py"},
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "python": "/opt/anaconda3/envs/civai_py310/bin/python",
+            "env": {
+                "TOKENIZERS_PARALLELISM": "false",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": ""
+            }
+        },
+        {
+            "name": "Python: metrics.py",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/civai_bias/metrics.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "python": "/opt/anaconda3/envs/civai_py310/bin/python"
+        },
+        {
+            "name": "Python: embedding.py",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/civai_bias/embedding.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "python": "/opt/anaconda3/envs/civai_py310/bin/python",
+            "env": {
+                "TOKENIZERS_PARALLELISM": "false",
+                "OMP_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1",
+                "CUDA_VISIBLE_DEVICES": ""
+            }
+        },
+        {
+            "name": "Python: scaper.py",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/scaper.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "python": "/opt/anaconda3/envs/civai_py310/bin/python"
+        }
+    ]
+}

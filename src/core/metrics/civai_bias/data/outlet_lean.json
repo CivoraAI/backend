@@ -1,0 +1,31 @@
+{
+    "apnews.com": -2.47,
+    "theguardian.com/us": -8.12,
+    "msnbc.com": -13.87,
+    "theatlantic.com": -9.33,
+    "vox.com": -9.99,
+
+    "abcnews.go.com": -3.10,
+    "cnn.com": -6.24,
+    "nytimes.com": -8.04,
+    "nbcnews.com": -5.61,
+    "cbsnews.com": -3.03,
+    "cnbc.com": -1.89,
+    "npr.org": -4.32,
+    "time.com": -7.43,
+    "washingtonpost.com": -7.16,
+
+    "bbc.com": -1.34,
+    "reuters.com": -1.27,
+    "thehill.com": -1.46,
+    "wsj.com": 4.16,
+
+    "theepochtimes.com": 8.43,
+    "justthenews.com": 10.90,
+    "nypost.com": 9.37,
+    "washingtontimes.com": 11.61,
+    "thedispatch.com": 5.50,
+
+    "foxnews.com": 11.05,
+    "dailywire.com":13.15
+}
