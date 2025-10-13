@@ -25,7 +25,7 @@ target-version = "py310"
 extend-select = ["I"]
 
 # Exclude vendored/research and non-source directories
-extend-exclude = [
+exclude = [
   "src/core/metrics/civai_bias/FlagEmbedding",
   "src/core/metrics/civai_bias/CivoraAI",
   "src/core/metrics/civai_bias/data",
