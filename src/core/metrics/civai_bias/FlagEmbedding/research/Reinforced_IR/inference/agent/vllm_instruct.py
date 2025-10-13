@@ -6,18 +6,24 @@ from transformers import AutoTokenizer
 from vllm.lora.request import LoRARequest
 
 
-class LLMInstructAgent():
+class LLMInstructAgent:
     def __init__(
         self,
         generate_model_path: str = None,
         gpu_memory_utilization: float = 0.8,
-        tensor_parallel_size: int = None
+        tensor_parallel_size: int = None,
     ):
         self.tokenizer = AutoTokenizer.from_pretrained(generate_model_path, trust_remote_code=True)
-        self.llm = LLM(model=generate_model_path, gpu_memory_utilization=gpu_memory_utilization,
-                       trust_remote_code=True,
-                       tensor_parallel_size=torch.cuda.device_count() if tensor_parallel_size is None else tensor_parallel_size,
-                       enable_lora=True, max_lora_rank=64)
+        self.llm = LLM(
+            model=generate_model_path,
+            gpu_memory_utilization=gpu_memory_utilization,
+            trust_remote_code=True,
+            tensor_parallel_size=(
+                torch.cuda.device_count() if tensor_parallel_size is None else tensor_parallel_size
+            ),
+            enable_lora=True,
+            max_lora_rank=64,
+        )
         self.model_name = generate_model_path.lower()
 
     def generate(
@@ -29,25 +35,35 @@ class LLMInstructAgent():
         stop: List[str] = [],
         repetition_penalty: float = 1.1,
         lora_path: str = None,
-        n: int = 1
+        n: int = 1,
     ):
 
-        sampling_params = SamplingParams(temperature=temperature, top_p=top_p, max_tokens=max_tokens,
-                                         stop=stop, n=n,
-                                         repetition_penalty=repetition_penalty,
-                                         stop_token_ids=[128001, 128009] if 'llama' in self.model_name else None)
+        sampling_params = SamplingParams(
+            temperature=temperature,
+            top_p=top_p,
+            max_tokens=max_tokens,
+            stop=stop,
+            n=n,
+            repetition_penalty=repetition_penalty,
+            stop_token_ids=[128001, 128009] if "llama" in self.model_name else None,
+        )
         lora_request = None
         if lora_path is not None:
             lora_request = LoRARequest("lora_adapter", 1, lora_path)
 
         if isinstance(prompts, str):
             prompts = [prompts]
-        prompts = [self.tokenizer.decode(
-            self.tokenizer.apply_chat_template([
-                {
-                    "role": "user", "content": t[:5120]
-                },
-            ], add_generation_prompt=True, )[1:]) for t in prompts]
+        prompts = [
+            self.tokenizer.decode(
+                self.tokenizer.apply_chat_template(
+                    [
+                        {"role": "user", "content": t[:5120]},
+                    ],
+                    add_generation_prompt=True,
+                )[1:]
+            )
+            for t in prompts
+        ]
         outputs = self.llm.generate(prompts, sampling_params, lora_request=lora_request)
 
         if n > 1:
@@ -67,21 +83,33 @@ class LLMInstructAgent():
         stop: List[str] = [],
         repetition_penalty: float = 1.1,
         lora_path: str = None,
-        n: int = 1
+        n: int = 1,
     ):
 
-        sampling_params = SamplingParams(temperature=temperature, top_p=top_p, max_tokens=max_tokens,
-                                         stop=stop, n=n,
-                                         repetition_penalty=repetition_penalty,
-                                         stop_token_ids=[128001, 128009] if 'llama' in self.model_name else None)
+        sampling_params = SamplingParams(
+            temperature=temperature,
+            top_p=top_p,
+            max_tokens=max_tokens,
+            stop=stop,
+            n=n,
+            repetition_penalty=repetition_penalty,
+            stop_token_ids=[128001, 128009] if "llama" in self.model_name else None,
+        )
         lora_request = None
         if lora_path is not None:
             lora_request = LoRARequest("lora_adapter", 1, lora_path)
 
         if isinstance(prompts, str):
             prompts = [prompts]
-        prompts = [self.tokenizer.decode(
-            self.tokenizer.apply_chat_template(t, add_generation_prompt=True, )[1:]) for t in prompts]
+        prompts = [
+            self.tokenizer.decode(
+                self.tokenizer.apply_chat_template(
+                    t,
+                    add_generation_prompt=True,
+                )[1:]
+            )
+            for t in prompts
+        ]
         outputs = self.llm.generate(prompts, sampling_params, lora_request=lora_request)
 
         if n > 1:

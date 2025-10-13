@@ -14,6 +14,7 @@ class MIRACLEvalDataLoader(AbsEvalDataLoader):
     """
     Data loader class for MIRACL.
     """
+
     def available_dataset_names(self) -> List[str]:
         """
         Get the available dataset names.
@@ -21,7 +22,26 @@ class MIRACLEvalDataLoader(AbsEvalDataLoader):
         Returns:
             List[str]: All the available dataset names.
         """
-        return ["ar", "bn", "en", "es", "fa", "fi", "fr", "hi", "id", "ja", "ko", "ru", "sw", "te", "th", "zh", "de", "yo"]
+        return [
+            "ar",
+            "bn",
+            "en",
+            "es",
+            "fa",
+            "fi",
+            "fr",
+            "hi",
+            "id",
+            "ja",
+            "ko",
+            "ru",
+            "sw",
+            "te",
+            "th",
+            "zh",
+            "de",
+            "yo",
+        ]
 
     def available_splits(self, dataset_name: str) -> List[str]:
         """
@@ -39,9 +59,7 @@ class MIRACLEvalDataLoader(AbsEvalDataLoader):
             return ["train", "dev"]
 
     def _load_remote_corpus(
-        self,
-        dataset_name: str,
-        save_dir: Optional[str] = None
+        self, dataset_name: str, save_dir: Optional[str] = None
     ) -> datasets.DatasetDict:
         """Load the corpus dataset from HF.
 
@@ -53,10 +71,11 @@ class MIRACLEvalDataLoader(AbsEvalDataLoader):
             datasets.DatasetDict: Loaded datasets instance of corpus.
         """
         corpus = datasets.load_dataset(
-            "miracl/miracl-corpus", dataset_name,
+            "miracl/miracl-corpus",
+            dataset_name,
             cache_dir=self.cache_dir,
             trust_remote_code=True,
-            download_mode=self.hf_download_mode
+            download_mode=self.hf_download_mode,
         )["train"]
 
         if save_dir is not None:
@@ -66,26 +85,19 @@ class MIRACLEvalDataLoader(AbsEvalDataLoader):
             with open(save_path, "w", encoding="utf-8") as f:
                 for data in tqdm(corpus, desc="Loading and Saving corpus"):
                     docid, title, text = str(data["docid"]), data["title"], data["text"]
-                    _data = {
-                        "id": docid,
-                        "title": title,
-                        "text": text
-                    }
-                    corpus_dict[docid] = {
-                        "title": title,
-                        "text": text
-                    }
+                    _data = {"id": docid, "title": title, "text": text}
+                    corpus_dict[docid] = {"title": title, "text": text}
                     f.write(json.dumps(_data, ensure_ascii=False) + "\n")
             logging.info(f"{self.eval_name} {dataset_name} corpus saved to {save_path}")
         else:
-            corpus_dict = {str(data["docid"]): {"title": data["title"], "text": data["text"]} for data in tqdm(corpus, desc="Loading corpus")}
+            corpus_dict = {
+                str(data["docid"]): {"title": data["title"], "text": data["text"]}
+                for data in tqdm(corpus, desc="Loading corpus")
+            }
         return datasets.DatasetDict(corpus_dict)
 
     def _load_remote_qrels(
-        self,
-        dataset_name: str,
-        split: str = 'dev',
-        save_dir: Optional[str] = None
+        self, dataset_name: str, split: str = "dev", save_dir: Optional[str] = None
     ) -> datasets.DatasetDict:
         """Load the qrels from HF.
 
@@ -111,11 +123,7 @@ class MIRACLEvalDataLoader(AbsEvalDataLoader):
                     for line in tqdm(f2.readlines(), desc="Loading and Saving qrels"):
                         qid, _, docid, rel = line.strip().split("\t")
                         qid, docid, rel = str(qid), str(docid), int(rel)
-                        _data = {
-                            "qid": qid,
-                            "docid": docid,
-                            "relevance": rel
-                        }
+                        _data = {"qid": qid, "docid": docid, "relevance": rel}
                         if qid not in qrels_dict:
                             qrels_dict[qid] = {}
                         qrels_dict[qid][docid] = rel
@@ -133,10 +141,7 @@ class MIRACLEvalDataLoader(AbsEvalDataLoader):
         return datasets.DatasetDict(qrels_dict)
 
     def _load_remote_queries(
-        self,
-        dataset_name: str,
-        split: str = 'dev',
-        save_dir: Optional[str] = None
+        self, dataset_name: str, split: str = "dev", save_dir: Optional[str] = None
     ) -> datasets.DatasetDict:
         """Load the queries from HF.
 
@@ -162,10 +167,7 @@ class MIRACLEvalDataLoader(AbsEvalDataLoader):
                     for line in tqdm(f2.readlines(), desc="Loading and Saving queries"):
                         qid, query = line.strip().split("\t")
                         qid = str(qid)
-                        _data = {
-                            "id": qid,
-                            "text": query
-                        }
+                        _data = {"id": qid, "text": query}
                         queries_dict[qid] = query
                         f1.write(json.dumps(_data, ensure_ascii=False) + "\n")
             logging.info(f"{self.eval_name} {dataset_name} queries saved to {save_path}")

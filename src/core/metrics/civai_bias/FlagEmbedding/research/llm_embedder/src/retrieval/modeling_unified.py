@@ -10,7 +10,8 @@ logger = logging.getLogger(__name__)
 
 class Retriever:
     """A wrapper for different retrieval_methods."""
-    def __init__(self, retrieval_method: str="dense", **kwds) -> None:
+
+    def __init__(self, retrieval_method: str = "dense", **kwds) -> None:
         self.retrieval_method = retrieval_method
         self.accelerator = kwds["accelerator"]
 
@@ -24,14 +25,16 @@ class Retriever:
         elif retrieval_method == "naive-bm25":
             self.retriever = NaiveBM25Retriever(**kwds)
         else:
-            logger.warning(f"Found unimplemented retrieval_method [{retrieval_method}], will return None as query_ids and preds.")
+            logger.warning(
+                f"Found unimplemented retrieval_method [{retrieval_method}], will return None as query_ids and preds."
+            )
             self.retriever = None
 
     def to(self, *args, **kwds):
         if hasattr(self.retriever, "to"):
             self.retriever.to(*args, **kwds)
         return self
-    
+
     def encode(self, *args, **kwds):
         if self.retriever is not None and hasattr(self.retriever, "encode"):
             return self.retriever.encode(*args, **kwds)
@@ -51,8 +54,8 @@ class Retriever:
 
             # every process get the same queries while searching different shards
             dataloader = torch.utils.data.DataLoader(
-                eval_dataset, 
-                batch_size=kwds.get("batch_size", 1000), 
+                eval_dataset,
+                batch_size=kwds.get("batch_size", 1000),
                 pin_memory=True,
                 num_workers=2,
             )
@@ -66,15 +69,15 @@ class Retriever:
 
         elif self.retrieval_method == "bm25" and self.retriever is not None:
             query_ids, preds = self.retriever.search(eval_data=eval_dataset, **kwds)
-        
+
         elif self.retrieval_method == "random":
             query_ids = []
             preds = []
             sample_range = range(self.corpus_size)
             for sample in eval_dataset:
-                query_ids.append(sample["query_id"])                
+                query_ids.append(sample["query_id"])
                 preds.append(random.sample(sample_range, kwds["hits"]))
-                
+
         elif self.retrieval_method == "naive-bm25":
             raise NotImplementedError(f"Retrieval with naive-bm25 and dataset is not implemented!")
 

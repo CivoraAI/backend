@@ -16,6 +16,7 @@ class CrossDecoderModel(AbsRerankerModel):
         tokenizer (AutoTokenizer, optional): The tokenizer for encoding input text. Defaults to ``None``.
         train_batch_size (int, optional): The batch size to use. Defaults to ``4``.
     """
+
     def __init__(
         self,
         base_model: PreTrainedModel,
@@ -39,10 +40,12 @@ class CrossDecoderModel(AbsRerankerModel):
         """
         if features is None:
             return None
-        outputs = self.model(input_ids=features['input_ids'],
-                             attention_mask=features['attention_mask'],
-                             position_ids=features['position_ids'] if 'position_ids' in features.keys() else None,
-                             output_hidden_states=True)
+        outputs = self.model(
+            input_ids=features["input_ids"],
+            attention_mask=features["attention_mask"],
+            position_ids=features["position_ids"] if "position_ids" in features.keys() else None,
+            output_hidden_states=True,
+        )
         # _, max_indices = torch.max(features['labels'], dim=1)
         # predict_indices = max_indices
         # logits = [outputs.logits[i, predict_indices[i], :] for i in range(outputs.logits.shape[0])]

@@ -11,11 +11,12 @@ class MKQAEvaluator(AbsEvaluator):
     """
     The evaluator class of MKQA.
     """
+
     def get_corpus_embd_save_dir(
         self,
         retriever_name: str,
         corpus_embd_save_dir: Optional[str] = None,
-        dataset_name: Optional[str] = None
+        dataset_name: Optional[str] = None,
     ):
         """Get the directory to save the corpus embedding.
 
@@ -33,9 +34,7 @@ class MKQAEvaluator(AbsEvaluator):
         return corpus_embd_save_dir
 
     def evaluate_results(
-        self,
-        search_results_save_dir: str,
-        k_values: List[int] = [1, 3, 5, 10, 100, 1000]
+        self, search_results_save_dir: str, k_values: List[int] = [1, 3, 5, 10, 100, 1000]
     ):
         """Compute the metrics and get the eval results.
 
@@ -55,24 +54,26 @@ class MKQAEvaluator(AbsEvaluator):
             corpus_dict[docid] = f"{title} {text}".strip()
 
         for file in os.listdir(search_results_save_dir):
-            if not file.endswith('.json'):
+            if not file.endswith(".json"):
                 continue
 
             file_path = os.path.join(search_results_save_dir, file)
             data_info, search_results = self.load_search_results(file_path)
 
-            _eval_name = data_info['eval_name']
-            assert _eval_name == self.eval_name, f'Mismatch eval_name: {_eval_name} vs {self.eval_name} in {file_path}'
+            _eval_name = data_info["eval_name"]
+            assert (
+                _eval_name == self.eval_name
+            ), f"Mismatch eval_name: {_eval_name} vs {self.eval_name} in {file_path}"
 
-            split = data_info['split']
-            dataset_name = data_info.get('dataset_name', None)
+            split = data_info["split"]
+            dataset_name = data_info.get("dataset_name", None)
             qrels = self.data_loader.load_qrels(dataset_name=dataset_name, split=split)
 
             eval_results = self.compute_metrics(
                 corpus_dict=corpus_dict,
                 qrels=qrels,
                 search_results=search_results,
-                k_values=k_values
+                k_values=k_values,
             )
 
             if dataset_name is not None:
@@ -82,7 +83,7 @@ class MKQAEvaluator(AbsEvaluator):
             eval_results_dict[key] = eval_results
 
         return eval_results_dict
-    
+
     @staticmethod
     def compute_metrics(
         corpus_dict: Dict[str, str],
@@ -92,12 +93,12 @@ class MKQAEvaluator(AbsEvaluator):
     ):
         """
         Compute Recall@k for QA task. The definition of recall in QA task is different from the one in IR task. Please refer to the paper of RocketQA: https://aclanthology.org/2021.naacl-main.466.pdf.
-        
+
         Args:
             corpus_dict (Dict[str, str]): Dictionary of the corpus with doc id and contents.
             qrels (Dict[str, List[str]]): Relevances of queries and passage.
             search_results (Dict[str, Dict[str, float]]): Search results of the model to evaluate.
-        
+
         Returns:
             dict: The model's scores of the metrics.
         """
@@ -114,4 +115,3 @@ class MKQAEvaluator(AbsEvaluator):
         scores = {f"qa_recall_at_{k}": v for k, v in zip(k_values, recall)}
 
         return scores
-    

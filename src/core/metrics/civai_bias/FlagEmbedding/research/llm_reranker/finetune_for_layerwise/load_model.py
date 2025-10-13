@@ -11,11 +11,11 @@ def get_model(model_args, training_args, only_for_one_logit: int = None):
         cache_dir=model_args.cache_dir,
         trust_remote_code=True,
     )
-    if model_args.finetune_type == 'from_raw_model':
+    if model_args.finetune_type == "from_raw_model":
         config.use_cache = False
         config.start_layer = config.num_hidden_layers
         config.head_multi = False
-        config.head_type = 'raw'
+        config.head_type = "raw"
 
         model = LayerWiseMiniCPMForCausalLM.from_pretrained(
             model_args.model_name_or_path,
@@ -32,38 +32,48 @@ def get_model(model_args, training_args, only_for_one_logit: int = None):
         config.head_type = model_args.head_type
         model.config = config
 
-        if model.config.head_type == 'complex':
+        if model.config.head_type == "complex":
             if model.config.head_multi == True:
-                lm_head = nn.ModuleList([LayerWiseHead(
-                    model.config.hidden_size, model.config.vocab_size) for _ in range(
-                    model.config.start_layer,
-                    model.config.num_hidden_layers + 1)])
+                lm_head = nn.ModuleList(
+                    [
+                        LayerWiseHead(model.config.hidden_size, model.config.vocab_size)
+                        for _ in range(model.config.start_layer, model.config.num_hidden_layers + 1)
+                    ]
+                )
                 for i in range(len(lm_head)):
                     lm_head[i].linear_head.load_state_dict(model.lm_head.state_dict())
                 model.set_output_embeddings(lm_head)
             else:
                 lm_head = LayerWiseHead(model.config.hidden_size, 1)
                 state_dict_back = model.lm_head.state_dict()
-                state_dict_back['weight'] = state_dict_back['weight'][only_for_one_logit: only_for_one_logit + 1, :]
+                state_dict_back["weight"] = state_dict_back["weight"][
+                    only_for_one_logit : only_for_one_logit + 1, :
+                ]
                 lm_head.linear_head.load_state_dict(state_dict_back)
                 model.set_output_embeddings(lm_head)
         else:
             if only_for_one_logit is None:
-                raise ValueError('`only for one logit` cannot be None.')
+                raise ValueError("`only for one logit` cannot be None.")
             if model.config.head_multi == True:
-                lm_head = nn.ModuleList([LayerWiseHead(
-                    model.config.hidden_size, 1) for _ in range(
-                    model.config.start_layer,
-                    model.config.num_hidden_layers + 1)])
+                lm_head = nn.ModuleList(
+                    [
+                        LayerWiseHead(model.config.hidden_size, 1)
+                        for _ in range(model.config.start_layer, model.config.num_hidden_layers + 1)
+                    ]
+                )
                 state_dict_back = model.lm_head.state_dict()
-                state_dict_back['weight'] = state_dict_back['weight'][only_for_one_logit: only_for_one_logit + 1, :]
+                state_dict_back["weight"] = state_dict_back["weight"][
+                    only_for_one_logit : only_for_one_logit + 1, :
+                ]
                 for i in range(len(lm_head)):
                     lm_head[i].linear_head.load_state_dict(state_dict_back)
                 model.set_output_embeddings(lm_head)
             else:
                 lm_head = LayerWiseHead(model.config.hidden_size, 1)
                 state_dict_back = model.lm_head.state_dict()
-                state_dict_back['weight'] = state_dict_back['weight'][only_for_one_logit: only_for_one_logit + 1, :]
+                state_dict_back["weight"] = state_dict_back["weight"][
+                    only_for_one_logit : only_for_one_logit + 1, :
+                ]
                 lm_head.linear_head.load_state_dict(state_dict_back)
                 model.set_output_embeddings(lm_head)
         lora_extra_parameters = model_args.lora_extra_parameters

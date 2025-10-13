@@ -22,137 +22,107 @@ def compute_md5(text: str):
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--task_type',
+        "--task_type",
         type=str,
         required=True,
-        help='The task type to generate data for',
-        choices=[t.name for t in TaskType]
+        help="The task type to generate data for",
+        choices=[t.name for t in TaskType],
     )
     parser.add_argument(
-        '--code_language',
+        "--code_language",
         type=str,
         required=True,
-        help='The code language to generate questions for.',
-        choices=[c.name for c in CodeLanguage]
+        help="The code language to generate questions for.",
+        choices=[c.name for c in CodeLanguage],
     )
     parser.add_argument(
-        '--corpus_root',
-        type=str,
-        required=True,
-        help='The root directory of the corpus data.'
+        "--corpus_root", type=str, required=True, help="The root directory of the corpus data."
     )
     parser.add_argument(
-        '--save_dir',
-        type=str,
-        required=True,
-        help='The path to save the generated data'
+        "--save_dir", type=str, required=True, help="The path to save the generated data"
     )
     parser.add_argument(
-        '--examples_dir',
+        "--examples_dir",
         type=str,
         default=None,
-        help='The path to the examples directory. If not None, the examples will be used for few-shot generation.'
+        help="The path to the examples directory. If not None, the examples will be used for few-shot generation.",
     )
     parser.add_argument(
-        '--num_examples',
+        "--num_examples",
         type=int,
         default=3,
-        help='The number of examples to use for few-shot generation. Default: 3'
+        help="The number of examples to use for few-shot generation. Default: 3",
+    )
+    parser.add_argument("--cache_dir", type=str, default=None, help="The cache directory")
+    parser.add_argument(
+        "--language",
+        type=str,
+        default="en",
+        help="The language to generate for. ISO 639-1 code. Default: en",
+        choices=[l.name for l in Language],
     )
     parser.add_argument(
-        '--cache_dir',
+        "--tgt_code_language",
         type=str,
         default=None,
-        help='The cache directory'
+        help="The target code language to generate code translations for.",
+        choices=[c.name for c in CodeLanguage],
     )
     parser.add_argument(
-        '--language',
-        type=str,
-        default='en',
-        help='The language to generate for. ISO 639-1 code. Default: en',
-        choices=[l.name for l in Language]
-    )
-    parser.add_argument(
-        '--tgt_code_language',
-        type=str,
-        default=None,
-        help='The target code language to generate code translations for.',
-        choices=[c.name for c in CodeLanguage]
-    )
-    parser.add_argument(
-        '--num_samples',
+        "--num_samples",
         type=int,
         default=-1,
-        help='The number of examples to use for generation. Default: -1. Use all available examples.'
+        help="The number of examples to use for generation. Default: -1. Use all available examples.",
     )
     parser.add_argument(
-        '--model',
+        "--model",
         type=str,
-        default='Qwen2.5-72B-Instruct',
-        help='The model to use for generation. Default: Qwen2.5-72B-Instruct'
+        default="Qwen2.5-72B-Instruct",
+        help="The model to use for generation. Default: Qwen2.5-72B-Instruct",
     )
     parser.add_argument(
-        '--model_type',
+        "--model_type",
         type=str,
-        default='open-source',
-        help='The type of model to use for generation. Default: open-source',
+        default="open-source",
+        help="The type of model to use for generation. Default: open-source",
     )
+    parser.add_argument("--port", type=int, default=8000, help="The port for vllm.")
     parser.add_argument(
-        '--port',
-        type=int,
-        default=8000,
-        help='The port for vllm.'
-    )
-    parser.add_argument(
-        '--num_processes',
+        "--num_processes",
         type=int,
         default=1,
-        help='The number of processes to use for generation. Default: 1'
+        help="The number of processes to use for generation. Default: 1",
     )
     parser.add_argument(
-        '--doc_length',
+        "--doc_length",
         type=str,
-        default='len_0_500',
-        help='The corpus length used to load dataset. Default: len_0_500'
+        default="len_0_500",
+        help="The corpus length used to load dataset. Default: len_0_500",
     )
     parser.add_argument(
-        '--external_path',
+        "--external_path",
         type=str,
-        default='',
-        help='The corpus length used to load dataset. Default: len_0_500'
+        default="",
+        help="The corpus length used to load dataset. Default: len_0_500",
     )
     parser.add_argument(
-        '--sim_model_name',
-        type=str,
-        default=None,
-        help='The language of source corpus.'
+        "--sim_model_name", type=str, default=None, help="The language of source corpus."
     )
     parser.add_argument(
-        '--max_corpus',
-        type=int,
-        default=500000,
-        help='The max num of corpus to load.'
+        "--max_corpus", type=int, default=500000, help="The max num of corpus to load."
     )
     parser.add_argument(
-        '--overwrite',
-        action='store_true',
-        help='Whether to overwrite the existing data.'
+        "--overwrite", action="store_true", help="Whether to overwrite the existing data."
+    )
+    parser.add_argument("--debug_mode", action="store_true", help="Whether to open debug mode.")
+    parser.add_argument(
+        "--gen_hard_neg", action="store_true", help="Whether to generate hard negatives."
     )
     parser.add_argument(
-        '--debug_mode',
-        action='store_true',
-        help='Whether to open debug mode.'
-    )
-    parser.add_argument(
-        '--gen_hard_neg',
-        action='store_true',
-        help='Whether to generate hard negatives.'
-    )
-    parser.add_argument(
-        '--seed',
+        "--seed",
         type=int,
         default=None,
-        help='Random seed for generating triplets using the same positive. Default: 42'
+        help="Random seed for generating triplets using the same positive. Default: 42",
     )
     args = parser.parse_args()
     return args
@@ -198,7 +168,7 @@ def get_save_path(
     task_type: str,
     language: str,
     code_language: str,
-    tgt_code_language: Optional[str] = None
+    tgt_code_language: Optional[str] = None,
 ):
     save_dir = os.path.join(save_dir, language, task_type)
     if tgt_code_language is not None:
@@ -216,12 +186,14 @@ def save_triplets(
     task_type: str,
     language: str,
     code_language: str,
-    tgt_code_language: Optional[str] = None
+    tgt_code_language: Optional[str] = None,
 ):
     if len(triplets) == 0:
-        print(f"No triplets to save: {task_type} | {language} | {code_language} | {tgt_code_language}")
+        print(
+            f"No triplets to save: {task_type} | {language} | {code_language} | {tgt_code_language}"
+        )
         return
-    
+
     save_path = get_save_path(save_dir, task_type, language, code_language, tgt_code_language)
     query_md5s = set()
     pos_md5s = set()
@@ -231,19 +203,19 @@ def save_triplets(
             for line in f.readlines():
                 triplet = json.loads(line)
                 old_triplets.append(triplet)
-                query_md5s.add(compute_md5(triplet['query']))
-                pos_md5s.add(compute_md5(triplet['pos'][0]))
+                query_md5s.add(compute_md5(triplet["query"]))
+                pos_md5s.add(compute_md5(triplet["pos"][0]))
 
-    with open(save_path, 'w', encoding='utf-8') as f:
+    with open(save_path, "w", encoding="utf-8") as f:
         for triplet in old_triplets:
-            f.write(json.dumps(triplet, ensure_ascii=False) + '\n')
-        
+            f.write(json.dumps(triplet, ensure_ascii=False) + "\n")
+
         for triplet in triplets:
-            _query_md5 = compute_md5(triplet['query'])
-            _pos_md5 = compute_md5(triplet['pos'][0])
+            _query_md5 = compute_md5(triplet["query"])
+            _pos_md5 = compute_md5(triplet["pos"][0])
             if _query_md5 in query_md5s or _pos_md5 in pos_md5s:
                 continue
-            f.write(json.dumps(triplet, ensure_ascii=False) + '\n')
+            f.write(json.dumps(triplet, ensure_ascii=False) + "\n")
     print(f"Triplets saved to {save_path}")
 
 
@@ -253,13 +225,13 @@ def main(args):
     if seed is not None:
         print(f"------------------- Seed set to {seed} -------------------")
         random.seed(seed)
-    
+
     model = args.model
     model_type = args.model_type
     port = args.port
 
     num_samples = args.num_samples
-    
+
     task_type = args.task_type
     language = args.language
     code_language = args.code_language
@@ -276,19 +248,19 @@ def main(args):
     overwrite = args.overwrite
     debug_mode = args.debug_mode
     gen_hard_neg = args.gen_hard_neg
-    
+
     save_path = get_save_path(save_dir, task_type, language, code_language, tgt_code_language)
     # if os.path.exists(save_path) and not overwrite:
-        # data = []
-        # with open(save_path) as f:
-        #     for line in f:
-        #         data.append(json.loads(line))
-        # if len(data) >= num_samples * 0.8:
-        #     print(f"Triplets already exist at {save_path}. Skipping generation.")
-        #     return
-        # else:
-        #     print(f"Triplets already exist at {save_path}. But samples is really small, continue generation.")
-        #     num_samples = int((num_samples - len(data)) * 1.25)  # consider the filtered samples
+    # data = []
+    # with open(save_path) as f:
+    #     for line in f:
+    #         data.append(json.loads(line))
+    # if len(data) >= num_samples * 0.8:
+    #     print(f"Triplets already exist at {save_path}. Skipping generation.")
+    #     return
+    # else:
+    #     print(f"Triplets already exist at {save_path}. But samples is really small, continue generation.")
+    #     num_samples = int((num_samples - len(data)) * 1.25)  # consider the filtered samples
 
     corpus_generator = CorpusGenerator(cache_dir)
 
@@ -298,17 +270,24 @@ def main(args):
         # if task_type in ["single_turn_code_qa", "multi_turn_code_qa"]:
         #     examples_path = os.path.join(examples_dir, language, task_type, "sample_examples.json")
         if task_type in ["code_translation_retrieval"]:
-            examples_path = os.path.join(examples_dir, language, task_type,
-                                         f"{code_language}-to-{tgt_code_language}_sample_examples.json")
+            examples_path = os.path.join(
+                examples_dir,
+                language,
+                task_type,
+                f"{code_language}-to-{tgt_code_language}_sample_examples.json",
+            )
         else:
-            examples_path = os.path.join(examples_dir, language, task_type, f"{code_language}_sample_examples.json")
+            examples_path = os.path.join(
+                examples_dir, language, task_type, f"{code_language}_sample_examples.json"
+            )
         try:
-            with open(examples_path, 'r', encoding='utf-8') as f:
+            with open(examples_path, "r", encoding="utf-8") as f:
                 examples_pool = json.load(f)
-                examples_pool = random.sample(examples_pool,
-                                              min(30, len(examples_pool)))   # sample 30 examples for few-shot generation
+                examples_pool = random.sample(
+                    examples_pool, min(30, len(examples_pool))
+                )  # sample 30 examples for few-shot generation
         except:
-            print(f'Error for loading examples from {examples_path}')
+            print(f"Error for loading examples from {examples_path}")
             examples_pool = None
     else:
         examples_pool = None
@@ -319,18 +298,24 @@ def main(args):
         corpus_dir=corpus_dir,
         doc_length=doc_length,
         external_path=external_path,
-        source_language=code_language
+        source_language=code_language,
     )
 
     if task_type in ["code_modification_retrieval", "code_comparison_retrieval"]:
-        top1_docs = get_top1([e['text'] for e in positives], args.sim_model_name, [e['text'] for e in large_positives])
+        top1_docs = get_top1(
+            [e["text"] for e in positives],
+            args.sim_model_name,
+            [e["text"] for e in large_positives],
+        )
         for i in range(len(top1_docs)):
-            positives[i]['similar'] = top1_docs[i]
+            positives[i]["similar"] = top1_docs[i]
         gc.collect()
         torch.cuda.empty_cache()
 
     print("=================== Generate training data ===================")
-    print(f'Task Type: {task_type} | Language: {language} | Code Language: {code_language} | Target Code Language: {tgt_code_language}')
+    print(
+        f"Task Type: {task_type} | Language: {language} | Code Language: {code_language} | Target Code Language: {tgt_code_language}"
+    )
     start_time = time.time()
     triplets = gen_triplets(
         model=model,
@@ -354,7 +339,7 @@ def main(args):
         task_type=task_type,
         language=language,
         code_language=code_language,
-        tgt_code_language=tgt_code_language
+        tgt_code_language=tgt_code_language,
     )
     end_time = time.time()
     print("=============================================================")

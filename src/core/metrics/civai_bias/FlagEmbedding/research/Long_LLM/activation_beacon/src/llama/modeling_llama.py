@@ -17,7 +17,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" PyTorch Llama model."""
+"""PyTorch Llama model."""
 import inspect
 import math
 import warnings
@@ -31,7 +31,11 @@ from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, MSELoss
 
 from transformers.activations import ACT2FN
 from transformers.cache_utils import Cache
-from transformers.modeling_outputs import BaseModelOutputWithPast, CausalLMOutputWithPast, SequenceClassifierOutputWithPast
+from transformers.modeling_outputs import (
+    BaseModelOutputWithPast,
+    CausalLMOutputWithPast,
+    SequenceClassifierOutputWithPast,
+)
 from transformers.modeling_utils import PreTrainedModel
 from transformers.utils import (
     add_start_docstrings,
@@ -49,7 +53,9 @@ if is_flash_attn_2_available():
     from flash_attn import flash_attn_func, flash_attn_varlen_func
     from flash_attn.bert_padding import index_first_axis, pad_input, unpad_input  # noqa
 
-    _flash_supports_window_size = "window_size" in list(inspect.signature(flash_attn_func).parameters)
+    _flash_supports_window_size = "window_size" in list(
+        inspect.signature(flash_attn_func).parameters
+    )
 
 from ..modeling_beacon import Memory
 from ..modeling_utils import optional_grad_ctx, compute_loss, get_rope, ModelOutput
@@ -58,6 +64,7 @@ from ..modeling_utils import optional_grad_ctx, compute_loss, get_rope, ModelOut
 logger = logging.get_logger(__name__)
 
 _CONFIG_FOR_DOC = "LlamaConfig"
+
 
 # Copied from transformers.models.llama.modeling_llama._get_unpad_data
 def _get_unpad_data(attention_mask):
@@ -115,7 +122,9 @@ def repeat_kv(hidden_states: torch.Tensor, n_rep: int) -> torch.Tensor:
     batch, num_key_value_heads, slen, head_dim = hidden_states.shape
     if n_rep == 1:
         return hidden_states
-    hidden_states = hidden_states[:, :, None, :, :].expand(batch, num_key_value_heads, n_rep, slen, head_dim)
+    hidden_states = hidden_states[:, :, None, :, :].expand(
+        batch, num_key_value_heads, n_rep, slen, head_dim
+    )
     return hidden_states.reshape(batch, num_key_value_heads * n_rep, slen, head_dim)
 
 
@@ -149,50 +158,78 @@ class LlamaAttention(nn.Module):
                 f" and `num_heads`: {self.num_heads})."
             )
 
-        self.q_proj = nn.Linear(self.hidden_size, self.num_heads * self.head_dim, bias=config.attention_bias)
-        self.k_proj = nn.Linear(self.hidden_size, self.num_key_value_heads * self.head_dim, bias=config.attention_bias)
-        self.v_proj = nn.Linear(self.hidden_size, self.num_key_value_heads * self.head_dim, bias=config.attention_bias)
-        self.o_proj = nn.Linear(self.num_heads * self.head_dim, self.hidden_size, bias=config.attention_bias)
+        self.q_proj = nn.Linear(
+            self.hidden_size, self.num_heads * self.head_dim, bias=config.attention_bias
+        )
+        self.k_proj = nn.Linear(
+            self.hidden_size, self.num_key_value_heads * self.head_dim, bias=config.attention_bias
+        )
+        self.v_proj = nn.Linear(
+            self.hidden_size, self.num_key_value_heads * self.head_dim, bias=config.attention_bias
+        )
+        self.o_proj = nn.Linear(
+            self.num_heads * self.head_dim, self.hidden_size, bias=config.attention_bias
+        )
 
-        self.rotary_emb = get_rope(self.head_dim, config.rope_theta, config.max_position_embeddings, getattr(config, "rope_scaling", None))
+        self.rotary_emb = get_rope(
+            self.head_dim,
+            config.rope_theta,
+            config.max_position_embeddings,
+            getattr(config, "rope_scaling", None),
+        )
 
         # NOTE: add extra parameters for beacon tokens
         # skip post initialization to speed up loading
         if "q" in config.beacon_param:
-            self.beacon_q_proj = nn.Linear(self.hidden_size, self.num_heads * self.head_dim, bias=self.q_proj.bias is not None)
+            self.beacon_q_proj = nn.Linear(
+                self.hidden_size, self.num_heads * self.head_dim, bias=self.q_proj.bias is not None
+            )
             # NOTE: initialize the beacon parameters as zero
             self.beacon_q_proj.weight.data.zero_()
             self.beacon_q_proj._is_hf_initialized = True
         if "k" in config.beacon_param:
-            self.beacon_k_proj = nn.Linear(self.hidden_size, self.num_key_value_heads * self.head_dim, bias=self.k_proj.bias is not None)
+            self.beacon_k_proj = nn.Linear(
+                self.hidden_size,
+                self.num_key_value_heads * self.head_dim,
+                bias=self.k_proj.bias is not None,
+            )
             self.beacon_k_proj.weight.data.zero_()
             self.beacon_k_proj._is_hf_initialized = True
         if "v" in config.beacon_param:
-            self.beacon_v_proj = nn.Linear(self.hidden_size, self.num_key_value_heads * self.head_dim, bias=self.v_proj.bias is not None)
+            self.beacon_v_proj = nn.Linear(
+                self.hidden_size,
+                self.num_key_value_heads * self.head_dim,
+                bias=self.v_proj.bias is not None,
+            )
             self.beacon_v_proj.weight.data.zero_()
             self.beacon_v_proj._is_hf_initialized = True
         if "o" in config.beacon_param:
-            self.beacon_o_proj = nn.Linear(self.num_heads * self.head_dim, self.hidden_size, bias=self.o_proj.bias is not None)
+            self.beacon_o_proj = nn.Linear(
+                self.num_heads * self.head_dim, self.hidden_size, bias=self.o_proj.bias is not None
+            )
             self.beacon_o_proj.weight.data.zero_()
             self.beacon_o_proj._is_hf_initialized = True
 
     def _init_beacon_proj(self, missing_keys):
         """Initialize the beacon projection weight with that of the ordinal projection."""
         beacon_param = self.config.beacon_param
-        
+
         if is_deepspeed_zero3_enabled():
             # FIXME: after deepspeed initialization, some weights becomes non-zero
             # For Llama, there are rows that are full of zeros
             # For Llama, there are values bigger than 1e29...
 
             import deepspeed
+
             if "q" in beacon_param:
                 params = [self.beacon_q_proj.weight, self.q_proj.weight]
                 if self.q_proj.bias is not None:
                     params.extend([self.beacon_q_proj.bias, self.q_proj.bias])
                 with deepspeed.zero.GatheredParameters(params, modifier_rank=0):
                     # FIXME: after deepspeed initialization, some weights becomes non-zero, but there are rows that are full of zeros
-                    if (self.beacon_q_proj.weight.sum(-1) == 0).any() or (self.beacon_q_proj.weight > 1e29).any():
+                    if (self.beacon_q_proj.weight.sum(-1) == 0).any() or (
+                        self.beacon_q_proj.weight > 1e29
+                    ).any():
                         self.beacon_q_proj.weight.data[:] = self.q_proj.weight.data
                         if self.q_proj.bias is not None:
                             self.beacon_q_proj.bias.data[:] = self.q_proj.bias.data
@@ -202,7 +239,9 @@ class LlamaAttention(nn.Module):
                     params.extend([self.beacon_k_proj.bias, self.k_proj.bias])
                 with deepspeed.zero.GatheredParameters(params, modifier_rank=0):
                     # FIXME: after deepspeed initialization, some weights becomes non-zero, but there are rows that are full of zeros
-                    if (self.beacon_k_proj.weight.sum(-1) == 0).any() or (self.beacon_k_proj.weight > 1e29).any():
+                    if (self.beacon_k_proj.weight.sum(-1) == 0).any() or (
+                        self.beacon_k_proj.weight > 1e29
+                    ).any():
                         self.beacon_k_proj.weight.data[:] = self.k_proj.weight.data
                         if self.k_proj.bias is not None:
                             self.beacon_k_proj.bias.data[:] = self.k_proj.bias.data
@@ -212,7 +251,9 @@ class LlamaAttention(nn.Module):
                     params.extend([self.beacon_v_proj.bias, self.v_proj.bias])
                 with deepspeed.zero.GatheredParameters(params, modifier_rank=0):
                     # FIXME: after deepspeed initialization, some weights becomes non-zero, but there are rows that are full of zeros
-                    if (self.beacon_v_proj.weight.sum(-1) == 0).any() or (self.beacon_v_proj.weight > 1e29).any():
+                    if (self.beacon_v_proj.weight.sum(-1) == 0).any() or (
+                        self.beacon_v_proj.weight > 1e29
+                    ).any():
                         self.beacon_v_proj.weight.data[:] = self.v_proj.weight.data
                         if self.v_proj.bias is not None:
                             self.beacon_v_proj.bias.data[:] = self.v_proj.bias.data
@@ -222,37 +263,47 @@ class LlamaAttention(nn.Module):
                     params.extend([self.beacon_o_proj.bias, self.o_proj.bias])
                 with deepspeed.zero.GatheredParameters(params, modifier_rank=0):
                     # FIXME: after deepspeed initialization, some weights becomes non-zero, but there are rows that are full of zeros
-                    if (self.beacon_o_proj.weight.sum(-1) == 0).any() or (self.beacon_o_proj.weight > 1e29).any():
+                    if (self.beacon_o_proj.weight.sum(-1) == 0).any() or (
+                        self.beacon_o_proj.weight > 1e29
+                    ).any():
                         self.beacon_o_proj.weight.data[:] = self.o_proj.weight.data
                         if self.o_proj.bias is not None:
                             self.beacon_o_proj.bias.data[:] = self.o_proj.bias.data
         else:
             # only copy the value in-place, without tieing the weight
-            if "q" in beacon_param and any("beacon_q_proj" in missing_key for missing_key in missing_keys):
-                # FIXME: some beacon weights are not initialized as zero for llama model, why? 
+            if "q" in beacon_param and any(
+                "beacon_q_proj" in missing_key for missing_key in missing_keys
+            ):
+                # FIXME: some beacon weights are not initialized as zero for llama model, why?
                 # if (self.beacon_q_proj.weight == 0).all():
-                    self.beacon_q_proj.weight.data[:] = self.q_proj.weight.data
-                    if self.q_proj.bias is not None:
-                        self.beacon_q_proj.bias.data[:] = self.q_proj.bias.data
-            if "k" in beacon_param and any("beacon_k_proj" in missing_key for missing_key in missing_keys):
+                self.beacon_q_proj.weight.data[:] = self.q_proj.weight.data
+                if self.q_proj.bias is not None:
+                    self.beacon_q_proj.bias.data[:] = self.q_proj.bias.data
+            if "k" in beacon_param and any(
+                "beacon_k_proj" in missing_key for missing_key in missing_keys
+            ):
                 # if (self.beacon_k_proj.weight == 0).all():
-                    self.beacon_k_proj.weight.data[:] = self.k_proj.weight.data
-                    if self.k_proj.bias is not None:
-                        self.beacon_k_proj.bias.data[:] = self.k_proj.bias.data
-            if "v" in beacon_param and any("beacon_v_proj" in missing_key for missing_key in missing_keys):
+                self.beacon_k_proj.weight.data[:] = self.k_proj.weight.data
+                if self.k_proj.bias is not None:
+                    self.beacon_k_proj.bias.data[:] = self.k_proj.bias.data
+            if "v" in beacon_param and any(
+                "beacon_v_proj" in missing_key for missing_key in missing_keys
+            ):
                 # if (self.beacon_v_proj.weight == 0).all():
-                    self.beacon_v_proj.weight.data[:] = self.v_proj.weight.data
-                    if self.v_proj.bias is not None:
-                        self.beacon_v_proj.bias.data[:] = self.v_proj.bias.data
-            if "o" in beacon_param and any("beacon_o_proj" in missing_key for missing_key in missing_keys):
+                self.beacon_v_proj.weight.data[:] = self.v_proj.weight.data
+                if self.v_proj.bias is not None:
+                    self.beacon_v_proj.bias.data[:] = self.v_proj.bias.data
+            if "o" in beacon_param and any(
+                "beacon_o_proj" in missing_key for missing_key in missing_keys
+            ):
                 # if (self.beacon_o_proj.weight == 0).all():
-                    self.beacon_o_proj.weight.data[:] = self.o_proj.weight.data
-                    if self.o_proj.bias is not None:
-                        self.beacon_o_proj.bias.data[:] = self.o_proj.bias.data
+                self.beacon_o_proj.weight.data[:] = self.o_proj.weight.data
+                if self.o_proj.bias is not None:
+                    self.beacon_o_proj.bias.data[:] = self.o_proj.bias.data
 
     def _shape(self, tensor: torch.Tensor, seq_len: int, bsz: int):
         return tensor.view(bsz, seq_len, self.num_heads, self.head_dim).transpose(1, 2).contiguous()
-    
+
     # def qkv_proj_with_beacon(self, hidden_states, beacon_size, beacon_indices):
     #     if beacon_size > 0:
     #         # NOTE: when beacon_pos == "interleave", the beacon_indices points to all beacon tokens in the current window (cached activations + input_ids), so we shall slice out the part corresponding to the input_ids
@@ -286,7 +337,7 @@ class LlamaAttention(nn.Module):
 
     #         else:
     #             key_states = self.k_proj(hidden_states)
-            
+
     #         if "v" in self.config.beacon_param:
     #             ordinal_value_states = self.v_proj(ordinal_hidden_states)
     #             beacon_value_states = self.beacon_v_proj(beacon_hidden_states)
@@ -329,39 +380,51 @@ class LlamaAttention(nn.Module):
     def qkv_proj_with_beacon(self, hidden_states, beacon_size, beacon_indices):
         if beacon_size > 0:
             # NOTE: when beacon_pos == "interleave", the beacon_indices points to all beacon tokens in the current window (cached activations + input_ids), so we shall slice out the part corresponding to the input_ids
-            cur_beacon_indices = beacon_indices[-hidden_states.shape[1]:]
+            cur_beacon_indices = beacon_indices[-hidden_states.shape[1] :]
 
             # NOTE: there is slight redundant computation because ordinal tokens should never be projected by beacon matrices, but we are doing this for efficiency
             if "q" in self.config.beacon_param:
                 ordinal_query_states = self.q_proj(hidden_states)
                 beacon_query_states = self.beacon_q_proj(hidden_states)
-                query_states = torch.where((cur_beacon_indices == 0)[:, None], ordinal_query_states, beacon_query_states)
+                query_states = torch.where(
+                    (cur_beacon_indices == 0)[:, None], ordinal_query_states, beacon_query_states
+                )
                 if (cur_beacon_indices == 2).any():
                     # beacon_indices == 2 means the beacon token is used to replicate the ones in previous window for parallel encoding
                     # we should slice out all beacon tokens then copy them to the replicate beacon tokens
-                    query_states[:, cur_beacon_indices == 2] = beacon_query_states[:, cur_beacon_indices == 1][:, :(cur_beacon_indices == 2).sum()]
+                    query_states[:, cur_beacon_indices == 2] = beacon_query_states[
+                        :, cur_beacon_indices == 1
+                    ][:, : (cur_beacon_indices == 2).sum()]
             else:
                 query_states = self.q_proj(hidden_states)
 
             if "k" in self.config.beacon_param:
                 ordinal_key_states = self.k_proj(hidden_states)
                 beacon_key_states = self.beacon_k_proj(hidden_states)
-                key_states = torch.where((cur_beacon_indices == 0)[:, None], ordinal_key_states, beacon_key_states)
+                key_states = torch.where(
+                    (cur_beacon_indices == 0)[:, None], ordinal_key_states, beacon_key_states
+                )
                 if (cur_beacon_indices == 2).any():
                     # beacon_indices == 2 means the beacon token is used to replicate the ones in previous window for parallel encoding
                     # we should slice out all beacon tokens then copy them to the replicate beacon tokens
-                    key_states[:, cur_beacon_indices == 2] = beacon_key_states[:, cur_beacon_indices == 1][:, :(cur_beacon_indices == 2).sum()]
+                    key_states[:, cur_beacon_indices == 2] = beacon_key_states[
+                        :, cur_beacon_indices == 1
+                    ][:, : (cur_beacon_indices == 2).sum()]
             else:
                 key_states = self.k_proj(hidden_states)
 
             if "v" in self.config.beacon_param:
                 ordinal_value_states = self.v_proj(hidden_states)
                 beacon_value_states = self.beacon_v_proj(hidden_states)
-                value_states = torch.where((cur_beacon_indices == 0)[:, None], ordinal_value_states, beacon_value_states)
+                value_states = torch.where(
+                    (cur_beacon_indices == 0)[:, None], ordinal_value_states, beacon_value_states
+                )
                 if (cur_beacon_indices == 2).any():
                     # beacon_indices == 2 means the beacon token is used to replicate the ones in previous window for parallel encoding
                     # we should slice out all beacon tokens then copy them to the replicate beacon tokens
-                    value_states[:, cur_beacon_indices == 2] = beacon_value_states[:, cur_beacon_indices == 1][:, :(cur_beacon_indices == 2).sum()]
+                    value_states[:, cur_beacon_indices == 2] = beacon_value_states[
+                        :, cur_beacon_indices == 1
+                    ][:, : (cur_beacon_indices == 2).sum()]
             else:
                 value_states = self.v_proj(hidden_states)
 
@@ -375,12 +438,14 @@ class LlamaAttention(nn.Module):
     def o_proj_with_beacon(self, attn_output, beacon_size, beacon_indices):
         if beacon_size > 0:
             # NOTE: when beacon_pos == "interleave", the beacon_indices points to all beacon tokens in the current window (cached activations + input_ids), so we shall slice out the part corresponding to the input_ids
-            cur_beacon_indices = beacon_indices[-attn_output.shape[1]:]
+            cur_beacon_indices = beacon_indices[-attn_output.shape[1] :]
 
             if "o" in self.config.beacon_param:
                 ordinal_attn_output = self.o_proj(attn_output)
                 beacon_attn_output = self.beacon_o_proj(attn_output)
-                attn_output = torch.where((cur_beacon_indices == 0)[:, None], ordinal_attn_output, beacon_attn_output)
+                attn_output = torch.where(
+                    (cur_beacon_indices == 0)[:, None], ordinal_attn_output, beacon_attn_output
+                )
             else:
                 attn_output = self.o_proj(attn_output)
         else:
@@ -412,27 +477,35 @@ class LlamaAttention(nn.Module):
         else:
             past_seq_len = 0
 
-        query_states, key_states, value_states = self.qkv_proj_with_beacon(hidden_states, beacon_size, beacon_indices)
+        query_states, key_states, value_states = self.qkv_proj_with_beacon(
+            hidden_states, beacon_size, beacon_indices
+        )
 
         query_states = query_states.view(bsz, q_len, self.num_heads, self.head_dim).transpose(1, 2)
-        key_states = key_states.view(bsz, q_len, self.num_key_value_heads, self.head_dim).transpose(1, 2)
-        value_states = value_states.view(bsz, q_len, self.num_key_value_heads, self.head_dim).transpose(1, 2)
+        key_states = key_states.view(bsz, q_len, self.num_key_value_heads, self.head_dim).transpose(
+            1, 2
+        )
+        value_states = value_states.view(
+            bsz, q_len, self.num_key_value_heads, self.head_dim
+        ).transpose(1, 2)
 
         # return keys and values before rope
-        # NOTE: incrementally return keys and values for efficiency 
+        # NOTE: incrementally return keys and values for efficiency
         past_key_value = (key_states, value_states, beacon_size, beacon_indices)
 
         if past_key is not None:
             # reuse k, v, self_attention
             key_states = torch.cat([past_key, key_states], dim=2)
             value_states = torch.cat([past_value, value_states], dim=2)
-        
+
         query_states, key_states = self.rotary_emb(query_states, key_states, position_ids)
 
         key_states = repeat_kv(key_states, self.num_key_value_groups)
         value_states = repeat_kv(value_states, self.num_key_value_groups)
 
-        attn_weights = torch.matmul(query_states, key_states.transpose(2, 3)) / math.sqrt(self.head_dim)
+        attn_weights = torch.matmul(query_states, key_states.transpose(2, 3)) / math.sqrt(
+            self.head_dim
+        )
 
         if attn_weights.size() != (bsz, self.num_heads, q_len, kv_seq_len):
             raise ValueError(
@@ -448,8 +521,12 @@ class LlamaAttention(nn.Module):
             attn_weights = attn_weights + attention_mask
 
         # upcast attention to fp32
-        attn_weights = nn.functional.softmax(attn_weights, dim=-1, dtype=torch.float32).to(query_states.dtype)
-        attn_weights = nn.functional.dropout(attn_weights, p=self.attention_dropout, training=self.training)
+        attn_weights = nn.functional.softmax(attn_weights, dim=-1, dtype=torch.float32).to(
+            query_states.dtype
+        )
+        attn_weights = nn.functional.dropout(
+            attn_weights, p=self.attention_dropout, training=self.training
+        )
         attn_output = torch.matmul(attn_weights, value_states)
 
         if attn_output.size() != (bsz, self.num_heads, q_len, self.head_dim):
@@ -510,21 +587,27 @@ class LlamaSdpaAttention(LlamaAttention):
         else:
             past_seq_len = 0
 
-        query_states, key_states, value_states = self.qkv_proj_with_beacon(hidden_states, beacon_size, beacon_indices)
+        query_states, key_states, value_states = self.qkv_proj_with_beacon(
+            hidden_states, beacon_size, beacon_indices
+        )
 
         query_states = query_states.view(bsz, q_len, self.num_heads, self.head_dim).transpose(1, 2)
-        key_states = key_states.view(bsz, q_len, self.num_key_value_heads, self.head_dim).transpose(1, 2)
-        value_states = value_states.view(bsz, q_len, self.num_key_value_heads, self.head_dim).transpose(1, 2)
+        key_states = key_states.view(bsz, q_len, self.num_key_value_heads, self.head_dim).transpose(
+            1, 2
+        )
+        value_states = value_states.view(
+            bsz, q_len, self.num_key_value_heads, self.head_dim
+        ).transpose(1, 2)
 
         # return keys and values before rope
-        # NOTE: incrementally return keys and values for efficiency 
+        # NOTE: incrementally return keys and values for efficiency
         past_key_value = (key_states, value_states, beacon_size, beacon_indices)
 
         if past_key is not None:
             # reuse k, v, self_attention
             key_states = torch.cat([past_key, key_states], dim=2)
             value_states = torch.cat([past_value, value_states], dim=2)
-        
+
         query_states, key_states = self.rotary_emb(query_states, key_states, position_ids)
 
         key_states = repeat_kv(key_states, self.num_key_value_groups)
@@ -596,14 +679,20 @@ class LlamaFlashAttention2(LlamaAttention):
         else:
             past_seq_len = 0
 
-        query_states, key_states, value_states = self.qkv_proj_with_beacon(hidden_states, beacon_size, beacon_indices)
+        query_states, key_states, value_states = self.qkv_proj_with_beacon(
+            hidden_states, beacon_size, beacon_indices
+        )
 
         query_states = query_states.view(bsz, q_len, self.num_heads, self.head_dim).transpose(1, 2)
-        key_states = key_states.view(bsz, q_len, self.num_key_value_heads, self.head_dim).transpose(1, 2)
-        value_states = value_states.view(bsz, q_len, self.num_key_value_heads, self.head_dim).transpose(1, 2)
+        key_states = key_states.view(bsz, q_len, self.num_key_value_heads, self.head_dim).transpose(
+            1, 2
+        )
+        value_states = value_states.view(
+            bsz, q_len, self.num_key_value_heads, self.head_dim
+        ).transpose(1, 2)
 
         # return keys and values before rope
-        # NOTE: incrementally return keys and values for efficiency 
+        # NOTE: incrementally return keys and values for efficiency
         past_key_value = (key_states, value_states, beacon_size, beacon_indices)
 
         if past_key is not None:
@@ -648,12 +737,7 @@ class LlamaFlashAttention2(LlamaAttention):
             value_states = value_states.to(target_dtype)
 
         attn_output = self._flash_attention_forward(
-            query_states, 
-            key_states, 
-            value_states, 
-            attention_mask, 
-            q_len, 
-            dropout=dropout_rate
+            query_states, key_states, value_states, attention_mask, q_len, dropout=dropout_rate
         )
 
         attn_output = attn_output.reshape(bsz, q_len, self.hidden_size).contiguous()
@@ -665,7 +749,14 @@ class LlamaFlashAttention2(LlamaAttention):
         return attn_output, attn_weights, past_key_value
 
     def _flash_attention_forward(
-        self, query_states, key_states, value_states, attention_mask, query_length, dropout=0.0, softmax_scale=None
+        self,
+        query_states,
+        key_states,
+        value_states,
+        attention_mask,
+        query_length,
+        dropout=0.0,
+        softmax_scale=None,
     ):
         """
         Calls the forward method of Flash Attention - if the input hidden states contain at least one padding token
@@ -695,8 +786,10 @@ class LlamaFlashAttention2(LlamaAttention):
         # Contains at least one padding token in the sequence
         if attention_mask is not None:
             batch_size = query_states.shape[0]
-            query_states, key_states, value_states, indices_q, cu_seq_lens, max_seq_lens = self._upad_input(
-                query_states, key_states, value_states, attention_mask, query_length
+            query_states, key_states, value_states, indices_q, cu_seq_lens, max_seq_lens = (
+                self._upad_input(
+                    query_states, key_states, value_states, attention_mask, query_length
+                )
             )
 
             cu_seqlens_q, cu_seqlens_k = cu_seq_lens
@@ -718,7 +811,12 @@ class LlamaFlashAttention2(LlamaAttention):
             attn_output = pad_input(attn_output_unpad, indices_q, batch_size, query_length)
         else:
             attn_output = flash_attn_func(
-                query_states, key_states, value_states, dropout, softmax_scale=softmax_scale, causal=causal
+                query_states,
+                key_states,
+                value_states,
+                dropout,
+                softmax_scale=softmax_scale,
+                causal=causal,
             )
 
         return attn_output
@@ -750,7 +848,9 @@ class LlamaFlashAttention2(LlamaAttention):
         else:
             # The -q_len: slice assumes left padding.
             attention_mask = attention_mask[:, -query_length:]
-            query_layer, indices_q, cu_seqlens_q, max_seqlen_in_batch_q = unpad_input(query_layer, attention_mask)
+            query_layer, indices_q, cu_seqlens_q, max_seqlen_in_batch_q = unpad_input(
+                query_layer, attention_mask
+            )
 
         return (
             query_layer,
@@ -991,32 +1091,45 @@ class LlamaModel(LlamaPreTrainedModel):
         """Initialize the beacon token embedding with that of the eos token."""
         if is_deepspeed_zero3_enabled():
             import deepspeed
+
             params = [self.beacon_embed_tokens.weight, self.embed_tokens.weight]
             with deepspeed.zero.GatheredParameters(params, modifier_rank=0):
                 # deepspeed will initialize the parameters to zero
                 if (self.beacon_embed_tokens.weight == 0).all():
                     if self.config.beacon_embed_init == "bos":
-                        self.beacon_embed_tokens.weight.data[:] = self.embed_tokens.weight.data[self.config.bos_token_id]
+                        self.beacon_embed_tokens.weight.data[:] = self.embed_tokens.weight.data[
+                            self.config.bos_token_id
+                        ]
                     elif self.config.beacon_embed_init == "eos":
                         if isinstance(self.config.eos_token_id, list):
                             eos_token_id = self.config.eos_token_id[0]
                         else:
                             eos_token_id = self.config.eos_token_id
-                        self.beacon_embed_tokens.weight.data[:] = self.embed_tokens.weight.data[eos_token_id]
+                        self.beacon_embed_tokens.weight.data[:] = self.embed_tokens.weight.data[
+                            eos_token_id
+                        ]
                     else:
-                        raise NotImplementedError(f"Make sure beacon_embed_init is either eos or bos, found {self.config.beacon_embed_init}")
+                        raise NotImplementedError(
+                            f"Make sure beacon_embed_init is either eos or bos, found {self.config.beacon_embed_init}"
+                        )
         else:
             if any("beacon_embed_tokens" in missing_key for missing_key in missing_keys):
                 if self.config.beacon_embed_init == "bos":
-                    self.beacon_embed_tokens.weight.data[:] = self.embed_tokens.weight.data[self.config.bos_token_id]
+                    self.beacon_embed_tokens.weight.data[:] = self.embed_tokens.weight.data[
+                        self.config.bos_token_id
+                    ]
                 elif self.config.beacon_embed_init == "eos":
                     if isinstance(self.config.eos_token_id, list):
                         eos_token_id = self.config.eos_token_id[0]
                     else:
                         eos_token_id = self.config.eos_token_id
-                    self.beacon_embed_tokens.weight.data[:] = self.embed_tokens.weight.data[eos_token_id]
+                    self.beacon_embed_tokens.weight.data[:] = self.embed_tokens.weight.data[
+                        eos_token_id
+                    ]
                 else:
-                    raise NotImplementedError(f"Make sure beacon_embed_init is either eos or bos, found {self.config.beacon_embed_init}")
+                    raise NotImplementedError(
+                        f"Make sure beacon_embed_init is either eos or bos, found {self.config.beacon_embed_init}"
+                    )
 
     def get_input_embeddings(self):
         return self.embed_tokens
@@ -1037,9 +1150,13 @@ class LlamaModel(LlamaPreTrainedModel):
         output_hidden_states: Optional[bool] = None,
         return_dict: Optional[bool] = None,
     ) -> Union[Tuple, BaseModelOutputWithPast]:
-        output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
+        output_attentions = (
+            output_attentions if output_attentions is not None else self.config.output_attentions
+        )
         output_hidden_states = (
-            output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
+            output_hidden_states
+            if output_hidden_states is not None
+            else self.config.output_hidden_states
         )
         # BEACON: always use cache
         use_cache = True
@@ -1061,14 +1178,18 @@ class LlamaModel(LlamaPreTrainedModel):
         # BEACON: separately embed ordinal tokens and beacon tokens because ordinal tokens do not receive gradients
         if beacon_size > 0:
             # NOTE: when beacon_pos == "interleave", the beacon_indices points to all beacon tokens in the current window (cached activations + input_ids), so we shall slice out the part corresponding to the input_ids
-            cur_beacon_indices = beacon_indices[-input_ids.shape[1]:]
+            cur_beacon_indices = beacon_indices[-input_ids.shape[1] :]
 
             ordinal_input_ids = input_ids[:, cur_beacon_indices == 0]
             beacon_input_ids = input_ids[:, cur_beacon_indices > 0]
             ordinal_inputs_embeds = self.embed_tokens(ordinal_input_ids)
-            beacon_input_embeds = self.beacon_embed_tokens(beacon_input_ids - self.config.vocab_size)
+            beacon_input_embeds = self.beacon_embed_tokens(
+                beacon_input_ids - self.config.vocab_size
+            )
             # create a new embedding tensor
-            inputs_embeds = beacon_input_embeds.new_zeros(*input_ids.shape, beacon_input_embeds.shape[-1])
+            inputs_embeds = beacon_input_embeds.new_zeros(
+                *input_ids.shape, beacon_input_embeds.shape[-1]
+            )
             inputs_embeds[:, cur_beacon_indices == 0] = ordinal_inputs_embeds
             inputs_embeds[:, cur_beacon_indices > 0] = beacon_input_embeds
 
@@ -1136,7 +1257,11 @@ class LlamaModel(LlamaPreTrainedModel):
         next_cache = next_decoder_cache if use_cache else None
 
         if not return_dict:
-            return tuple(v for v in [hidden_states, next_cache, all_hidden_states, all_self_attns] if v is not None)
+            return tuple(
+                v
+                for v in [hidden_states, next_cache, all_hidden_states, all_self_attns]
+                if v is not None
+            )
         return BaseModelOutputWithPast(
             last_hidden_state=hidden_states,
             past_key_values=next_cache,
@@ -1211,9 +1336,13 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
         output_hidden_states: Optional[bool] = None,
         return_dict: Optional[bool] = None,
     ) -> Union[Tuple, ModelOutput]:
-        output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
+        output_attentions = (
+            output_attentions if output_attentions is not None else self.config.output_attentions
+        )
         output_hidden_states = (
-            output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
+            output_hidden_states
+            if output_hidden_states is not None
+            else self.config.output_hidden_states
         )
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
@@ -1242,7 +1371,7 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
         loss = None
         batch_loss = None
         token_loss = None
-        
+
         if labels is not None:
             loss, batch_loss, token_loss = compute_loss(logits, labels, shift=False)
 
@@ -1260,7 +1389,8 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
             attentions=outputs.attentions,
         )
 
-    def _beacon_forward(self, 
+    def _beacon_forward(
+        self,
         input_ids: torch.LongTensor = None,
         attention_mask: Optional[torch.Tensor] = None,
         position_ids: Optional[torch.LongTensor] = None,
@@ -1275,11 +1405,7 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
         # t1 = time.time()
 
         # initialize cache
-        self.memory.prepare(
-            input_ids=input_ids, 
-            attention_mask=attention_mask, 
-            labels=labels
-        )
+        self.memory.prepare(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
 
         # t2 = time.time()
 
@@ -1333,8 +1459,7 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
         return outputs
 
     def forward(self, **kwargs):
-        """Forward computation over a batch of sequences.
-        """
+        """Forward computation over a batch of sequences."""
         # only allow gradient when training
         with optional_grad_ctx(with_grad=self.training):
             # we can disable beacon to use the original llama
@@ -1378,6 +1503,9 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
         reordered_past = ()
         for layer_past in past_key_values:
             reordered_past += (
-                tuple(past_state.index_select(0, beam_idx.to(past_state.device)) for past_state in layer_past),
+                tuple(
+                    past_state.index_select(0, beam_idx.to(past_state.device))
+                    for past_state in layer_past
+                ),
             )
         return reordered_past

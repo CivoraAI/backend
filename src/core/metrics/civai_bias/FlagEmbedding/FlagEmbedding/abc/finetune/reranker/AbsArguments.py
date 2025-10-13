@@ -11,36 +11,29 @@ class AbsRerankerModelArguments:
     Abstract class for reranker model arguments.
     """
 
-    model_name_or_path: str = field(
-        metadata={"help": "The model checkpoint for initialization."}
-    )
+    model_name_or_path: str = field(metadata={"help": "The model checkpoint for initialization."})
     config_name: str = field(
         default=None,
-        metadata={"help": "Pretrained config name or path if not the same as model_name."}
+        metadata={"help": "Pretrained config name or path if not the same as model_name."},
     )
     tokenizer_name: str = field(
         default=None,
-        metadata={"help": "Pretrained tokenizer name or path if not the same as model_name."}
+        metadata={"help": "Pretrained tokenizer name or path if not the same as model_name."},
     )
     cache_dir: str = field(
         default=None,
-        metadata={"help": "Where do you want to store the pre-trained models downloaded from s3."}
+        metadata={"help": "Where do you want to store the pre-trained models downloaded from s3."},
     )
-    trust_remote_code: bool = field(
-        default=False,
-        metadata={"help": "Trust remote code"}
-    )
+    trust_remote_code: bool = field(default=False, metadata={"help": "Trust remote code"})
     model_type: str = field(
-        default='encoder',
-        metadata={"help": "Type of finetune, ['encoder', 'decoder']"}
+        default="encoder", metadata={"help": "Type of finetune, ['encoder', 'decoder']"}
     )
     use_fast_tokenizer: bool = field(
-        default=True,
-        metadata={"help": "Whether to use fast tokenizer or not."}
+        default=True, metadata={"help": "Whether to use fast tokenizer or not."}
     )
     token: str = field(
-        default_factory=lambda: os.getenv('HF_TOKEN', None),
-        metadata={"help": "The token to use when accessing the model."}
+        default_factory=lambda: os.getenv("HF_TOKEN", None),
+        metadata={"help": "The token to use when accessing the model."},
     )
     # finetune_type: str = field(
     #     default='sratch',
@@ -53,11 +46,13 @@ class AbsRerankerDataArguments:
     """
     Abstract class for reranker data arguments.
     """
+
     train_data: str = field(
-        default=None, metadata={
+        default=None,
+        metadata={
             "help": "One or more paths to training data. `query: str`, `pos: List[str]`, `neg: List[str]` are required in the training data.",
-            "nargs": "+"
-        }
+            "nargs": "+",
+        },
     )
     cache_path: Optional[str] = field(
         default=None, metadata={"help": "Where do you want to store the cached data"}
@@ -87,16 +82,14 @@ class AbsRerankerDataArguments:
 
     pad_to_multiple_of: Optional[int] = field(
         default=None,
-        metadata={
-            "help": "If set will pad the sequence to be a multiple of the provided value."
-        },
+        metadata={"help": "If set will pad the sequence to be a multiple of the provided value."},
     )
 
     max_example_num_per_dataset: int = field(
         default=100000000, metadata={"help": "the max number of examples for each dataset"}
     )
 
-    query_instruction_for_rerank: str= field(
+    query_instruction_for_rerank: str = field(
         default=None, metadata={"help": "instruction for query"}
     )
     query_instruction_format: str = field(
@@ -105,7 +98,9 @@ class AbsRerankerDataArguments:
 
     knowledge_distillation: bool = field(
         default=False,
-        metadata={"help": "Use knowledge distillation when `pos_scores: List[float]` and `neg_scores: List[float]` are in features of training data"}
+        metadata={
+            "help": "Use knowledge distillation when `pos_scores: List[float]` and `neg_scores: List[float]` are in features of training data"
+        },
     )
 
     passage_instruction_for_rerank: Optional[str] = field(
@@ -115,12 +110,13 @@ class AbsRerankerDataArguments:
         default="{}{}", metadata={"help": "format for passage instruction"}
     )
 
-    shuffle_ratio: float = field(
-        default=0.0, metadata={"help": "The ratio of shuffling the text"}
-    )
+    shuffle_ratio: float = field(default=0.0, metadata={"help": "The ratio of shuffling the text"})
 
     sep_token: str = field(
-        default='\n', metadata={"help": "The sep token for LLM reranker to discriminate between query and passage"}
+        default="\n",
+        metadata={
+            "help": "The sep token for LLM reranker to discriminate between query and passage"
+        },
     )
 
     def __post_init__(self):
@@ -129,7 +125,7 @@ class AbsRerankerDataArguments:
             self.query_instruction_format = self.query_instruction_format.replace("\\n", "\n")
         if "\\n" in self.passage_instruction_format:
             self.passage_instruction_format = self.passage_instruction_format.replace("\\n", "\n")
-        
+
         # check the existence of train data
         for train_dir in self.train_data:
             if not os.path.exists(train_dir):
@@ -138,4 +134,6 @@ class AbsRerankerDataArguments:
 
 @dataclass
 class AbsRerankerTrainingArguments(TrainingArguments):
-    sub_batch_size: Optional[int] = field(default=None, metadata={"help": "sub batch size for training, not implemented yet"})
+    sub_batch_size: Optional[int] = field(
+        default=None, metadata={"help": "sub batch size for training, not implemented yet"}
+    )

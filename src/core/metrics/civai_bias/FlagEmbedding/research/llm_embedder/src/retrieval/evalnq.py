@@ -8,10 +8,9 @@ from torch.utils.data.dataset import Dataset
 from tqdm import tqdm
 
 
-
 class SimpleTokenizer:
-    ALPHA_NUM = r'[\p{L}\p{N}\p{M}]+'
-    NON_WS = r'[^\p{Z}\p{C}]'
+    ALPHA_NUM = r"[\p{L}\p{N}\p{M}]+"
+    NON_WS = r"[^\p{Z}\p{C}]"
 
     def __init__(self, **kwargs):
         """
@@ -19,8 +18,8 @@ class SimpleTokenizer:
             annotators: None or empty set (only tokenizes).
         """
         self._regexp = regex.compile(
-            '(%s)|(%s)' % (self.ALPHA_NUM, self.NON_WS),
-            flags=regex.IGNORECASE + regex.UNICODE + regex.MULTILINE
+            "(%s)|(%s)" % (self.ALPHA_NUM, self.NON_WS),
+            flags=regex.IGNORECASE + regex.UNICODE + regex.MULTILINE,
         )
 
     def tokenize(self, text, uncase=False):
@@ -38,12 +37,11 @@ class SimpleTokenizer:
 
 
 def _normalize(text):
-    return unicodedata.normalize('NFD', text)
+    return unicodedata.normalize("NFD", text)
 
 
 def has_answer(answers, text, tokenizer) -> bool:
-    """Check if a document contains an answer string.
-    """
+    """Check if a document contains an answer string."""
     text = _normalize(text)
 
     # Answer is a list of possible strings
@@ -54,7 +52,7 @@ def has_answer(answers, text, tokenizer) -> bool:
         answer = tokenizer.tokenize(answer, uncase=True)
 
         for i in range(0, len(text) - len(answer) + 1):
-            if answer == text[i: i + len(answer)]:
+            if answer == text[i : i + len(answer)]:
                 return True
     return False
 
@@ -73,32 +71,55 @@ class EvalDataset(Dataset):
             if tidx == -1:
                 hits.append(False)
             else:
-                hits.append(has_answer(self.eval_dataset[qidx]["answers"], self.corpus[tidx]["content"], self.tokenizer))
+                hits.append(
+                    has_answer(
+                        self.eval_dataset[qidx]["answers"],
+                        self.corpus[tidx]["content"],
+                        self.tokenizer,
+                    )
+                )
         return hits
 
     def __len__(self):
         return len(self.retrieval_result)
 
 
-def evaluate_nq(retrieval_result: dict, eval_data: datasets.Dataset, corpus: datasets.Dataset, num_workers=16, batch_size=16, cache_dir=None):
+def evaluate_nq(
+    retrieval_result: dict,
+    eval_data: datasets.Dataset,
+    corpus: datasets.Dataset,
+    num_workers=16,
+    batch_size=16,
+    cache_dir=None,
+):
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
     if isinstance(eval_data, str):
-        eval_dataset = datasets.load_dataset("json", data_files=eval_data, split="train", cache_dir=cache_dir)
+        eval_dataset = datasets.load_dataset(
+            "json", data_files=eval_data, split="train", cache_dir=cache_dir
+        )
     elif isinstance(eval_data, datasets.Dataset):
         eval_dataset = eval_data
     else:
         raise ValueError(f"Expected eval_data of type str/Dataset, found {type(eval_data)}!")
 
     if isinstance(corpus, str):
-        corpus = datasets.load_dataset("json", data_files=corpus, split="train", cache_dir=cache_dir)
+        corpus = datasets.load_dataset(
+            "json", data_files=corpus, split="train", cache_dir=cache_dir
+        )
     elif isinstance(corpus, datasets.Dataset):
         pass
     else:
         raise ValueError(f"Expected corpus of type str/Dataset, found {type(corpus)}!")
 
     dataset = EvalDataset(retrieval_result, eval_dataset=eval_dataset, corpus=corpus)
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers, collate_fn=lambda x: x)
+    dataloader = DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        collate_fn=lambda x: x,
+    )
 
     final_scores = []
     for scores in tqdm(dataloader, total=len(dataloader), ncols=100, desc="Computing Metrics"):
@@ -117,5 +138,5 @@ def evaluate_nq(retrieval_result: dict, eval_data: datasets.Dataset, corpus: dat
         "recall@5": round(relaxed_recall[4], 4),
         "recall@10": round(relaxed_recall[9], 4),
         "recall@20": round(relaxed_recall[19], 4),
-        "recall@100": round(relaxed_recall[99], 4)
+        "recall@100": round(relaxed_recall[99], 4),
     }

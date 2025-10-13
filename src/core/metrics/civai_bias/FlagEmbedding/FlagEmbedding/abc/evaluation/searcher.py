@@ -1,6 +1,7 @@
 """
 Adapted from https://github.com/AIR-Bench/AIR-Bench/blob/0.1.0/air_benchmark/evaluation_utils/searcher.py
 """
+
 import os
 import logging
 import gc
@@ -19,6 +20,7 @@ class EvalRetriever(ABC):
     """
     This is the base class for retriever.
     """
+
     def __init__(self, embedder: AbsEmbedder, search_top_k: int = 1000, overwrite: bool = False):
         self.embedder = embedder
         self.search_top_k = search_top_k
@@ -50,9 +52,9 @@ class EvalRetriever(ABC):
     ) -> Dict[str, Dict[str, float]]:
         """
         Abstract method to be overrode. This is called during the retrieval process.
-        
+
         Parameters:
-            corpus: Dict[str, Dict[str, Any]]: Corpus of documents. 
+            corpus: Dict[str, Dict[str, Any]]: Corpus of documents.
                 Structure: {<docid>: {"text": <text>}}.
                 Example: {"doc-0": {"text": "This is a document."}}
             queries: Dict[str, str]: Queries to search for.
@@ -61,7 +63,7 @@ class EvalRetriever(ABC):
             corpus_embd_save_dir (Optional[str]): Defaults to :data:`None`.
             ignore_identical_ids (bool): Defaults to :data:`False`.
             **kwargs: Any: Additional arguments.
-        
+
         Returns: Dict[str, Dict[str, float]]: Top-k search results for each query. k is specified by search_top_k.
             Structure: {qid: {docid: score}}. The higher is the score, the more relevant is the document.
             Example: {"q-0": {"doc-0": 0.9}}
@@ -72,6 +74,7 @@ class EvalDenseRetriever(EvalRetriever):
     """
     Child class of :class:EvalRetriever for dense retrieval.
     """
+
     def __call__(
         self,
         corpus: Dict[str, Dict[str, Any]],
@@ -82,9 +85,9 @@ class EvalDenseRetriever(EvalRetriever):
     ) -> Dict[str, Dict[str, float]]:
         """
         This is called during the retrieval process.
-        
+
         Parameters:
-            corpus: Dict[str, Dict[str, Any]]: Corpus of documents. 
+            corpus: Dict[str, Dict[str, Any]]: Corpus of documents.
                 Structure: {<docid>: {"text": <text>}}.
                 Example: {"doc-0": {"text": "This is a document."}}
             queries: Dict[str, str]: Queries to search for.
@@ -93,13 +96,15 @@ class EvalDenseRetriever(EvalRetriever):
             corpus_embd_save_dir (Optional[str]): Defaults to :data:`None`.
             ignore_identical_ids (bool): Defaults to :data:`False`.
             **kwargs: Any: Additional arguments.
-        
+
         Returns: Dict[str, Dict[str, float]]: Top-k search results for each query. k is specified by search_top_k.
             Structure: {qid: {docid: score}}. The higher is the score, the more relevant is the document.
             Example: {"q-0": {"doc-0": 0.9}}
         """
         if ignore_identical_ids:
-            logger.warning("ignore_identical_ids is set to True. This means that the search results will not contain identical ids. Note: Dataset such as MIRACL should NOT set this to True.")
+            logger.warning(
+                "ignore_identical_ids is set to True. This means that the search results will not contain identical ids. Note: Dataset such as MIRACL should NOT set this to True."
+            )
 
         # dense embedding models do not require language as input: AIRBench evaluation
         kwargs.pop("language", None)
@@ -109,8 +114,7 @@ class EvalDenseRetriever(EvalRetriever):
         for docid, doc in corpus.items():
             corpus_ids.append(docid)
             corpus_texts.append(
-                doc["text"] if "title" not in doc 
-                else f"{doc['title']} {doc['text']}".strip()
+                doc["text"] if "title" not in doc else f"{doc['title']} {doc['text']}".strip()
             )
         queries_ids = []
         queries_texts = []
@@ -133,17 +137,20 @@ class EvalDenseRetriever(EvalRetriever):
             corpus_emb = corpus_emb["dense_vecs"]
         if isinstance(queries_emb, dict):
             queries_emb = queries_emb["dense_vecs"]
-        
-        if corpus_embd_save_dir is not None and \
-            (not os.path.exists(os.path.join(corpus_embd_save_dir, "doc.npy")) or self.overwrite):
+
+        if corpus_embd_save_dir is not None and (
+            not os.path.exists(os.path.join(corpus_embd_save_dir, "doc.npy")) or self.overwrite
+        ):
             os.makedirs(corpus_embd_save_dir, exist_ok=True)
             np.save(os.path.join(corpus_embd_save_dir, "doc.npy"), corpus_emb)
-        
+
         gc.collect()
         torch.cuda.empty_cache()
 
         faiss_index = index(corpus_embeddings=corpus_emb)
-        all_scores, all_indices = search(query_embeddings=queries_emb, faiss_index=faiss_index, k=self.search_top_k)
+        all_scores, all_indices = search(
+            query_embeddings=queries_emb, faiss_index=faiss_index, k=self.search_top_k
+        )
 
         results = {}
         for idx, (scores, indices) in enumerate(zip(all_scores, all_indices)):
@@ -161,6 +168,7 @@ class EvalReranker:
     """
     Class for reranker during evaluation.
     """
+
     def __init__(self, reranker: AbsReranker, rerank_top_k: int = 100):
         self.reranker = reranker
         self.rerank_top_k = rerank_top_k
@@ -190,9 +198,9 @@ class EvalReranker:
     ) -> Dict[str, Dict[str, float]]:
         """
         This is called during the reranking process.
-        
+
         Parameters:
-            corpus: Dict[str, Dict[str, Any]]: Corpus of documents. 
+            corpus: Dict[str, Dict[str, Any]]: Corpus of documents.
                 Structure: {<docid>: {"text": <text>}}.
                 Example: {"doc-0": {"text": "This is a document."}}
             queries: Dict[str, str]: Queries to search for.
@@ -202,7 +210,7 @@ class EvalReranker:
                 Structure: {qid: {docid: score}}. The higher is the score, the more relevant is the document.
                 Example: {"q-0": {"doc-0": 0.9}}
             **kwargs: Any: Additional arguments.
-        
+
         Returns: Dict[str, Dict[str, float]]: Reranked search results for each query. k is specified by rerank_top_k.
             Structure: {qid: {docid: score}}. The higher is the score, the more relevant is the document.
             Example: {"q-0": {"doc-0": 0.9}}
@@ -211,7 +219,7 @@ class EvalReranker:
         for qid in search_results:
             search_results[qid] = dict(
                 sorted(search_results[qid].items(), key=lambda x: x[1], reverse=True)[
-                    :self.rerank_top_k
+                    : self.rerank_top_k
                 ]
             )
         # generate sentence pairs
@@ -226,15 +234,21 @@ class EvalReranker:
                         "qid": qid,
                         "docid": docid,
                         "query": queries[qid],
-                        "doc": corpus[docid]["text"] if "title" not in corpus[docid] 
-                            else f"{corpus[docid]['title']} {corpus[docid]['text']}".strip(),
+                        "doc": (
+                            corpus[docid]["text"]
+                            if "title" not in corpus[docid]
+                            else f"{corpus[docid]['title']} {corpus[docid]['text']}".strip()
+                        ),
                     }
                 )
                 pairs.append(
                     (
                         queries[qid],
-                        corpus[docid]["text"] if "title" not in corpus[docid] 
+                        (
+                            corpus[docid]["text"]
+                            if "title" not in corpus[docid]
                             else f"{corpus[docid]['title']} {corpus[docid]['text']}".strip()
+                        ),
                     )
                 )
         # compute scores

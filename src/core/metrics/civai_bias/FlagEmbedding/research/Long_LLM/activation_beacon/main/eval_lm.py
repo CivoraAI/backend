@@ -9,53 +9,51 @@ from accelerate import Accelerator
 from transformers import HfArgumentParser
 from torch.utils.data import DataLoader
 
-from src import ModelArgs, DefaultDataCollator, FileLogger, get_model_and_tokenizer, makedirs, split_file_dir_name_ext, evaluate_perplexity
+from src import (
+    ModelArgs,
+    DefaultDataCollator,
+    FileLogger,
+    get_model_and_tokenizer,
+    makedirs,
+    split_file_dir_name_ext,
+    evaluate_perplexity,
+)
 
 
 @dataclass
 class Args(ModelArgs):
     eval_data: str = field(
-        default="long-llm:lm/pg19.json",
-        metadata={'help': 'The evaluation json data path.'}
+        default="long-llm:lm/pg19.json", metadata={"help": "The evaluation json data path."}
     )
     output_dir: str = field(
-        default="data/results/lm/",
-        metadata={'help': 'Output directory for results and logs.'}
+        default="data/results/lm/", metadata={"help": "Output directory for results and logs."}
     )
 
-    retokenize: bool = field(
-        default=False,
-        metadata={'help': 'Retokenize the corpus?'}
-    )
+    retokenize: bool = field(default=False, metadata={"help": "Retokenize the corpus?"})
 
-    padding_side: str = field(
-        default="right",
-        metadata={'help': 'Which side to pad?'}
-    )
+    padding_side: str = field(default="right", metadata={"help": "Which side to pad?"})
     stride: int = field(
-        default=2048,
-        metadata={'help': 'Streaming stride when evaluating perplexity.'}
+        default=2048, metadata={"help": "Streaming stride when evaluating perplexity."}
     )
 
     max_sample_num: int = field(
-        default=100,
-        metadata={'help': 'How many samples to evaluate in eval_data?'}
+        default=100, metadata={"help": "How many samples to evaluate in eval_data?"}
     )
     min_length: Optional[int] = field(
-        default=None,
-        metadata={'help': 'Minimum length for input_ids.'}
+        default=None, metadata={"help": "Minimum length for input_ids."}
     )
 
 
 def process_lm_pre(tokenizer, tokenize_max_char=None):
     def _process(data):
-        outputs = {'input_ids': []}
-        for text in data['text']:
+        outputs = {"input_ids": []}
+        for text in data["text"]:
             if tokenize_max_char is not None:
                 text = text[:tokenize_max_char]
 
-            outputs['input_ids'].append(tokenizer.encode(text, add_special_tokens=False))
+            outputs["input_ids"].append(tokenizer.encode(text, add_special_tokens=False))
         return outputs
+
     return _process
 
 
@@ -91,7 +89,7 @@ def process_lm(tokenizer, max_length=4096, stride=1024, min_length=None):
                 sub_seq_len = end_loc - start_loc
                 sub_trg_len = end_loc - prev_end_loc  # may be different from stride on last loop
 
-                sub_input_ids = input_ids[start_loc: end_loc]
+                sub_input_ids = input_ids[start_loc:end_loc]
                 sub_attention_mask = [1 for _ in range(sub_seq_len)]
                 if has_bos:
                     sub_input_ids.insert(0, tokenizer.bos_token_id)
@@ -110,13 +108,14 @@ def process_lm(tokenizer, max_length=4096, stride=1024, min_length=None):
 
                 for k, v in sub_inputs.items():
                     outputs[k].append(v)
-                
+
                 prev_end_loc = end_loc
                 # NOTE: when end_loc is just the same as seq_len, jump out
                 if end_loc == seq_len or jump:
                     break
 
         return outputs
+
     return _process
 
 
@@ -131,17 +130,28 @@ def main():
 
     _, dataset_name, _ = split_file_dir_name_ext(args.eval_data)
 
-    process_fn = process_lm(tokenizer, max_length=args.max_length, stride=args.stride, min_length=args.min_length)
-    dataset = datasets.load_dataset("json", data_files=args.eval_data, cache_dir=args.dataset_cache_dir, split="train")
+    process_fn = process_lm(
+        tokenizer, max_length=args.max_length, stride=args.stride, min_length=args.min_length
+    )
+    dataset = datasets.load_dataset(
+        "json", data_files=args.eval_data, cache_dir=args.dataset_cache_dir, split="train"
+    )
     if len(dataset) > args.max_sample_num:
         # slice out the first max_sample_num samples
         dataset = dataset.train_test_split(args.max_sample_num, shuffle=False)["test"]
-    dataset = dataset.map(process_fn, batched=True, num_proc=32, remove_columns=dataset.column_names, keep_in_memory=True, with_indices=True)
+    dataset = dataset.map(
+        process_fn,
+        batched=True,
+        num_proc=32,
+        remove_columns=dataset.column_names,
+        keep_in_memory=True,
+        with_indices=True,
+    )
 
     data_collator = DefaultDataCollator(tokenizer=tokenizer)
     dataloader = DataLoader(
-        dataset, 
-        batch_size=args.batch_size, 
+        dataset,
+        batch_size=args.batch_size,
         collate_fn=data_collator,
         # only pin memory when no gpu
         pin_memory=not args.cpu,
@@ -155,7 +165,11 @@ def main():
     perplexity = evaluate_perplexity(model, dataloader, accelerator)
     t2 = time.time()
     memory = torch.cuda.max_memory_allocated() / 1024**2
-    metrics = {"perplexity": perplexity, "time": round((t2 - t1) / len(dataset), 4), "memory": memory}
+    metrics = {
+        "perplexity": perplexity,
+        "time": round((t2 - t1) / len(dataset), 4),
+        "memory": memory,
+    }
 
     if accelerator.process_index == 0:
         log_path = os.path.join(args.output_dir, f"{dataset_name}.log")

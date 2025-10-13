@@ -3,7 +3,9 @@ from typing import List
 import torch
 
 
-def tensorize_batch(sequences: List[torch.Tensor], padding_value, align_right=False) -> torch.Tensor:
+def tensorize_batch(
+    sequences: List[torch.Tensor], padding_value, align_right=False
+) -> torch.Tensor:
     if len(sequences[0].size()) == 1:
         max_len_1 = max([s.size(0) for s in sequences])
         out_dims = (len(sequences), max_len_1)

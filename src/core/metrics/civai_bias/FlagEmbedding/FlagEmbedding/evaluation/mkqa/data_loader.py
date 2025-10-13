@@ -16,6 +16,7 @@ class MKQAEvalDataLoader(AbsEvalDataLoader):
     """
     Data loader class for MKQA.
     """
+
     def available_dataset_names(self) -> List[str]:
         """
         Get the available dataset names.
@@ -23,7 +24,34 @@ class MKQAEvalDataLoader(AbsEvalDataLoader):
         Returns:
             List[str]: All the available dataset names.
         """
-        return ['en', 'ar', 'fi', 'ja', 'ko', 'ru', 'es', 'sv', 'he', 'th', 'da', 'de', 'fr', 'it', 'nl', 'pl', 'pt', 'hu', 'vi', 'ms', 'km', 'no', 'tr', 'zh_cn', 'zh_hk', 'zh_tw']
+        return [
+            "en",
+            "ar",
+            "fi",
+            "ja",
+            "ko",
+            "ru",
+            "es",
+            "sv",
+            "he",
+            "th",
+            "da",
+            "de",
+            "fr",
+            "it",
+            "nl",
+            "pl",
+            "pt",
+            "hu",
+            "vi",
+            "ms",
+            "km",
+            "no",
+            "tr",
+            "zh_cn",
+            "zh_hk",
+            "zh_tw",
+        ]
 
     def available_splits(self, dataset_name: Optional[str] = None) -> List[str]:
         """
@@ -53,7 +81,9 @@ class MKQAEvalDataLoader(AbsEvalDataLoader):
         else:
             return self._load_remote_corpus(dataset_name=dataset_name)
 
-    def _load_local_qrels(self, save_dir: str, dataset_name: Optional[str] = None, split: str = 'test') -> datasets.DatasetDict:
+    def _load_local_qrels(
+        self, save_dir: str, dataset_name: Optional[str] = None, split: str = "test"
+    ) -> datasets.DatasetDict:
         """Try to load qrels from local datasets.
 
         Args:
@@ -74,31 +104,36 @@ class MKQAEvalDataLoader(AbsEvalDataLoader):
 
         qrels_path = os.path.join(save_dir, f"{split}_qrels.jsonl")
         if self.force_redownload or not os.path.exists(qrels_path):
-            logger.warning(f"Qrels not found in {qrels_path}. Trying to download the qrels from the remote and save it to {save_dir}.")
-            return self._load_remote_qrels(dataset_name=dataset_name, split=split, save_dir=save_dir)
+            logger.warning(
+                f"Qrels not found in {qrels_path}. Trying to download the qrels from the remote and save it to {save_dir}."
+            )
+            return self._load_remote_qrels(
+                dataset_name=dataset_name, split=split, save_dir=save_dir
+            )
         else:
-            qrels_data = datasets.load_dataset('json', data_files=qrels_path, cache_dir=self.cache_dir)['train']
+            qrels_data = datasets.load_dataset(
+                "json", data_files=qrels_path, cache_dir=self.cache_dir
+            )["train"]
 
             qrels = {}
             for data in qrels_data:
-                qid = data['qid']
-                qrels[qid] = data['answers']
+                qid = data["qid"]
+                qrels[qid] = data["answers"]
 
             return datasets.DatasetDict(qrels)
 
     def _load_remote_corpus(
-        self,
-        dataset_name: Optional[str] = None,
-        save_dir: Optional[str] = None
+        self, dataset_name: Optional[str] = None, save_dir: Optional[str] = None
     ) -> datasets.DatasetDict:
         """
         Refer to: https://arxiv.org/pdf/2402.03216. We use the corpus from the BeIR dataset.
         """
         corpus = datasets.load_dataset(
-            "BeIR/nq", "corpus",
+            "BeIR/nq",
+            "corpus",
             cache_dir=self.cache_dir,
             trust_remote_code=True,
-            download_mode=self.hf_download_mode
+            download_mode=self.hf_download_mode,
         )["corpus"]
 
         if save_dir is not None:
@@ -107,33 +142,28 @@ class MKQAEvalDataLoader(AbsEvalDataLoader):
             corpus_dict = {}
             with open(save_path, "w", encoding="utf-8") as f:
                 for data in tqdm(corpus, desc="Loading and Saving corpus"):
-                    docid, title, text = str(data["_id"]), normalize_text(data["title"]).lower(), normalize_text(data["text"]).lower()
-                    _data = {
-                        "id": docid,
-                        "title": title,
-                        "text": text
-                    }
-                    corpus_dict[docid] = {
-                        "title": title,
-                        "text": text
-                    }
+                    docid, title, text = (
+                        str(data["_id"]),
+                        normalize_text(data["title"]).lower(),
+                        normalize_text(data["text"]).lower(),
+                    )
+                    _data = {"id": docid, "title": title, "text": text}
+                    corpus_dict[docid] = {"title": title, "text": text}
                     f.write(json.dumps(_data, ensure_ascii=False) + "\n")
             logging.info(f"{self.eval_name} corpus saved to {save_path}")
         else:
             corpus_dict = {}
             for data in tqdm(corpus, desc="Loading corpus"):
-                docid, title, text = str(data["_id"]), normalize_text(data["title"]), normalize_text(data["text"])
-                corpus_dict[docid] = {
-                    "title": title,
-                    "text": text
-                }
+                docid, title, text = (
+                    str(data["_id"]),
+                    normalize_text(data["title"]),
+                    normalize_text(data["text"]),
+                )
+                corpus_dict[docid] = {"title": title, "text": text}
         return datasets.DatasetDict(corpus_dict)
 
     def _load_remote_qrels(
-        self,
-        dataset_name: str,
-        split: str = 'test',
-        save_dir: Optional[str] = None
+        self, dataset_name: str, split: str = "test", save_dir: Optional[str] = None
     ) -> datasets.DatasetDict:
         """Load remote qrels from HF.
 
@@ -145,7 +175,9 @@ class MKQAEvalDataLoader(AbsEvalDataLoader):
         Returns:
             datasets.DatasetDict: Loaded datasets instance of qrel.
         """
-        endpoint = f"{os.getenv('HF_ENDPOINT', 'https://huggingface.co')}/datasets/Shitao/bge-m3-data"
+        endpoint = (
+            f"{os.getenv('HF_ENDPOINT', 'https://huggingface.co')}/datasets/Shitao/bge-m3-data"
+        )
         queries_download_url = f"{endpoint}/resolve/main/MKQA_test-data.zip"
 
         qrels_save_dir = self._download_zip_file(queries_download_url, self.cache_dir)
@@ -160,10 +192,7 @@ class MKQAEvalDataLoader(AbsEvalDataLoader):
                     for line in tqdm(f2.readlines(), desc="Loading and Saving qrels"):
                         data = json.loads(line)
                         qid, answers = str(data["id"]), data["answers"]
-                        _data = {
-                            "qid": qid,
-                            "answers": answers
-                        }
+                        _data = {"qid": qid, "answers": answers}
                         if qid not in qrels_dict:
                             qrels_dict[qid] = {}
                         qrels_dict[qid] = answers
@@ -181,10 +210,7 @@ class MKQAEvalDataLoader(AbsEvalDataLoader):
         return datasets.DatasetDict(qrels_dict)
 
     def _load_remote_queries(
-        self,
-        dataset_name: str,
-        split: str = 'test',
-        save_dir: Optional[str] = None
+        self, dataset_name: str, split: str = "test", save_dir: Optional[str] = None
     ) -> datasets.DatasetDict:
         """Load the queries from HF.
 
@@ -196,7 +222,9 @@ class MKQAEvalDataLoader(AbsEvalDataLoader):
         Returns:
             datasets.DatasetDict: Loaded datasets instance of queries.
         """
-        endpoint = f"{os.getenv('HF_ENDPOINT', 'https://huggingface.co')}/datasets/Shitao/bge-m3-data"
+        endpoint = (
+            f"{os.getenv('HF_ENDPOINT', 'https://huggingface.co')}/datasets/Shitao/bge-m3-data"
+        )
         queries_download_url = f"{endpoint}/resolve/main/MKQA_test-data.zip"
 
         queries_save_dir = self._download_zip_file(queries_download_url, self.cache_dir)
@@ -211,10 +239,7 @@ class MKQAEvalDataLoader(AbsEvalDataLoader):
                     for line in tqdm(f2.readlines(), desc="Loading and Saving queries"):
                         data = json.loads(line)
                         qid, query = str(data["id"]), data["question"]
-                        _data = {
-                            "id": qid,
-                            "text": query
-                        }
+                        _data = {"id": qid, "text": query}
                         queries_dict[qid] = query
                         f1.write(json.dumps(_data, ensure_ascii=False) + "\n")
             logging.info(f"{self.eval_name} {dataset_name} queries saved to {save_path}")

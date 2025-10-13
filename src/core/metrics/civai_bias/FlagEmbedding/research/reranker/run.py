@@ -24,10 +24,10 @@ def main():
     training_args: TrainingArguments
 
     if (
-            os.path.exists(training_args.output_dir)
-            and os.listdir(training_args.output_dir)
-            and training_args.do_train
-            and not training_args.overwrite_output_dir
+        os.path.exists(training_args.output_dir)
+        and os.listdir(training_args.output_dir)
+        and training_args.do_train
+        and not training_args.overwrite_output_dir
     ):
         raise ValueError(
             f"Output directory ({training_args.output_dir}) already exists and is not empty. Use --overwrite_output_dir to overcome."
@@ -68,7 +68,9 @@ def main():
     _model_class = CrossEncoder
 
     model = _model_class.from_pretrained(
-        model_args, data_args, training_args,
+        model_args,
+        data_args,
+        training_args,
         model_args.model_name_or_path,
         from_tf=bool(".ckpt" in model_args.model_name_or_path),
         config=config,
@@ -82,7 +84,7 @@ def main():
         args=training_args,
         train_dataset=train_dataset,
         data_collator=GroupCollator(tokenizer),
-        tokenizer=tokenizer
+        tokenizer=tokenizer,
     )
 
     Path(training_args.output_dir).mkdir(parents=True, exist_ok=True)

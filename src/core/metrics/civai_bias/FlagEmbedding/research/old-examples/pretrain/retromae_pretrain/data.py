@@ -24,15 +24,15 @@ class DatasetForPretraining(torch.utils.data.Dataset):
             self.dataset = self.load_dataset(data_dir)
 
     def load_dataset(self, file):
-        if file.endswith('.jsonl') or file.endswith('.json'):
-            return load_dataset('json', data_files=file)['train']
+        if file.endswith(".jsonl") or file.endswith(".json"):
+            return load_dataset("json", data_files=file)["train"]
         elif os.path.isdir(file):
             return Dataset.load_from_disk(file)
         else:
             raise NotImplementedError(f"Not support this file format:{file}")
 
     def __getitem__(self, item):
-        return self.dataset[item]['text']
+        return self.dataset[item]["text"]
 
     def __len__(self):
         return len(self.dataset)
@@ -84,7 +84,9 @@ class RetroMAECollator(DataCollatorForWholeWordMask):
         attention_mask_batch = tensorize_batch(attention_mask_batch, 0)
         origin_input_ids_batch = input_ids_batch.clone()
         encoder_mlm_mask_batch = tensorize_batch(encoder_mlm_mask_batch, 0)
-        encoder_input_ids_batch, encoder_labels_batch = self.torch_mask_tokens(input_ids_batch, encoder_mlm_mask_batch)
+        encoder_input_ids_batch, encoder_labels_batch = self.torch_mask_tokens(
+            input_ids_batch, encoder_mlm_mask_batch
+        )
         decoder_labels_batch = tensorize_batch(decoder_labels_batch, -100)
         matrix_attention_mask_batch = tensorize_batch(decoder_matrix_attention_mask_batch, 0)
 

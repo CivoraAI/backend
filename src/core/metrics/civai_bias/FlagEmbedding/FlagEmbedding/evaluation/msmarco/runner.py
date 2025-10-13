@@ -7,6 +7,7 @@ class MSMARCOEvalRunner(AbsEvalRunner):
     """
     Evaluation runner of MSMARCO.
     """
+
     def load_data_loader(self) -> MSMARCOEvalDataLoader:
         """Load the data loader instance by args.
 

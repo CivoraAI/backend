@@ -1,8 +1,10 @@
 import logging
 from typing import Tuple
 from transformers import (
-    AutoModelForSequenceClassification, AutoConfig,
-    AutoTokenizer, PreTrainedTokenizer
+    AutoModelForSequenceClassification,
+    AutoConfig,
+    AutoTokenizer,
+    PreTrainedTokenizer,
 )
 
 from FlagEmbedding.abc.finetune.reranker import AbsRerankerRunner, AbsRerankerModel
@@ -16,6 +18,7 @@ class EncoderOnlyRerankerRunner(AbsRerankerRunner):
     """
     Encoder only reranker runner for finetuning.
     """
+
     def load_tokenizer_and_model(self) -> Tuple[PreTrainedTokenizer, AbsRerankerModel]:
         """Load the tokenizer and model.
 
@@ -27,18 +30,22 @@ class EncoderOnlyRerankerRunner(AbsRerankerRunner):
             cache_dir=self.model_args.cache_dir,
             token=self.model_args.token,
             use_fast=self.model_args.use_fast_tokenizer,
-            trust_remote_code=self.model_args.trust_remote_code
+            trust_remote_code=self.model_args.trust_remote_code,
         )
 
         num_labels = 1
         config = AutoConfig.from_pretrained(
-            self.model_args.config_name if self.model_args.config_name else self.model_args.model_name_or_path,
+            (
+                self.model_args.config_name
+                if self.model_args.config_name
+                else self.model_args.model_name_or_path
+            ),
             num_labels=num_labels,
             cache_dir=self.model_args.cache_dir,
             token=self.model_args.token,
             trust_remote_code=self.model_args.trust_remote_code,
         )
-        logger.info('Config: %s', config)
+        logger.info("Config: %s", config)
 
         base_model = AutoModelForSequenceClassification.from_pretrained(
             self.model_args.model_name_or_path,
@@ -46,7 +53,7 @@ class EncoderOnlyRerankerRunner(AbsRerankerRunner):
             cache_dir=self.model_args.cache_dir,
             token=self.model_args.token,
             from_tf=bool(".ckpt" in self.model_args.model_name_or_path),
-            trust_remote_code=self.model_args.trust_remote_code
+            trust_remote_code=self.model_args.trust_remote_code,
         )
 
         model = CrossEncoderModel(
@@ -71,6 +78,6 @@ class EncoderOnlyRerankerRunner(AbsRerankerRunner):
             args=self.training_args,
             train_dataset=self.train_dataset,
             data_collator=self.data_collator,
-            tokenizer=self.tokenizer
+            tokenizer=self.tokenizer,
         )
         return trainer

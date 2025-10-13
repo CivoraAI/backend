@@ -7,6 +7,7 @@ class MIRACLEvalRunner(AbsEvalRunner):
     """
     Evaluation runner of MIRACL.
     """
+
     def load_data_loader(self) -> MIRACLEvalDataLoader:
         """Load the data loader instance by args.
 

@@ -27,15 +27,13 @@ def coir_tasks():
         "codetrans-dl",
         "cosqa",
         "stackoverflow-qa",
-        "synthetic-text2sql"
+        "synthetic-text2sql",
     ]
 
 
 @dataclass
 class COIREvalArgs:
-    output_dir: str = field(
-        default="./results", metadata={"help": "Path to save results."}
-    )
+    output_dir: str = field(default="./results", metadata={"help": "Path to save results."})
     tasks: List[str] = field(
         default_factory=coir_tasks,
         metadata={
@@ -60,10 +58,13 @@ class COIREvalArgs:
                 "codetrans-dl",
                 "cosqa",
                 "stackoverflow-qa",
-                "synthetic-text2sql"
-            ]
-        }
+                "synthetic-text2sql",
+            ],
+        },
     )
     use_special_instructions: bool = field(
-        default=False, metadata={"help": "Whether to use specific instructions in `prompts.py` for evaluation. Default: False"}
+        default=False,
+        metadata={
+            "help": "Whether to use specific instructions in `prompts.py` for evaluation. Default: False"
+        },
     )

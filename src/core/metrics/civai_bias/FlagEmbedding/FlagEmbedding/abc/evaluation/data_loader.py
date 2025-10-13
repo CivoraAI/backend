@@ -1,6 +1,7 @@
 """
 Adapted from https://github.com/AIR-Bench/AIR-Bench/blob/0.1.0/air_benchmark/evaluation_utils/data_loader.py
 """
+
 import os
 import logging
 import datasets
@@ -22,18 +23,19 @@ class AbsEvalDataLoader(ABC):
         token (str, optional): HF_TOKEN to access the private datasets/models in HF. Defaults to ``None``.
         force_redownload: If True, will force redownload the dataset to cover the local dataset. Defaults to ``False``.
     """
+
     def __init__(
         self,
         eval_name: str,
         dataset_dir: Optional[str] = None,
         cache_dir: Optional[str] = None,
         token: Optional[str] = None,
-        force_redownload: bool = False
+        force_redownload: bool = False,
     ):
         self.eval_name = eval_name
         self.dataset_dir = dataset_dir
         if cache_dir is None:
-            cache_dir = os.getenv('HF_HUB_CACHE', '~/.cache/huggingface/hub')
+            cache_dir = os.getenv("HF_HUB_CACHE", "~/.cache/huggingface/hub")
         self.cache_dir = os.path.join(cache_dir, eval_name)
         self.token = token
         self.force_redownload = force_redownload
@@ -70,10 +72,14 @@ class AbsEvalDataLoader(ABC):
 
         for dataset_name in dataset_names:
             if dataset_name not in available_dataset_names:
-                raise ValueError(f"Dataset name '{dataset_name}' not found in the dataset. Available dataset names: {available_dataset_names}")
+                raise ValueError(
+                    f"Dataset name '{dataset_name}' not found in the dataset. Available dataset names: {available_dataset_names}"
+                )
         return dataset_names
 
-    def check_splits(self, splits: Union[str, List[str]], dataset_name: Optional[str] = None) -> List[str]:
+    def check_splits(
+        self, splits: Union[str, List[str]], dataset_name: Optional[str] = None
+    ) -> List[str]:
         """Check whether the splits are available in the dataset.
 
         Args:
@@ -89,7 +95,9 @@ class AbsEvalDataLoader(ABC):
         checked_splits = []
         for split in splits:
             if split not in available_splits:
-                logger.warning(f"Split '{split}' not found in the dataset. Removing it from the list.")
+                logger.warning(
+                    f"Split '{split}' not found in the dataset. Removing it from the list."
+                )
             else:
                 checked_splits.append(split)
         return checked_splits
@@ -112,7 +120,9 @@ class AbsEvalDataLoader(ABC):
         else:
             return self._load_remote_corpus(dataset_name=dataset_name)
 
-    def load_qrels(self, dataset_name: Optional[str] = None, split: str = 'test') -> datasets.DatasetDict:
+    def load_qrels(
+        self, dataset_name: Optional[str] = None, split: str = "test"
+    ) -> datasets.DatasetDict:
         """Load the qrels from the dataset.
 
         Args:
@@ -140,7 +150,9 @@ class AbsEvalDataLoader(ABC):
         else:
             return self._load_remote_qrels(dataset_name=dataset_name, split=split)
 
-    def load_queries(self, dataset_name: Optional[str] = None, split: str = 'test') -> datasets.DatasetDict:
+    def load_queries(
+        self, dataset_name: Optional[str] = None, split: str = "test"
+    ) -> datasets.DatasetDict:
         """Load the queries from the dataset.
 
         Args:
@@ -169,9 +181,7 @@ class AbsEvalDataLoader(ABC):
             return self._load_remote_queries(dataset_name=dataset_name, split=split)
 
     def _load_remote_corpus(
-        self,
-        dataset_name: Optional[str] = None,
-        save_dir: Optional[str] = None
+        self, dataset_name: Optional[str] = None, save_dir: Optional[str] = None
     ) -> datasets.DatasetDict:
         """Abstract method to load corpus from remote dataset, to be overrode in child class.
 
@@ -190,8 +200,8 @@ class AbsEvalDataLoader(ABC):
     def _load_remote_qrels(
         self,
         dataset_name: Optional[str] = None,
-        split: str = 'test',
-        save_dir: Optional[str] = None
+        split: str = "test",
+        save_dir: Optional[str] = None,
     ) -> datasets.DatasetDict:
         """Abstract method to load relevance from remote dataset, to be overrode in child class.
 
@@ -211,8 +221,8 @@ class AbsEvalDataLoader(ABC):
     def _load_remote_queries(
         self,
         dataset_name: Optional[str] = None,
-        split: str = 'test',
-        save_dir: Optional[str] = None
+        split: str = "test",
+        save_dir: Optional[str] = None,
     ) -> datasets.DatasetDict:
         """Abstract method to load queries from remote dataset, to be overrode in child class.
 
@@ -229,7 +239,9 @@ class AbsEvalDataLoader(ABC):
         """
         raise NotImplementedError("Loading remote queries is not implemented.")
 
-    def _load_local_corpus(self, save_dir: str, dataset_name: Optional[str] = None) -> datasets.DatasetDict:
+    def _load_local_corpus(
+        self, save_dir: str, dataset_name: Optional[str] = None
+    ) -> datasets.DatasetDict:
         """Load corpus from local dataset.
 
         Args:
@@ -239,20 +251,26 @@ class AbsEvalDataLoader(ABC):
         Returns:
             datasets.DatasetDict: A dict of corpus with id as key, title and text as value.
         """
-        corpus_path = os.path.join(save_dir, 'corpus.jsonl')
+        corpus_path = os.path.join(save_dir, "corpus.jsonl")
         if self.force_redownload or not os.path.exists(corpus_path):
-            logger.warning(f"Corpus not found in {corpus_path}. Trying to download the corpus from the remote and save it to {save_dir}.")
+            logger.warning(
+                f"Corpus not found in {corpus_path}. Trying to download the corpus from the remote and save it to {save_dir}."
+            )
             return self._load_remote_corpus(dataset_name=dataset_name, save_dir=save_dir)
         else:
-            corpus_data = datasets.load_dataset('json', data_files=corpus_path, cache_dir=self.cache_dir)['train']
+            corpus_data = datasets.load_dataset(
+                "json", data_files=corpus_path, cache_dir=self.cache_dir
+            )["train"]
 
             corpus = {}
             for e in corpus_data:
-                corpus[e['id']] = {'title': e.get('title', ""), 'text': e['text']}
+                corpus[e["id"]] = {"title": e.get("title", ""), "text": e["text"]}
 
             return datasets.DatasetDict(corpus)
 
-    def _load_local_qrels(self, save_dir: str, dataset_name: Optional[str] = None, split: str = 'test') -> datasets.DatasetDict:
+    def _load_local_qrels(
+        self, save_dir: str, dataset_name: Optional[str] = None, split: str = "test"
+    ) -> datasets.DatasetDict:
         """Load relevance from local dataset.
 
         Args:
@@ -273,21 +291,29 @@ class AbsEvalDataLoader(ABC):
 
         qrels_path = os.path.join(save_dir, f"{split}_qrels.jsonl")
         if self.force_redownload or not os.path.exists(qrels_path):
-            logger.warning(f"Qrels not found in {qrels_path}. Trying to download the qrels from the remote and save it to {save_dir}.")
-            return self._load_remote_qrels(dataset_name=dataset_name, split=split, save_dir=save_dir)
+            logger.warning(
+                f"Qrels not found in {qrels_path}. Trying to download the qrels from the remote and save it to {save_dir}."
+            )
+            return self._load_remote_qrels(
+                dataset_name=dataset_name, split=split, save_dir=save_dir
+            )
         else:
-            qrels_data = datasets.load_dataset('json', data_files=qrels_path, cache_dir=self.cache_dir)['train']
+            qrels_data = datasets.load_dataset(
+                "json", data_files=qrels_path, cache_dir=self.cache_dir
+            )["train"]
 
             qrels = {}
             for data in qrels_data:
-                qid = data['qid']
+                qid = data["qid"]
                 if qid not in qrels:
                     qrels[qid] = {}
-                qrels[qid][data['docid']] = data['relevance']
+                qrels[qid][data["docid"]] = data["relevance"]
 
             return datasets.DatasetDict(qrels)
 
-    def _load_local_queries(self, save_dir: str, dataset_name: Optional[str] = None, split: str = 'test') -> datasets.DatasetDict:
+    def _load_local_queries(
+        self, save_dir: str, dataset_name: Optional[str] = None, split: str = "test"
+    ) -> datasets.DatasetDict:
         """Load queries from local dataset.
 
         Args:
@@ -308,12 +334,18 @@ class AbsEvalDataLoader(ABC):
 
         queries_path = os.path.join(save_dir, f"{split}_queries.jsonl")
         if self.force_redownload or not os.path.exists(queries_path):
-            logger.warning(f"Queries not found in {queries_path}. Trying to download the queries from the remote and save it to {save_dir}.")
-            return self._load_remote_queries(dataset_name=dataset_name, split=split, save_dir=save_dir)
+            logger.warning(
+                f"Queries not found in {queries_path}. Trying to download the queries from the remote and save it to {save_dir}."
+            )
+            return self._load_remote_queries(
+                dataset_name=dataset_name, split=split, save_dir=save_dir
+            )
         else:
-            queries_data = datasets.load_dataset('json', data_files=queries_path, cache_dir=self.cache_dir)['train']
+            queries_data = datasets.load_dataset(
+                "json", data_files=queries_path, cache_dir=self.cache_dir
+            )["train"]
 
-            queries = {e['id']: e['text'] for e in queries_data}
+            queries = {e["id"]: e["text"] for e in queries_data}
             return datasets.DatasetDict(queries)
 
     def _download_file(self, download_url: str, save_dir: str):
@@ -329,9 +361,11 @@ class AbsEvalDataLoader(ABC):
         Returns:
             str: The path of the downloaded file.
         """
-        save_path = os.path.join(save_dir, download_url.split('/')[-1])
+        save_path = os.path.join(save_dir, download_url.split("/")[-1])
 
-        if self.force_redownload or (not os.path.exists(save_path) or os.path.getsize(save_path) == 0):
+        if self.force_redownload or (
+            not os.path.exists(save_path) or os.path.getsize(save_path) == 0
+        ):
             cmd = ["wget", "-O", save_path, download_url]
         else:
             cmd = ["wget", "-nc", "-O", save_path, download_url]

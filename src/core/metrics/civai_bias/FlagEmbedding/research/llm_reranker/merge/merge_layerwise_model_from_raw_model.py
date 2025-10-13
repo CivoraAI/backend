@@ -3,11 +3,15 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
 from .configuration_minicpm_reranker import LayerWiseMiniCPMConfig
 
 
-def merge_layerwise_raw_llm(model_name_or_path, lora_name_or_path, save_path, cache_dir: str = None, token: str = None):
-    config = AutoConfig.from_pretrained('BAAI/bge-reranker-v2-minicpm-layerwise',
-                                        cache_dir=cache_dir,
-                                        token=token,
-                                        trust_remote_code=True)
+def merge_layerwise_raw_llm(
+    model_name_or_path, lora_name_or_path, save_path, cache_dir: str = None, token: str = None
+):
+    config = AutoConfig.from_pretrained(
+        "BAAI/bge-reranker-v2-minicpm-layerwise",
+        cache_dir=cache_dir,
+        token=token,
+        trust_remote_code=True,
+    )
     train_config = LayerWiseMiniCPMConfig.from_pretrained(lora_name_or_path)
     config.attention_bias = train_config.attention_bias
     config.attention_dropout = train_config.attention_dropout
@@ -35,11 +39,9 @@ def merge_layerwise_raw_llm(model_name_or_path, lora_name_or_path, save_path, ca
     config.use_cache = train_config.use_cache
     config.vocab_size = train_config.vocab_size
 
-    model = AutoModelForCausalLM.from_pretrained(model_name_or_path,
-                                                        config=config,
-                                                        cache_dir=cache_dir,
-                                                        token=token,
-                                                        trust_remote_code=True)
+    model = AutoModelForCausalLM.from_pretrained(
+        model_name_or_path, config=config, cache_dir=cache_dir, token=token, trust_remote_code=True
+    )
 
     model = PeftModel.from_pretrained(model, lora_name_or_path)
     model = model.merge_and_unload()
@@ -48,10 +50,9 @@ def merge_layerwise_raw_llm(model_name_or_path, lora_name_or_path, save_path, ca
     try:
         tokenizer = AutoTokenizer.from_pretrained(lora_name_or_path)
     except:
-        tokenizer = AutoTokenizer.from_pretrained(model_name_or_path,
-                                                  cache_dir=cache_dir,
-                                                  token=token,
-                                                  trust_remote_code=True)
+        tokenizer = AutoTokenizer.from_pretrained(
+            model_name_or_path, cache_dir=cache_dir, token=token, trust_remote_code=True
+        )
         if tokenizer.pad_token_id is None:
             if tokenizer.unk_token_id is not None:
                 tokenizer.pad_token_id = tokenizer.unk_token_id
@@ -59,6 +60,6 @@ def merge_layerwise_raw_llm(model_name_or_path, lora_name_or_path, save_path, ca
                 tokenizer.pad_token_id = tokenizer.eod_id
                 tokenizer.bos_token_id = tokenizer.im_start_id
                 tokenizer.eos_token_id = tokenizer.im_end_id
-        if 'mistral' in model_name_or_path.lower():
-            tokenizer.padding_side = 'left'
+        if "mistral" in model_name_or_path.lower():
+            tokenizer.padding_side = "left"
     tokenizer.save_pretrained(save_path)

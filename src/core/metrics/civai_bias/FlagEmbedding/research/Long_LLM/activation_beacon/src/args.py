@@ -8,197 +8,169 @@ from typing import Optional, List, Tuple, Union, Dict
 @dataclass
 class ModelArgs:
     model_cache_dir: str = field(
-        default=None,
-        metadata={'help': 'Default path to save language models.'}
+        default=None, metadata={"help": "Default path to save language models."}
     )
     dataset_cache_dir: str = field(
-        default=None,
-        metadata={'help': 'Default path to save huggingface datasets.'}
+        default=None, metadata={"help": "Default path to save huggingface datasets."}
     )
     data_root: str = field(
-        default="/data/long-llm", 
-        metadata={'help': 'The base directory storing all data used for training and evaluation. If specified, make sure all train_data, eval_data, and corpus are path relative to data_root!'},
+        default="/data/long-llm",
+        metadata={
+            "help": "The base directory storing all data used for training and evaluation. If specified, make sure all train_data, eval_data, and corpus are path relative to data_root!"
+        },
     )
     train_data: Optional[List[str]] = field(
         default=None,
-        metadata={'help': 'Training json file or glob to match a list of files.'},
+        metadata={"help": "Training json file or glob to match a list of files."},
     )
     eval_data: Optional[str] = field(
         default=None,
-        metadata={'help': 'Evaluation json file.'},
+        metadata={"help": "Evaluation json file."},
     )
-    
+
     model_name_or_path: str = field(
-        default='Qwen/Qwen2-7B-Instruct',
-        metadata={'help': 'Path to pretrained model or model identifier from huggingface.co/models'}
+        default="Qwen/Qwen2-7B-Instruct",
+        metadata={
+            "help": "Path to pretrained model or model identifier from huggingface.co/models"
+        },
     )
-    padding_side: str = field(
-        default="left",
-        metadata={'help': 'Tokenizer padding side.'}
-    )
-    no_use_fast: bool = field(
-        default=False,
-        metadata={'help': 'Do not use fast tokenizer?'}
-    )
+    padding_side: str = field(default="left", metadata={"help": "Tokenizer padding side."})
+    no_use_fast: bool = field(default=False, metadata={"help": "Do not use fast tokenizer?"})
     access_token: Optional[str] = field(
-        default=None,
-        metadata={'help': 'Huggingface access token.'}
+        default=None, metadata={"help": "Huggingface access token."}
     )
     attn_impl: Optional[str] = field(
-        default="flash_attention_2",
-        metadata={'help': 'The implementation of attention.'}
+        default="flash_attention_2", metadata={"help": "The implementation of attention."}
     )
 
     max_length: int = field(
         default=4096,
-        metadata={'help': 'How many tokens at maximum for each input.'},
+        metadata={"help": "How many tokens at maximum for each input."},
     )
     chat_template: str = field(
-        default="hf",
-        metadata={'help': 'Instruction template name in fastchat.'}
+        default="hf", metadata={"help": "Instruction template name in fastchat."}
     )
 
     max_position_embeddings: Optional[int] = field(
         default=None,
-        metadata={'help': 'Maximum position.'},
+        metadata={"help": "Maximum position."},
     )
     mistral_sliding_window: Optional[int] = field(
         default=None,
-        metadata={'help': 'Sliding window size in Mistral models.'},
+        metadata={"help": "Sliding window size in Mistral models."},
     )
     rope_theta: Optional[float] = field(
         default=None,
-        metadata={'help': 'RoPE base (theta).'},
+        metadata={"help": "RoPE base (theta)."},
     )
     rope_method: Optional[str] = field(
         default=None,
-        metadata={'help': 'How to scale RoPE? {linear, dynamic, yarn}'},
+        metadata={"help": "How to scale RoPE? {linear, dynamic, yarn}"},
     )
     rope_factor: float = field(
-        default=1.,
-        metadata={'help': 'RoPE scaling factor.'},
+        default=1.0,
+        metadata={"help": "RoPE scaling factor."},
     )
 
     lora: Optional[str] = field(
         default=None,
-        metadata={'help': 'LoRA ID.'},
+        metadata={"help": "LoRA ID."},
     )
     lora_unload: bool = field(
         default=True,
-        metadata={'help': 'Merge and unload LoRA?'},
+        metadata={"help": "Merge and unload LoRA?"},
     )
     load_in_4_bit: bool = field(
         default=False,
-        metadata={'help': 'Load model in 4 bits?'},
+        metadata={"help": "Load model in 4 bits?"},
     )
 
-    dtype: str = field(
-        default="bf16",
-        metadata={'help': 'Data type for embeddings.'}
-    )
+    dtype: str = field(default="bf16", metadata={"help": "Data type for embeddings."})
     device_map: Optional[str] = field(
         default=None,
-        metadata={'help': 'Device map for loading the model. Set to auto to load across devices.'}
+        metadata={"help": "Device map for loading the model. Set to auto to load across devices."},
     )
     batch_size: int = field(
         default=1,
-        metadata={'help': 'Evaluation batch size.'},
+        metadata={"help": "Evaluation batch size."},
     )
-    cpu: bool = field(
-        default=False,
-        metadata={'help': 'Use cpu?'}
-    )
+    cpu: bool = field(default=False, metadata={"help": "Use cpu?"})
 
     enable_tp: bool = field(
-        default=False,
-        metadata={'help': 'Use tensor parallel to wrap the model?'}
-    )
-    
-    enable_vllm: bool = field(
-        default=False,
-        metadata={'help': 'Use vllm?'}
-    )
-    vllm_mem: float = field(
-        default=0.9,
-        metadata={'help': 'Vllm maximum GPU memory utilization.'}
-    )
-    vllm_tp: int = field(
-        default=1,
-        metadata={'help': 'Vllm tensor parallel degree.'}
-    )
-    vllm_len: Optional[int] = field(
-        default=None,
-        metadata={'help': 'Vllm maximum sequence length.'}
-    )
-    vllm_disable_ar: bool = field(
-        default=False,
-        metadata={'help': 'Disable custom all-reduce in vllm?'}
+        default=False, metadata={"help": "Use tensor parallel to wrap the model?"}
     )
 
-    enable_beacon: bool = field(
-        default=False,
-        metadata={'help': 'Enable activation beacon?'}
+    enable_vllm: bool = field(default=False, metadata={"help": "Use vllm?"})
+    vllm_mem: float = field(default=0.9, metadata={"help": "Vllm maximum GPU memory utilization."})
+    vllm_tp: int = field(default=1, metadata={"help": "Vllm tensor parallel degree."})
+    vllm_len: Optional[int] = field(
+        default=None, metadata={"help": "Vllm maximum sequence length."}
     )
+    vllm_disable_ar: bool = field(
+        default=False, metadata={"help": "Disable custom all-reduce in vllm?"}
+    )
+
+    enable_beacon: bool = field(default=False, metadata={"help": "Enable activation beacon?"})
     beacon_window: Optional[int] = field(
-        default=None,
-        metadata={'help': 'The initial sliding window size.'}
+        default=None, metadata={"help": "The initial sliding window size."}
     )
     beacon_stride: Optional[int] = field(
-        default=None,
-        metadata={'help': 'The stride of the sliding window.'}
+        default=None, metadata={"help": "The stride of the sliding window."}
     )
     beacon_attn: Optional[str] = field(
         default=None,
-        metadata={'help': 'How to assign attention masks of beacon tokens? {segmentation, step-expansion, full-converage}'}
+        metadata={
+            "help": "How to assign attention masks of beacon tokens? {segmentation, step-expansion, full-converage}"
+        },
     )
     beacon_ratio: Optional[List[int]] = field(
-        default=None,
-        metadata={'help': 'Condensing ratios for beacons.'}
+        default=None, metadata={"help": "Condensing ratios for beacons."}
     )
     beacon_ratio_mix: Optional[str] = field(
         default=None,
-        metadata={'help': 'How to determine the beacon_ratio for each input. {step-random, instance-random, adapt-x}'}
+        metadata={
+            "help": "How to determine the beacon_ratio for each input. {step-random, instance-random, adapt-x}"
+        },
     )
     beacon_param: Optional[List[str]] = field(
-        default=None,
-        metadata={'help': 'The introduced parameters for beacon. {q, k, v, o}'}
+        default=None, metadata={"help": "The introduced parameters for beacon. {q, k, v, o}"}
     )
     beacon_embed_init: str = field(
-        default="eos",
-        metadata={'help': 'Initialize beacon embedding from eos/bos embedding.'}
+        default="eos", metadata={"help": "Initialize beacon embedding from eos/bos embedding."}
     )
     beacon_sink_size: Optional[int] = field(
         default=None,
-        metadata={'help': 'The number of activations that are always kept in the head of the sequence according to StreamingLLM.'}
+        metadata={
+            "help": "The number of activations that are always kept in the head of the sequence according to StreamingLLM."
+        },
     )
     beacon_attend_prev: Optional[bool] = field(
-        default=None,
-        metadata={'help': 'Can beacon tokens attend to previous beacon tokens?'}
+        default=None, metadata={"help": "Can beacon tokens attend to previous beacon tokens?"}
     )
     beacon_pos: Optional[str] = field(
-        default=None,
-        metadata={'help': 'Where to put beacon tokens? {append, interleave}'}
+        default=None, metadata={"help": "Where to put beacon tokens? {append, interleave}"}
     )
     beacon_parallel_window: Optional[int] = field(
-        default=None,
-        metadata={'help': 'How many windows to run in parallel?'}
+        default=None, metadata={"help": "How many windows to run in parallel?"}
     )
 
     max_new_tokens: Optional[int] = field(
         default=None,
-        metadata={'help': 'How many tokens at maximum to return?'},
+        metadata={"help": "How many tokens at maximum to return?"},
     )
     do_sample: Optional[bool] = field(
         default=None,
-        metadata={'help': 'Do sampling when decoding?'},
+        metadata={"help": "Do sampling when decoding?"},
     )
     temperature: Optional[float] = field(
         default=None,
-        metadata={'help': 'Sampling temperature.'},
+        metadata={"help": "Sampling temperature."},
     )
     top_p: Optional[float] = field(
         default=None,
-        metadata={'help': "If set to float < 1, only the smallest set of most probable tokens with probabilities that add up to `top_p` or higher are kept for generation."}
+        metadata={
+            "help": "If set to float < 1, only the smallest set of most probable tokens with probabilities that add up to `top_p` or higher are kept for generation."
+        },
     )
 
     def resolve_path(self, path):
@@ -214,7 +186,7 @@ class ModelArgs:
                 path = os.path.join(self.data_root, path.replace(pattern, ""))
 
         return path
-    
+
     def get_generation_config(self):
         generation_config = {}
         if self.max_new_tokens is not None:
@@ -245,11 +217,13 @@ class ModelArgs:
             self.output_dir = self.resolve_path(self.output_dir)
 
         if hasattr(self, "result_dir"):
-            if self.result_dir is None: 
+            if self.result_dir is None:
                 if self.lora is not None:
                     name_or_path_components = [x for x in self.lora.split("/") if len(x)][-2:]
                 else:
-                    name_or_path_components = [x for x in self.model_name_or_path.split("/") if len(x)][-2:]
+                    name_or_path_components = [
+                        x for x in self.model_name_or_path.split("/") if len(x)
+                    ][-2:]
                 self.result_dir = os.path.join(*name_or_path_components)
             else:
                 self.result_dir = self.resolve_path(self.result_dir)
@@ -264,94 +238,79 @@ class TrainingArgs(TrainingArguments):
         default="data/outputs/pretrain",
     )
 
-    per_device_train_batch_size: int = field(
-        default=1,
-        metadata={'help': 'Train batch size.'}
-    )
-    per_device_eval_batch_size: int = field(
-        default=1,
-        metadata={'help': 'Evaluation batch size.'}
-    )
+    per_device_train_batch_size: int = field(default=1, metadata={"help": "Train batch size."})
+    per_device_eval_batch_size: int = field(default=1, metadata={"help": "Evaluation batch size."})
     remove_unused_columns: bool = field(
         default=False,
-        metadata={'help': 'Remove columns in the dataset that are not registered in the forward function?'}
+        metadata={
+            "help": "Remove columns in the dataset that are not registered in the forward function?"
+        },
     )
     ddp_find_unused_parameters: bool = field(
-        default=False,
-        metadata={'help': 'Find unusuable parameters?'}
+        default=False, metadata={"help": "Find unusuable parameters?"}
     )
     # NOTE: essential to keep comuputation graph because we need gradients for beacon tokens
     use_reentrant: Optional[bool] = field(
-        default=None,
-        metadata={'help': "Use reetrant in gradient checkpointing?"}
+        default=None, metadata={"help": "Use reetrant in gradient checkpointing?"}
     )
-    report_to: str = field(
-        default="none",
-        metadata={'help': 'Log results by external tools?'}
-    )
+    report_to: str = field(default="none", metadata={"help": "Log results by external tools?"})
 
     # ==============================
     # Customized arguments
     # ==============================
     min_length: int = field(
-        default=0,
-        metadata={'help': 'How many tokens at minimum for training?'}
+        default=0, metadata={"help": "How many tokens at minimum for training?"}
     )
 
     group_by_stride: Optional[str] = field(
         default=None,
-        metadata={'help': 'Group the training data instances by the number of strides in the beacon model. {relaxed, strict}'}
+        metadata={
+            "help": "Group the training data instances by the number of strides in the beacon model. {relaxed, strict}"
+        },
     )
     sort_by_stride: Optional[str] = field(
         default=None,
-        metadata={'help': 'Sort the training data instances by the number of strides in the beacon model. {ascend, descend}'}
+        metadata={
+            "help": "Sort the training data instances by the number of strides in the beacon model. {ascend, descend}"
+        },
     )
     only_train_beacon: bool = field(
-        default=True,
-        metadata={'help': 'Freeze LLM parameters when training beacon parameters?'}
+        default=True, metadata={"help": "Freeze LLM parameters when training beacon parameters?"}
     )
-    
+
     eval_method: str = field(
         default="perplexity",
-        metadata={'help': 'How to evaluate during training? {perplexity, generation}'}
+        metadata={"help": "How to evaluate during training? {perplexity, generation}"},
     )
     eval_max_length: int = field(
         default=4096,
-        metadata={'help': 'How many tokens at maximum for each input in evaluation.'},
+        metadata={"help": "How many tokens at maximum for each input in evaluation."},
     )
     eval_min_length: int = field(
         default=512,
-        metadata={'help': 'How many tokens at minimum for each input in evaluation.'},
+        metadata={"help": "How many tokens at minimum for each input in evaluation."},
     )
     eval_beacon_ratio: List[int] = field(
         default_factory=lambda: [32],
-        metadata={'help': 'Condensing ratios for beacons in evaluation.'}
+        metadata={"help": "Condensing ratios for beacons in evaluation."},
     )
     eval_beacon_ratio_mix: str = field(
         default="adapt-1024",
-        metadata={'help': 'How to determine the beacon_ratio for each input. {step-random, instance-random, adapt-x}'}
+        metadata={
+            "help": "How to determine the beacon_ratio for each input. {step-random, instance-random, adapt-x}"
+        },
     )
     max_eval_num: Optional[int] = field(
-        default=None,
-        metadata={'help': 'How many samples for validation?'}
+        default=None, metadata={"help": "How many samples for validation?"}
     )
 
     lora_tune: bool = field(
         default=False,
         metadata={"help": "Use LoRA fine-tuning?"},
     )
-    lora_rank: int = field(
-        default=32,
-        metadata={'help': 'LoRA rank.'}
-    )
-    lora_alpha: int = field(
-        default=16,
-        metadata={'help': 'LoRA scaling factor.'}
-    )
-    lora_dropout: float = field(
-        default=0.,
-        metadata={'help': 'LoRA dropout p.'}
-    )
+    lora_rank: int = field(default=32, metadata={"help": "LoRA rank."})
+    lora_alpha: int = field(default=16, metadata={"help": "LoRA scaling factor."})
+    lora_dropout: float = field(default=0.0, metadata={"help": "LoRA dropout p."})
     lora_targets: List[str] = field(
         default_factory=lambda: ["q_proj", "k_proj", "v_proj", "o_proj"],
         metadata={"help": "Module name patterns to add LoRA."},
@@ -362,14 +321,9 @@ class TrainingArgs(TrainingArguments):
     )
 
     metrics: List[str] = field(
-        default_factory=lambda: [],
-        metadata={'help': 'List of metrics. {rouge, save_result}'}
+        default_factory=lambda: [], metadata={"help": "List of metrics. {rouge, save_result}"}
     )
-    log_path: str = field(
-        default="data/outputs/metrics.log",
-        metadata={'help': 'Log file path.'}
-    )
-
+    log_path: str = field(default="data/outputs/metrics.log", metadata={"help": "Log file path."})
 
     def __post_init__(self):
         if self.use_reentrant is not None:

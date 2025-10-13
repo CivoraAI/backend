@@ -23,7 +23,7 @@ class ActivationBeaconTrainer(Trainer):
 
     def compute_loss(self, model, inputs, return_outputs=False):
         if "retrieval_span" in inputs:
-            self.model.memory._retrieval_span = inputs['retrieval_span'][0]
+            self.model.memory._retrieval_span = inputs["retrieval_span"][0]
             inputs.pop("retrieval_span")
 
         inputs.pop("length", None)
@@ -43,7 +43,7 @@ class ActivationBeaconTrainer(Trainer):
             del self.model.memory._retrieval_span
             del self.model.memory._retrieval_condensing_ratios
         return outputs
-    
+
     def _get_train_sampler(self) -> Optional[torch.utils.data.Sampler]:
         # Build the sampler.
         if self.args.group_by_stride is not None:
@@ -51,8 +51,10 @@ class ActivationBeaconTrainer(Trainer):
                 lengths = self.train_dataset[self.args.length_column_name]
             else:
                 lengths = None
-            
-            model_input_name = self.tokenizer.model_input_names[0] if self.tokenizer is not None else None
+
+            model_input_name = (
+                self.tokenizer.model_input_names[0] if self.tokenizer is not None else None
+            )
 
             return StrideGroupedSampler(
                 # NOTE: multiply world size to get the total number of training instances across devices
@@ -68,7 +70,7 @@ class ActivationBeaconTrainer(Trainer):
 
         else:
             return super()._get_train_sampler()
-    
+
     def _save(self, output_dir: Optional[str] = None, state_dict=None):
         outputs = super()._save(output_dir, state_dict)
         # NOTE: also save model_args
@@ -76,7 +78,12 @@ class ActivationBeaconTrainer(Trainer):
         return outputs
 
     @torch.no_grad()
-    def evaluate(self, eval_dataset: Dataset | None = None, ignore_keys: List[str] | None = None, metric_key_prefix: str = "eval") -> Dict[str, float]:        
+    def evaluate(
+        self,
+        eval_dataset: Dataset | None = None,
+        ignore_keys: List[str] | None = None,
+        metric_key_prefix: str = "eval",
+    ) -> Dict[str, float]:
         # memory metrics - must set up as early as possible
         self._memory_tracker.start()
 
@@ -104,9 +111,9 @@ class ActivationBeaconTrainer(Trainer):
             metrics = {"perplexity": perplexity}
         elif self.args.eval_method == "generation":
             indices, outputs = evaluate_generation(
-                model, 
-                dataloader, 
-                accelerator=self.accelerator, 
+                model,
+                dataloader,
+                accelerator=self.accelerator,
                 tokenizer=self.tokenizer,
             )
             metrics = self.compute_metrics(outputs, labels, indices=indices)
@@ -125,7 +132,9 @@ class ActivationBeaconTrainer(Trainer):
                 metrics[f"{metric_key_prefix}_{key}"] = metrics.pop(key)
 
         self.log(metrics)
-        self.control = self.callback_handler.on_evaluate(self.args, self.state, self.control, metrics)
+        self.control = self.callback_handler.on_evaluate(
+            self.args, self.state, self.control, metrics
+        )
         self._memory_tracker.stop_and_update_metrics(metrics)
 
         # log to file
@@ -134,15 +143,14 @@ class ActivationBeaconTrainer(Trainer):
                 metrics=metrics,
                 Model_Args=asdict(self.model_args),
                 Training_Args=asdict(self.args),
-                Global_Steps=self.state.global_step
+                Global_Steps=self.state.global_step,
             )
 
         return metrics
 
 
-
 class StrideGroupedSampler(Sampler):
-    """Group """
+    """Group"""
 
     def __init__(
         self,
@@ -153,11 +161,11 @@ class StrideGroupedSampler(Sampler):
         sort: Optional[str] = None,
         dataset: Optional[Dataset] = None,
         lengths: Optional[List[int]] = None,
-        model_input_name: Optional[str] = None
+        model_input_name: Optional[str] = None,
     ):
         if dataset is None and lengths is None:
             raise ValueError("One of dataset and lengths must be provided.")
-        
+
         if group is None:
             raise ValueError("Group cannot be None!")
 

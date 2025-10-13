@@ -3,7 +3,8 @@ from typing import List, Union, Optional
 
 from FlagEmbedding.inference.embedder.model_mapping import (
     EmbedderModelClass,
-    AUTO_EMBEDDER_MAPPING, EMBEDDER_CLASS_MAPPING
+    AUTO_EMBEDDER_MAPPING,
+    EMBEDDER_CLASS_MAPPING,
 )
 
 from FlagEmbedding import FlagAutoModel
@@ -20,7 +21,8 @@ Query: {query}
 
 Your output:"""
 
-class Reinforced_IR_Model():
+
+class Reinforced_IR_Model:
     def __init__(
         self,
         model_name_or_path: str,
@@ -86,18 +88,24 @@ class Reinforced_IR_Model():
         if self.generator_model_name_or_path is not None:
             self.offload_retriever()
         if self.generator is None and self.generator_model_name_or_path is not None:
-            if self.model_type == 'llm':
-                self.generator = LLMAgent(model_name=self.generator_model_name_or_path,
-                                          gpu_memory_utilization=self.gpu_memory_utilization,
-                                          tensor_parallel_size=self.tensor_parallel_size)
-            elif self.model_type == 'llm_instruct':
-                self.generator = LLMInstructAgent(generate_model_path=self.generator_model_name_or_path,
-                                                  gpu_memory_utilization=self.gpu_memory_utilization,
-                                                  tensor_parallel_size=self.tensor_parallel_size)
+            if self.model_type == "llm":
+                self.generator = LLMAgent(
+                    model_name=self.generator_model_name_or_path,
+                    gpu_memory_utilization=self.gpu_memory_utilization,
+                    tensor_parallel_size=self.tensor_parallel_size,
+                )
+            elif self.model_type == "llm_instruct":
+                self.generator = LLMInstructAgent(
+                    generate_model_path=self.generator_model_name_or_path,
+                    gpu_memory_utilization=self.gpu_memory_utilization,
+                    tensor_parallel_size=self.tensor_parallel_size,
+                )
             else:
-                self.generator = GPTAgent(model_name=self.generator_model_name_or_path,
-                                          api_key=self.api_key,
-                                          base_url=self.base_url)
+                self.generator = GPTAgent(
+                    model_name=self.generator_model_name_or_path,
+                    api_key=self.api_key,
+                    base_url=self.base_url,
+                )
 
     def offload_retriever(self):
         if self.retriever is not None:
@@ -110,20 +118,23 @@ class Reinforced_IR_Model():
             self.generator = None
 
     def encode_queries(self, task_instruction, answer_type, queries, **kwargs):
-        prompts = [prompt_template.format(
-            answer_type=answer_type,
-            task=task_instruction,
-            query=query
-        ) for query in queries]
+        prompts = [
+            prompt_template.format(answer_type=answer_type, task=task_instruction, query=query)
+            for query in queries
+        ]
         self.load_generator()
         if self.generator is not None:
             augmented_queries = self.generator.generate(prompts, **kwargs)
             print(augmented_queries)
-            augmented_queries = ['Generate the topic about this passage: ' + e for e in augmented_queries]
+            augmented_queries = [
+                "Generate the topic about this passage: " + e for e in augmented_queries
+            ]
         self.load_retriever()
         if self.generator is not None:
-            return self.retriever.encode_corpus(augmented_queries, **kwargs) * 0.2 + \
-                self.retriever.encode_queries(queries, **kwargs) * 0.8
+            return (
+                self.retriever.encode_corpus(augmented_queries, **kwargs) * 0.2
+                + self.retriever.encode_queries(queries, **kwargs) * 0.8
+            )
         return self.retriever.encode_queries(queries, **kwargs)
 
     def encode_corpus(self, corpus, **kwargs):

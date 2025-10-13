@@ -28,13 +28,13 @@ class AbsReranker(ABC):
     Args:
         model_name_or_path (str): If it's a path to a local model, it loads the model from the path. Otherwise tries to download and
             load a model from HuggingFace Hub with the name.
-        use_fp16 (bool, optional): If true, use half-precision floating-point to speed up computation with a slight performance 
+        use_fp16 (bool, optional): If true, use half-precision floating-point to speed up computation with a slight performance
             degradation. Defaults to :data:`False`.
         query_instruction_for_rerank: (Optional[str], optional): Query instruction for reranking, which will be used with
             with :attr:`query_instruction_format`. Defaults to :data:`None`.
         query_instruction_format: (str, optional): The template for :attr:`query_instruction_for_rerank`. Defaults to :data:`"{}{}"`.
         passage_instruction_for_rerank (Optional[str], optional): Passage instruction for reranking. Defaults to :data:`None`.
-        passage_instruction_format (str, optional): Passage instruction format when using :attr:`passage_instruction_for_rerank`. 
+        passage_instruction_format (str, optional): Passage instruction format when using :attr:`passage_instruction_for_rerank`.
             Defaults to :data:`"{}{}"`.
         devices (Optional[Union[str, int, List[str], List[int]]], optional): Devices to use for model inference. Defaults to :data:`None`.
         batch_size (int, optional): Batch size for inference. Defaults to :data:`128`.
@@ -49,9 +49,9 @@ class AbsReranker(ABC):
         model_name_or_path: str,
         use_fp16: bool = False,
         query_instruction_for_rerank: Optional[str] = None,
-        query_instruction_format: str = "{}{}", # specify the format of query_instruction_for_rerank
+        query_instruction_format: str = "{}{}",  # specify the format of query_instruction_for_rerank
         passage_instruction_for_rerank: Optional[str] = None,
-        passage_instruction_format: str = "{}{}", # specify the format of passage_instruction_for_rerank
+        passage_instruction_format: str = "{}{}",  # specify the format of passage_instruction_for_rerank
         devices: Optional[Union[str, int, List[str], List[int]]] = None,
         # inference
         batch_size: int = 128,
@@ -67,7 +67,7 @@ class AbsReranker(ABC):
         self.passage_instruction_for_rerank = passage_instruction_for_rerank
         self.passage_instruction_format = passage_instruction_format
         self.target_devices = self.get_target_devices(devices)
-        
+
         self.batch_size = batch_size
         self.query_max_length = query_max_length
         self.max_length = max_length
@@ -88,7 +88,7 @@ class AbsReranker(ABC):
             self.stop_multi_process_pool(self.pool)
             self.pool = None
         try:
-            self.model.to('cpu')
+            self.model.to("cpu")
             torch.cuda.empty_cache()
         except:
             pass
@@ -135,9 +135,13 @@ class AbsReranker(ABC):
                 else:
                     return [f"cuda:{device}" for device in devices]
             else:
-                raise ValueError("devices should be a string or an integer or a list of strings or a list of integers.")
+                raise ValueError(
+                    "devices should be a string or an integer or a list of strings or a list of integers."
+                )
         else:
-            raise ValueError("devices should be a string or an integer or a list of strings or a list of integers.")
+            raise ValueError(
+                "devices should be a string or an integer or a list of strings or a list of integers."
+            )
 
     def get_detailed_instruct(self, instruction_format: str, instruction: str, sentence: str):
         """Combine the instruction and sentence along with the instruction format.
@@ -153,7 +157,7 @@ class AbsReranker(ABC):
         if "\\n" in instruction_format:
             instruction_format = instruction_format.replace("\\n", "\n")
         return instruction_format.format(instruction, sentence)
-    
+
     def get_detailed_inputs(self, sentence_pairs: Union[str, List[str]]):
         """get detailed instruct for all the inputs
 
@@ -170,37 +174,49 @@ class AbsReranker(ABC):
             if self.passage_instruction_for_rerank is None:
                 return [
                     [
-                        self.get_detailed_instruct(self.query_instruction_format, self.query_instruction_for_rerank, sentence_pair[0]),
-                        sentence_pair[1]
-                    ] for sentence_pair in sentence_pairs
+                        self.get_detailed_instruct(
+                            self.query_instruction_format,
+                            self.query_instruction_for_rerank,
+                            sentence_pair[0],
+                        ),
+                        sentence_pair[1],
+                    ]
+                    for sentence_pair in sentence_pairs
                 ]
             else:
                 return [
                     [
-                        self.get_detailed_instruct(self.query_instruction_format, self.query_instruction_for_rerank, sentence_pair[0]),
-                        self.get_detailed_instruct(self.passage_instruction_format, self.passage_instruction_for_rerank, sentence_pair[1])
-                    ] for sentence_pair in sentence_pairs
+                        self.get_detailed_instruct(
+                            self.query_instruction_format,
+                            self.query_instruction_for_rerank,
+                            sentence_pair[0],
+                        ),
+                        self.get_detailed_instruct(
+                            self.passage_instruction_format,
+                            self.passage_instruction_for_rerank,
+                            sentence_pair[1],
+                        ),
+                    ]
+                    for sentence_pair in sentence_pairs
                 ]
         else:
             if self.passage_instruction_for_rerank is None:
-                return [
-                    [
-                        sentence_pair[0],
-                        sentence_pair[1]
-                    ] for sentence_pair in sentence_pairs
-                ]
+                return [[sentence_pair[0], sentence_pair[1]] for sentence_pair in sentence_pairs]
             else:
                 return [
                     [
                         sentence_pair[0],
-                        self.get_detailed_instruct(self.passage_instruction_format, self.passage_instruction_for_rerank, sentence_pair[1])
-                    ] for sentence_pair in sentence_pairs
+                        self.get_detailed_instruct(
+                            self.passage_instruction_format,
+                            self.passage_instruction_for_rerank,
+                            sentence_pair[1],
+                        ),
+                    ]
+                    for sentence_pair in sentence_pairs
                 ]
 
     def compute_score(
-        self,
-        sentence_pairs: Union[List[Tuple[str, str]], Tuple[str, str]],
-        **kwargs
+        self, sentence_pairs: Union[List[Tuple[str, str]], Tuple[str, str]], **kwargs
     ):
         """Compute score for each sentence pair
 
@@ -216,16 +232,12 @@ class AbsReranker(ABC):
 
         if isinstance(sentence_pairs, str) or len(self.target_devices) == 1:
             return self.compute_score_single_gpu(
-                sentence_pairs,
-                device=self.target_devices[0],
-                **kwargs
+                sentence_pairs, device=self.target_devices[0], **kwargs
             )
 
         if self.pool is None:
             self.pool = self.start_multi_process_pool()
-        scores = self.encode_multi_process(sentence_pairs,
-                                           self.pool,
-                                           **kwargs)
+        scores = self.encode_multi_process(sentence_pairs, self.pool, **kwargs)
         return scores
 
     def __del__(self):
@@ -260,7 +272,11 @@ class AbsReranker(ABC):
         Returns:
             Dict[str, Any]: A dictionary with the target processes, an input queue, and an output queue.
         """
-        logger.info("Start multi-process pool on devices: {}".format(", ".join(map(str, self.target_devices))))
+        logger.info(
+            "Start multi-process pool on devices: {}".format(
+                ", ".join(map(str, self.target_devices))
+            )
+        )
 
         self.model.to("cpu")
         self.model.share_memory()
@@ -269,7 +285,7 @@ class AbsReranker(ABC):
         output_queue = ctx.Queue()
         processes = []
 
-        for device_id in tqdm(self.target_devices, desc='initial target device'):
+        for device_id in tqdm(self.target_devices, desc="initial target device"):
             p = ctx.Process(
                 target=AbsReranker._encode_multi_process_worker,
                 args=(device_id, self, input_queue, output_queue),
@@ -285,7 +301,7 @@ class AbsReranker(ABC):
         self,
         sentence_pairs: List,
         pool: Dict[Literal["input", "output", "processes"], Any],
-        **kwargs
+        **kwargs,
     ) -> np.ndarray:
         chunk_size = math.ceil(len(sentence_pairs) / len(pool["processes"]))
 
@@ -296,9 +312,7 @@ class AbsReranker(ABC):
         for sentence_pair in sentence_pairs:
             chunk.append(sentence_pair)
             if len(chunk) >= chunk_size:
-                input_queue.put(
-                    [last_chunk_id, chunk, kwargs]
-                )
+                input_queue.put([last_chunk_id, chunk, kwargs])
                 last_chunk_id += 1
                 chunk = []
 
@@ -317,20 +331,16 @@ class AbsReranker(ABC):
     # copied from https://github.com/UKPLab/sentence-transformers/blob/1802076d4eae42ff0a5629e1b04e75785d4e193b/sentence_transformers/SentenceTransformer.py#L857
     @staticmethod
     def _encode_multi_process_worker(
-            target_device: str, model: 'AbsReranker', input_queue: Queue, results_queue: Queue
+        target_device: str, model: "AbsReranker", input_queue: Queue, results_queue: Queue
     ) -> None:
         """
         Internal working process to encode sentences in multi-process setup
         """
         while True:
             try:
-                chunk_id, sentences, kwargs = (
-                    input_queue.get()
-                )
+                chunk_id, sentences, kwargs = input_queue.get()
                 embeddings = model.compute_score_single_gpu(
-                    sentences,
-                    device=target_device,
-                    **kwargs
+                    sentences, device=target_device, **kwargs
                 )
 
                 results_queue.put([chunk_id, embeddings])

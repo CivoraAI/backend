@@ -9,45 +9,41 @@ from dataclasses import dataclass, field, asdict
 
 from src.data import Data
 from src.metrics import Metric
-from src import ModelArgs, DefaultDataCollator, FileLogger, get_model_and_tokenizer, makedirs, evaluate_generation, split_file_dir_name_ext
+from src import (
+    ModelArgs,
+    DefaultDataCollator,
+    FileLogger,
+    get_model_and_tokenizer,
+    makedirs,
+    evaluate_generation,
+    split_file_dir_name_ext,
+)
 
 logger = logging.get_logger(__name__)
 
 
 @dataclass
 class Args(ModelArgs):
-    eval_data: Optional[str] = field(
-        default=None,
-        metadata={'help': 'Evaluation json data.'}
-    )
+    eval_data: Optional[str] = field(default=None, metadata={"help": "Evaluation json data."})
     output_dir: str = field(
         default="data/results/generation/",
-        metadata={'help': 'The base directory for saving results and logs.'}
+        metadata={"help": "The base directory for saving results and logs."},
     )
     result_dir: Optional[str] = field(
-        default=None,
-        metadata={'help': 'The directory relative to output_dir for saving results.'}
+        default=None, metadata={"help": "The directory relative to output_dir for saving results."}
     )
 
     min_length: int = field(
-        default=0,
-        metadata={'help': 'How many tokens at minimum for evaluation?'}
+        default=0, metadata={"help": "How many tokens at minimum for evaluation?"}
     )
     max_length: int = field(
-        default=100000,
-        metadata={'help': 'How many tokens at maximum for evaluation?'}
+        default=100000, metadata={"help": "How many tokens at maximum for evaluation?"}
     )
 
-    seed: int = field(
-        default=42
-    )
-    max_num: int = field(
-        default=None,
-        metadata={'help': 'Max number of instances to evaluate.'}
-    )
+    seed: int = field(default=42)
+    max_num: int = field(default=None, metadata={"help": "Max number of instances to evaluate."})
     metrics: List[str] = field(
-        default_factory=lambda: [],
-        metadata={'help': 'List of metrics. {rouge, save_result}'}
+        default_factory=lambda: [], metadata={"help": "List of metrics. {rouge, save_result}"}
     )
 
 
@@ -61,7 +57,7 @@ def main():
 
     with accelerator.main_process_first():
         dataset = Data.prepare_eval_data(
-            args.eval_data, 
+            args.eval_data,
             tokenizer=tokenizer,
             max_length=args.max_length,
             min_length=args.min_length,
@@ -77,8 +73,8 @@ def main():
 
     data_collator = DefaultDataCollator(tokenizer=tokenizer)
     dataloader = DataLoader(
-        dataset, 
-        batch_size=args.batch_size, 
+        dataset,
+        batch_size=args.batch_size,
         collate_fn=data_collator,
         # only pin memory when no gpu
         pin_memory=not args.cpu,
@@ -94,21 +90,23 @@ def main():
 
     save_path = Metric.get_save_path(
         args.eval_data,
-        os.path.join(args.output_dir, args.result_dir) if args.result_dir is not None else args.output_dir
+        (
+            os.path.join(args.output_dir, args.result_dir)
+            if args.result_dir is not None
+            else args.output_dir
+        ),
     )
-    compute_metrics_fn = Metric.get_metric_fn(
-        metrics=args.metrics, 
-        save_path=save_path
-    )
+    compute_metrics_fn = Metric.get_metric_fn(metrics=args.metrics, save_path=save_path)
     indices, outputs = evaluate_generation(
-        model, 
-        dataloader, 
-        accelerator=accelerator, 
+        model,
+        dataloader,
+        accelerator=accelerator,
         tokenizer=tokenizer,
         # FIXME: sometimes transformers cannot detect deepspeed zero3, dont know why
-        synced_gpus=accelerator.state.deepspeed_plugin is not None and accelerator.state.deepspeed_plugin.zero_stage == 3,
+        synced_gpus=accelerator.state.deepspeed_plugin is not None
+        and accelerator.state.deepspeed_plugin.zero_stage == 3,
     )
-    
+
     if accelerator.process_index == 0:
         metrics = compute_metrics_fn(outputs, labels, indices=indices)
 

@@ -7,39 +7,38 @@ import pytrec_eval
 from transformers import HfArgumentParser
 from FlagEmbedding import FlagReranker
 
+
 @dataclass
-class Args():
+class Args:
     input_path: str = field(
         default="",
-        metadata={'help': """
+        metadata={
+            "help": """
         The data path points to a file in JSONL format.
         Each line contains `query`, `pos`, and `neg`. Here, `query` is a string (`str`), 
         while both `pos` and `neg` are lists of strings (`List[str]`).
         If each line includes `pos_label_scores`, it will use to compute `ndcg@k`, else it will set default `1`.
-        """}
+        """
+        },
     )
     metrics: List[str] = field(
-        default=None, # usage example: recall mrr ndcg
-        metadata={'help': 'The evaluation metrics, you can set recall / mrr / ndcg'}
+        default=None,  # usage example: recall mrr ndcg
+        metadata={"help": "The evaluation metrics, you can set recall / mrr / ndcg"},
     )
     k_values: List[int] = field(
-        default=None,
-        metadata={'help': 'Present the top-k metrics evaluation.'}
+        default=None, metadata={"help": "Present the top-k metrics evaluation."}
     )
     cache_dir: str = field(
-        default=None,
-        metadata={'help': 'The path to store the cache of reranker.'}
+        default=None, metadata={"help": "The path to store the cache of reranker."}
     )
     use_fp16: bool = field(
         default=True,
-        metadata={'help': 'Whether to use fp16 to accelerate inference, it is not suitable for CPU only inference.'}
+        metadata={
+            "help": "Whether to use fp16 to accelerate inference, it is not suitable for CPU only inference."
+        },
     )
-    batch_size: int = field(
-        default=512
-    )
-    max_length: int = field(
-        default=1024
-    )
+    batch_size: int = field(default=512)
+    max_length: int = field(default=1024)
 
 
 def evaluate_mrr(predicts, labels, cutoffs):
@@ -67,18 +66,21 @@ def evaluate_mrr(predicts, labels, cutoffs):
 
     return metrics
 
+
 def main():
     parser = HfArgumentParser([Args])
     args: Args = parser.parse_args_into_dataclasses()[0]
     input_path = args.input_path
-    metrics = args.metrics if args.metrics is not None else ['recall', 'mrr', 'ndcg', 'map', 'precision']
+    metrics = (
+        args.metrics if args.metrics is not None else ["recall", "mrr", "ndcg", "map", "precision"]
+    )
     k_values = args.k_values if args.k_values is not None else [1, 5, 10, 50, 100]
     cache_dir = args.cache_dir
     use_fp16 = args.use_fp16
     batch_size = args.batch_size
     max_length = args.max_length
 
-    reranker = FlagReranker('BAAI/bge-reranker-v2-m3', cache_dir=cache_dir, use_fp16=use_fp16)
+    reranker = FlagReranker("BAAI/bge-reranker-v2-m3", cache_dir=cache_dir, use_fp16=use_fp16)
 
     data = []
     data_num = []
@@ -90,10 +92,10 @@ def main():
     for d in data:
         data_num.append(0)
         passages = []
-        passages.extend(d['pos'])
-        passages.extend(d['neg'])
+        passages.extend(d["pos"])
+        passages.extend(d["neg"])
         for p in passages:
-            pairs.append((d['query'], p))
+            pairs.append((d["query"], p))
             data_num[-1] += 1
 
     scores = reranker.compute_score(pairs, batch_size=batch_size, max_length=max_length)
@@ -106,9 +108,9 @@ def main():
     for i in range(len(data)):
         tmp = {}
         tmp_labels = []
-        for ind in range(len(data[i]['pos'])):
+        for ind in range(len(data[i]["pos"])):
             try:
-                tmp[str(start_num + ind)] = int(data[i]['pos_label_scores'][ind])
+                tmp[str(start_num + ind)] = int(data[i]["pos_label_scores"][ind])
             except Exception as e:
                 # print(e)
                 tmp[str(start_num + ind)] = 1
@@ -145,8 +147,9 @@ def main():
     ndcg_string = "ndcg_cut." + ",".join([str(k) for k in k_values])
     recall_string = "recall." + ",".join([str(k) for k in k_values])
     precision_string = "P." + ",".join([str(k) for k in k_values])
-    evaluator = pytrec_eval.RelevanceEvaluator(ground_truths,
-                                               {map_string, ndcg_string, recall_string, precision_string})
+    evaluator = pytrec_eval.RelevanceEvaluator(
+        ground_truths, {map_string, ndcg_string, recall_string, precision_string}
+    )
 
     scores = evaluator.evaluate(rerank_results)
 
@@ -165,16 +168,17 @@ def main():
 
     mrr = evaluate_mrr(predicts, labels, k_values)
 
-    if 'mrr' in metrics:
+    if "mrr" in metrics:
         print(mrr)
-    if 'recall' in metrics:
+    if "recall" in metrics:
         print(recall)
-    if 'ndcg' in metrics:
+    if "ndcg" in metrics:
         print(ndcg)
-    if 'map' in metrics:
+    if "map" in metrics:
         print(_map)
-    if 'precision' in metrics:
+    if "precision" in metrics:
         print(precision)
+
 
 if __name__ == "__main__":
     main()

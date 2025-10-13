@@ -5,8 +5,8 @@ from typing import List, Union
 from .modeling_utils import BeaconModelOutput
 
 HF_KEY_TO_VLLM_KEY = {
-    "top_k": "top_k", 
-    "top_p": "top_p", 
+    "top_k": "top_k",
+    "top_p": "top_p",
     "temperature": "temperature",
     "max_new_tokens": "max_tokens",
     "eos_token_id": "stop_token_ids",
@@ -26,7 +26,7 @@ class HFStyleVllmModel:
     def device(self):
         return self.model.llm_engine.device_config.device
 
-    def parse_generation_config(self, generation_config:Union[dict,GenerationConfig]):
+    def parse_generation_config(self, generation_config: Union[dict, GenerationConfig]):
         """Rename hf generation config to vllm generation config."""
         vllm_config = {}
 
@@ -45,17 +45,17 @@ class HFStyleVllmModel:
         return vllm_config
 
     def generate(
-        self, 
-        prompts:Union[List[str],str]=None,
-        input_ids:torch.Tensor=None, 
-        attention_mask:torch.Tensor=None, 
-        use_tqdm:bool=False,
-        **kwargs
+        self,
+        prompts: Union[List[str], str] = None,
+        input_ids: torch.Tensor = None,
+        attention_mask: torch.Tensor = None,
+        use_tqdm: bool = False,
+        **kwargs,
     ):
         # override the default sampling params
         sampling_params_dict = self.parse_generation_config(self.generation_config)
         sampling_params_dict.update(self.parse_generation_config(kwargs))
-        sampling_params = SamplingParams(**sampling_params_dict) 
+        sampling_params = SamplingParams(**sampling_params_dict)
 
         if input_ids is not None:
             if isinstance(input_ids, torch.Tensor):
@@ -104,7 +104,4 @@ class HFStyleVllmModel:
             batch_losses.append(batch_loss / valid_token_num)
             valid_token_nums.append(valid_token_num)
 
-        return BeaconModelOutput(
-            batch_loss=batch_losses,
-            valid_token_num=valid_token_nums
-        )
+        return BeaconModelOutput(batch_loss=batch_losses, valid_token_num=valid_token_nums)

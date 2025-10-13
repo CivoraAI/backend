@@ -9,16 +9,19 @@ from torch.utils.data import DataLoader
 from transformers import HfArgumentParser
 from dataclasses import dataclass, field, asdict
 
-from src.lm import (
-    LM, 
-    LMArgs,
-    GenerationArgs
-)
+from src.lm import LM, LMArgs, GenerationArgs
 from src.retrieval import (
-    RetrievalArgs, 
+    RetrievalArgs,
     RetrievalMetric,
 )
-from src.utils.util import makedirs, remove_eos, normalize_text, DefaultDataCollator, DatasetProcessFn, FileLogger
+from src.utils.util import (
+    makedirs,
+    remove_eos,
+    normalize_text,
+    DefaultDataCollator,
+    DatasetProcessFn,
+    FileLogger,
+)
 from .eval_retrieval import main as retrieval_main
 from .icl_utils import compute_metrics
 
@@ -31,58 +34,51 @@ class QRECCArgs(LMArgs, RetrievalArgs):
         default="data/results/qrecc",
     )
     eval_data: str = field(
-        default="llm-embedder:convsearch/qrecc/test.concat.json",
-        metadata={'help': 'Query jsonl.'}
+        default="llm-embedder:convsearch/qrecc/test.concat.json", metadata={"help": "Query jsonl."}
     )
     corpus: str = field(
         default="llm-embedder:convsearch/qrecc/corpus.json",
-        metadata={'help': 'Corpus path for retrieval.'}
+        metadata={"help": "Corpus path for retrieval."},
     )
     key_template: str = field(
         default="{text}",
-        metadata={'help': 'How to concatenate columns in the corpus to form one key?'}
+        metadata={"help": "How to concatenate columns in the corpus to form one key?"},
     )
     do_generate: bool = field(
-        default=False,
-        metadata={'help': 'Generate for computing qa metrics?'}
+        default=False, metadata={"help": "Generate for computing qa metrics?"}
     )
-    
+
     hits: int = field(
         default=100,
-        metadata={'help': 'How many hits per query?'},
+        metadata={"help": "How many hits per query?"},
     )
     key_num: int = field(
         default=3,
-        metadata={'help': 'How many docs to provide in prompt?'},
+        metadata={"help": "How many docs to provide in prompt?"},
     )
     metrics: List[str] = field(
         default_factory=lambda: ["ndcg", "recall", "collate_key"],
     )
     cutoffs: List[int] = field(
         default_factory=lambda: [3, 10, 100],
-        metadata={'help': 'Cutoffs to evaluate retrieval metrics.'}
+        metadata={"help": "Cutoffs to evaluate retrieval metrics."},
     )
-    max_neg_num: int = field(
-        default=32,
-        metadata={'help': 'Maximum negative number to mine.'}
-    )
+    max_neg_num: int = field(default=32, metadata={"help": "Maximum negative number to mine."})
     save_to_output: bool = field(
         default=True,
-        metadata={'help': 'Save the result/key/negative to output_dir? If not true, they will be saved next to the eval_data.'}
+        metadata={
+            "help": "Save the result/key/negative to output_dir? If not true, they will be saved next to the eval_data."
+        },
     )
 
     log_path: str = field(
-        default="data/results/qrecc/qrecc.log",
-        metadata={'help': 'Path to the file for logging.'}
+        default="data/results/qrecc/qrecc.log", metadata={"help": "Path to the file for logging."}
     )
 
 
 @dataclass
 class GenerationArgs(GenerationArgs):
-    max_new_tokens: int = field(
-        default=128,
-        metadata={'help': 'Maximum new tokens to generate.'}
-    )
+    max_new_tokens: int = field(default=128, metadata={"help": "Maximum new tokens to generate."})
     eos_token_id: int = 13
 
 
@@ -120,7 +116,13 @@ def process_qrecc(tokenizer, context_max_length=2048, key_num=3, is_encoder_deco
         # \n\n to split retrieved knowledge
         right = "\n\n" + _prepare_sample(query)
 
-        pair = tokenizer.encode(left, right, add_special_tokens=False, truncation="only_first", max_length=context_max_length - int(has_bos) - int(has_eos))
+        pair = tokenizer.encode(
+            left,
+            right,
+            add_special_tokens=False,
+            truncation="only_first",
+            max_length=context_max_length - int(has_bos) - int(has_eos),
+        )
 
         # strip spaces and \n in the head (when there is no retrieved passage)
         seq = tokenizer.decode(pair).strip()
@@ -134,13 +136,14 @@ def process_qrecc(tokenizer, context_max_length=2048, key_num=3, is_encoder_deco
         for k, v in inputs.items():
             output[k] = v
         return output
+
     return _process
 
 
 def evaluate_qrecc(eval_data, save_path, **kwds):
     def compute_metric(eval_preds):
         makedirs(save_path)
-        
+
         samples = {}
         with open(eval_data) as f:
             for line in f:
@@ -157,21 +160,24 @@ def evaluate_qrecc(eval_data, save_path, **kwds):
 
                 sample["output"] = generation
                 f.write(json.dumps(sample, ensure_ascii=False) + "\n")
-        
+
         rouge_l = compute_metrics("rl", labels=answers, preds=preds)
         return rouge_l
+
     return compute_metric
 
 
 def main():
     parser = HfArgumentParser([QRECCArgs, GenerationArgs])
     args, generation_args = parser.parse_args_into_dataclasses()
-    
+
     accelerator = Accelerator(cpu=args.cpu)
-    
+
     # modify the output_dir for retrieval
     if args.retrieval_method == "dense":
-        output_dir = os.path.join(args.output_dir, args.query_encoder.strip(os.sep).replace(os.sep, "--"))
+        output_dir = os.path.join(
+            args.output_dir, args.query_encoder.strip(os.sep).replace(os.sep, "--")
+        )
     else:
         output_dir = os.path.join(args.output_dir, args.retrieval_method)
     args.output_dir = output_dir
@@ -179,7 +185,9 @@ def main():
     if args.retrieval_method != "no":
         # retrieval metrics computes ndcg and recall
         _, _, metrics = retrieval_main(args=args, accelerator=accelerator, log=False)
-        eval_data = RetrievalMetric._get_save_path(args.eval_data, args.output_dir, field="key", save_name=args.save_name)
+        eval_data = RetrievalMetric._get_save_path(
+            args.eval_data, args.output_dir, field="key", save_name=args.save_name
+        )
     else:
         eval_data = args.eval_data
         metrics = {}
@@ -192,26 +200,35 @@ def main():
             padding_side=args.padding_side,
             cache_dir=args.model_cache_dir,
             accelerator=accelerator,
-            generation_args=asdict(generation_args)
+            generation_args=asdict(generation_args),
         )
 
         tokenizer = llm.tokenizer
-        
+
         logging.info(f"Loading data from {eval_data}...")
 
         with accelerator.main_process_first():
-            dataset = datasets.load_dataset("json", data_files=eval_data, split="train", cache_dir=args.dataset_cache_dir)
-            dataset = dataset.map(process_qrecc(
-                tokenizer, 
-                context_max_length=args.context_max_length, 
-                key_num=args.key_num,
-                is_encoder_decoder=llm.model.config.is_encoder_decoder
-            ), remove_columns=dataset.column_names, batched=True, num_proc=32)
+            dataset = datasets.load_dataset(
+                "json", data_files=eval_data, split="train", cache_dir=args.dataset_cache_dir
+            )
+            dataset = dataset.map(
+                process_qrecc(
+                    tokenizer,
+                    context_max_length=args.context_max_length,
+                    key_num=args.key_num,
+                    is_encoder_decoder=llm.model.config.is_encoder_decoder,
+                ),
+                remove_columns=dataset.column_names,
+                batched=True,
+                num_proc=32,
+            )
 
-        data_collator = DefaultDataCollator(tokenizer=tokenizer, add_position_ids=args.add_position_ids)
+        data_collator = DefaultDataCollator(
+            tokenizer=tokenizer, add_position_ids=args.add_position_ids
+        )
         dataloader = DataLoader(
-            dataset, 
-            batch_size=args.lm_batch_size, 
+            dataset,
+            batch_size=args.lm_batch_size,
             collate_fn=data_collator,
             pin_memory=True,
         )
@@ -219,7 +236,10 @@ def main():
 
         results = llm.generate(dataloader)
         if accelerator.process_index == 0:
-            result_path = os.path.join(args.output_dir, args.model_name_or_path.strip(os.sep).replace(os.sep, "--") + ".json")
+            result_path = os.path.join(
+                args.output_dir,
+                args.model_name_or_path.strip(os.sep).replace(os.sep, "--") + ".json",
+            )
             lm_metrics = evaluate_qrecc(eval_data, result_path)(results)
 
     else:

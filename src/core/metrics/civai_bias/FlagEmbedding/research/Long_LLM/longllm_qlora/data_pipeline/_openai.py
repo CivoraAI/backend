@@ -117,14 +117,12 @@ async def process_api_requests_from_file(
     token_encoding_name: str,
     max_attempts: int,
     logging_level: int,
-    proxy: str=None,
+    proxy: str = None,
 ):
     """Processes API requests in parallel, throttling to stay under rate limits."""
     # constants
     seconds_to_pause_after_rate_limit_error = 15
-    seconds_to_sleep_each_loop = (
-        0.001  # 1 ms limits max throughput to 1,000 requests per second
-    )
+    seconds_to_sleep_each_loop = 0.001  # 1 ms limits max throughput to 1,000 requests per second
 
     # initialize logging
     logging.basicConfig(level=logging_level)
@@ -139,12 +137,8 @@ async def process_api_requests_from_file(
 
     # initialize trackers
     queue_of_requests_to_retry = asyncio.Queue()
-    task_id_generator = (
-        task_id_generator_function()
-    )  # generates integer IDs of 0, 1, 2, ...
-    status_tracker = (
-        StatusTracker()
-    )  # single instance to track a collection of variables
+    task_id_generator = task_id_generator_function()  # generates integer IDs of 0, 1, 2, ...
+    status_tracker = StatusTracker()  # single instance to track a collection of variables
     next_request = None  # variable to hold the next request to call
 
     # initialize available capacity counts
@@ -167,9 +161,7 @@ async def process_api_requests_from_file(
                 if next_request is None:
                     if not queue_of_requests_to_retry.empty():
                         next_request = queue_of_requests_to_retry.get_nowait()
-                        logging.debug(
-                            f"Retrying request {next_request.task_id}: {next_request}"
-                        )
+                        logging.debug(f"Retrying request {next_request.task_id}: {next_request}")
                     elif file_not_finished:
                         try:
                             # get new request
@@ -185,9 +177,7 @@ async def process_api_requests_from_file(
                             )
                             status_tracker.num_tasks_started += 1
                             status_tracker.num_tasks_in_progress += 1
-                            logging.debug(
-                                f"Reading request {next_request.task_id}: {next_request}"
-                            )
+                            logging.debug(f"Reading request {next_request.task_id}: {next_request}")
                         except StopIteration:
                             # if file runs out, set flag to stop reading it
                             logging.debug("Read file exhausted")
@@ -202,8 +192,7 @@ async def process_api_requests_from_file(
                     max_requests_per_minute,
                 )
                 available_token_capacity = min(
-                    available_token_capacity
-                    + max_tokens_per_minute * seconds_since_update / 60.0,
+                    available_token_capacity + max_tokens_per_minute * seconds_since_update / 60.0,
                     max_tokens_per_minute,
                 )
                 last_update_time = current_time
@@ -229,7 +218,7 @@ async def process_api_requests_from_file(
                                 retry_queue=queue_of_requests_to_retry,
                                 save_filepath=save_filepath,
                                 status_tracker=status_tracker,
-                                proxy=proxy
+                                proxy=proxy,
                             )
                         )
                         next_request = None  # reset next_request to empty
@@ -245,13 +234,9 @@ async def process_api_requests_from_file(
                 seconds_since_rate_limit_error = (
                     time.time() - status_tracker.time_of_last_rate_limit_error
                 )
-                if (
-                    seconds_since_rate_limit_error
-                    < seconds_to_pause_after_rate_limit_error
-                ):
+                if seconds_since_rate_limit_error < seconds_to_pause_after_rate_limit_error:
                     remaining_seconds_to_pause = (
-                        seconds_to_pause_after_rate_limit_error
-                        - seconds_since_rate_limit_error
+                        seconds_to_pause_after_rate_limit_error - seconds_since_rate_limit_error
                     )
                     await asyncio.sleep(remaining_seconds_to_pause)
                     # ^e.g., if pause is 15 seconds and final limit was hit 5 seconds ago
@@ -260,9 +245,7 @@ async def process_api_requests_from_file(
                     )
 
         # after finishing, log final status
-        logging.info(
-            f"""Parallel processing complete. Results saved to {save_filepath}"""
-        )
+        logging.info(f"""Parallel processing complete. Results saved to {save_filepath}""")
         if status_tracker.num_tasks_failed > 0:
             logging.warning(
                 f"{status_tracker.num_tasks_failed} / {status_tracker.num_tasks_started} requests failed. Errors logged to {save_filepath}."
@@ -309,32 +292,28 @@ class APIRequest:
         retry_queue: asyncio.Queue,
         save_filepath: str,
         status_tracker: StatusTracker,
-        proxy: str=None,
+        proxy: str = None,
     ):
         """Calls the OpenAI API and saves results."""
         logging.info(f"Starting request #{self.task_id}")
         error = None
         try:
             async with session.post(
-                url=request_url, 
-                headers=request_header, 
+                url=request_url,
+                headers=request_header,
                 json=self.request_json,
                 proxy=proxy,
             ) as response:
                 response = await response.json()
 
             if "error" in response:
-                logging.warning(
-                    f"Request {self.task_id} failed with error {response['error']}"
-                )
+                logging.warning(f"Request {self.task_id} failed with error {response['error']}")
                 status_tracker.num_api_errors += 1
                 error = response
                 if "Rate limit" in response["error"].get("message", ""):
                     status_tracker.time_of_last_rate_limit_error = time.time()
                     status_tracker.num_rate_limit_errors += 1
-                    status_tracker.num_api_errors -= (
-                        1  # rate limit errors are counted separately
-                    )
+                    status_tracker.num_api_errors -= 1  # rate limit errors are counted separately
 
         except (
             Exception
@@ -378,9 +357,7 @@ def api_endpoint_from_url(request_url):
     match = re.search("^https://[^/]+/v\\d+/(.+)$", request_url)
     if match is None:
         # for Azure OpenAI deployment urls
-        match = re.search(
-            r"^https://[^/]+/openai/deployments/[^/]+/(.+?)(\?|$)", request_url
-        )
+        match = re.search(r"^https://[^/]+/openai/deployments/[^/]+/(.+?)(\?|$)", request_url)
     return match[1]
 
 
@@ -445,9 +422,7 @@ def num_tokens_consumed_from_request(
             )
     # more logic needed to support other API calls (e.g., edits, inserts, DALL-E)
     else:
-        raise NotImplementedError(
-            f'API endpoint "{api_endpoint}" not implemented in this script'
-        )
+        raise NotImplementedError(f'API endpoint "{api_endpoint}" not implemented in this script')
 
 
 def task_id_generator_function():

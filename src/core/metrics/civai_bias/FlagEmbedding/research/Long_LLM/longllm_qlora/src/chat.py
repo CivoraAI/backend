@@ -28,7 +28,15 @@ def mask_nested_lists(lst, mask_target, mask_value=0):
         return [x if x != mask_target else mask_value for x in lst]
 
 
-def apply_chat_template(template, messages, system_message=None, tokenizer:PreTrainedTokenizer=None, add_generation_prompt=False, return_labels=False, **tokenization_kwargs):
+def apply_chat_template(
+    template,
+    messages,
+    system_message=None,
+    tokenizer: PreTrainedTokenizer = None,
+    add_generation_prompt=False,
+    return_labels=False,
+    **tokenization_kwargs,
+):
     """
     Wrap the message using the template from fastchat according to its role
 
@@ -38,7 +46,9 @@ def apply_chat_template(template, messages, system_message=None, tokenizer:PreTr
         system_message: system input
     """
     if len(tokenization_kwargs):
-        assert tokenizer is not None, f"Make sure the tokenizer is not None when passing tokenizer kwargs!"
+        assert (
+            tokenizer is not None
+        ), f"Make sure the tokenizer is not None when passing tokenizer kwargs!"
 
     if template == "no":
         assert tokenizer is not None, f"Make sure the tokenizer is not None when template is no!"
@@ -47,55 +57,61 @@ def apply_chat_template(template, messages, system_message=None, tokenizer:PreTr
         conversation = ""
 
         for i, message in enumerate(messages):
-            role = message['role']
-            content = message['content']
+            role = message["role"]
+            content = message["content"]
             if prev_role == role:
-                raise ValueError(f"Current role (idx={i}) {role} and previous role {messages[i-1]['role']} are the same!")
-            
+                raise ValueError(
+                    f"Current role (idx={i}) {role} and previous role {messages[i-1]['role']} are the same!"
+                )
+
             if i == 0:
                 content = tokenizer.decode(tokenizer.encode(content), skip_special_tokens=True)
                 user_message = content
             elif i == 1:
                 # we use a space to separate user message and assistant response
-                content = ' ' + content + tokenizer.eos_token
+                content = " " + content + tokenizer.eos_token
                 assistant_message = content
             else:
-                raise ValueError(f"Please use chat template when there are multi-turn conversations")
+                raise ValueError(
+                    f"Please use chat template when there are multi-turn conversations"
+                )
 
             conversation += content
 
         encoded = tokenizer(conversation, **tokenization_kwargs)
 
         if return_labels:
-            labels = encoded['input_ids'].copy()
-            assistant_message_len = len(tokenizer.encode(assistant_message, add_special_tokens=False))
+            labels = encoded["input_ids"].copy()
+            assistant_message_len = len(
+                tokenizer.encode(assistant_message, add_special_tokens=False)
+            )
             labels[:-assistant_message_len] = [-100 for _ in labels[:-assistant_message_len]]
             encoded["labels"] = labels
 
             # sanity check
-            for id_, label_ in zip(encoded['input_ids'], encoded['labels']):
+            for id_, label_ in zip(encoded["input_ids"], encoded["labels"]):
                 assert id_ == label_ or label_ == -100, f"Found mismatch input_ids and labels!"
 
         return ChatTemplateOutput(raw=conversation, encoded=encoded)
-    
+
     conversation_template = get_conv_template(template)
     if system_message is not None:
         conversation_template.set_system_message(system_message)
-    
+
     config = {
-        'mistral': {
+        "mistral": {
             "turn_sep": "</s>",
             "role_sep": " [/INST]",
             "begin_of_text_len": 1,
             "role_sep_left_offset": 0,
         },
-        'llama-2': {
+        "llama-2": {
             "turn_sep": " </s><s>",
             "role_sep": " [/INST]",
             "begin_of_text_len": 1,
             "role_sep_left_offset": -1,
         },
-        'llama-3': {
+        "llama-3": {
             "turn_sep": "<|eot_id|><|start_header_id|>user<|end_header_id|>\n\n",
             "role_sep": "<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
             # the bos of llama3 is added explicitly to the input string, instead of added by the tokenizer
@@ -104,23 +120,24 @@ def apply_chat_template(template, messages, system_message=None, tokenizer:PreTr
         },
     }[template]
 
-    role_map = {
-        'user': conversation_template.roles[0],
-        'assistant': conversation_template.roles[1]
-    }
+    role_map = {"user": conversation_template.roles[0], "assistant": conversation_template.roles[1]}
     prev_role = None
 
     for i, message in enumerate(messages):
-        role = role_map[message['role']]
-        content = message['content']
+        role = role_map[message["role"]]
+        content = message["content"]
         if prev_role == role:
-            raise ValueError(f"Current role (idx={i}) {role} and previous role {messages[i-1]['role']} are the same!")
+            raise ValueError(
+                f"Current role (idx={i}) {role} and previous role {messages[i-1]['role']} are the same!"
+            )
         conversation_template.append_message(role, content)
         prev_role = role
-    
+
     if add_generation_prompt:
-        assert prev_role == role_map['user'], f"You cannot add generation prompt after assistant output!"
-        conversation_template.append_message(role_map['assistant'], None)
+        assert (
+            prev_role == role_map["user"]
+        ), f"You cannot add generation prompt after assistant output!"
+        conversation_template.append_message(role_map["assistant"], None)
 
     conversation = conversation_template.get_prompt()
 
@@ -137,7 +154,7 @@ def apply_chat_template(template, messages, system_message=None, tokenizer:PreTr
             turn_sep_len = len(tokenizer.encode(turn_sep, add_special_tokens=False))
 
             # transform to array for fast value assignment
-            labels = deepcopy(encoded['input_ids'])
+            labels = deepcopy(encoded["input_ids"])
             labels = np.array(labels)
             total_len = len(labels)
 
@@ -147,7 +164,7 @@ def apply_chat_template(template, messages, system_message=None, tokenizer:PreTr
             for i, turn in enumerate(turns):
                 if turn == "":
                     break
-                
+
                 turn_len = len(tokenizer(turn, add_special_tokens=False).input_ids)
 
                 parts = turn.split(role_sep)
@@ -166,19 +183,19 @@ def apply_chat_template(template, messages, system_message=None, tokenizer:PreTr
                     instruction_len += begin_of_text_len
 
                 # Ignore the user instructions
-                labels[max(cur_len + role_sep_left_offset, 0): cur_len + instruction_len] = -100
+                labels[max(cur_len + role_sep_left_offset, 0) : cur_len + instruction_len] = -100
 
                 cur_len = cur_len + turn_len + turn_sep_len
 
                 if cur_len > total_len:
                     break
 
-            labels[max(cur_len + role_sep_left_offset, 0):] = -100
+            labels[max(cur_len + role_sep_left_offset, 0) :] = -100
 
-            encoded['labels'] = labels.tolist()
+            encoded["labels"] = labels.tolist()
 
             # sanity check
-            for id_, label_ in zip(encoded['input_ids'], encoded['labels']):
+            for id_, label_ in zip(encoded["input_ids"], encoded["labels"]):
                 assert id_ == label_ or label_ == -100, f"Found mismatch input_ids and labels!"
 
     else:
@@ -304,11 +321,7 @@ class Conversation:
             ret = system_prompt
             for i, (role, message) in enumerate(self.messages):
                 if message:
-                    ret += (
-                        role
-                        + ": "
-                        + message.replace("\r\n", "\n").replace("\n\n", "\n")
-                    )
+                    ret += role + ": " + message.replace("\r\n", "\n").replace("\n\n", "\n")
                     ret += "\n\n"
                 else:
                     ret += role + ":"
@@ -627,9 +640,7 @@ conv_templates: Dict[str, Conversation] = {}
 def register_conv_template(template: Conversation, override: bool = False):
     """Register a new conversation template."""
     if not override:
-        assert (
-            template.name not in conv_templates
-        ), f"{template.name} has been registered."
+        assert template.name not in conv_templates, f"{template.name} has been registered."
 
     conv_templates[template.name] = template
 

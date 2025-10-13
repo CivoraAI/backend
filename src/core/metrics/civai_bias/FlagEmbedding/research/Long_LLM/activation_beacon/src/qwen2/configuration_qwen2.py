@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" Qwen2 model configuration"""
+"""Qwen2 model configuration"""
 
 from transformers.configuration_utils import PretrainedConfig
 from transformers.utils import logging
@@ -118,7 +118,7 @@ class Qwen2Config(PretrainedConfig):
         beacon_window=1024,
         beacon_stride=1024,
         beacon_attn="full-coverage",
-        beacon_ratio=[2,4,8,16,32],
+        beacon_ratio=[2, 4, 8, 16, 32],
         beacon_ratio_mix="step-random",
         beacon_param=[],
         beacon_embed_init="eos",

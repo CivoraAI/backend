@@ -14,6 +14,7 @@ from src.utils.util import makedirs, pad_nested_lists, get_max_length_in_nested_
 
 logger = logging.getLogger(__name__)
 import transformers
+
 # disable too long input warning
 transformers.logging.set_verbosity_error()
 
@@ -23,33 +24,31 @@ transformers.logging.set_verbosity_error()
 class LRLMArgs(RetrievalArgs, SRLMArgs):
     eval_data: str = field(
         default="llm-embedder:chat/msc/test.json",
-        metadata={'help': 'Evaluation file containing long texts.'}
+        metadata={"help": "Evaluation file containing long texts."},
     )
     lm_batch_size: int = field(
         default=1,
-        metadata={'help': 'Evaluation batch size.'},
+        metadata={"help": "Evaluation batch size."},
     )
     add_position_ids: bool = field(
         default=False,
-        metadata={'help': 'Create position ids based on attention masks? Useful when training left-padded models with absolute position embeddings.'}
+        metadata={
+            "help": "Create position ids based on attention masks? Useful when training left-padded models with absolute position embeddings."
+        },
     )
-    key_num: int = field(
-        default=1,
-        metadata={'help': 'How many chunks to retrieve at a time?'}
-    )
+    key_num: int = field(default=1, metadata={"help": "How many chunks to retrieve at a time?"})
     log_path: str = field(
-        default="data/results/msc/msc.log",
-        metadata={'help': 'Path to the file for logging.'}
+        default="data/results/msc/msc.log", metadata={"help": "Path to the file for logging."}
     )
     debug_retrieval: bool = field(
-        default=False,
-        metadata={'help': 'Check retrieval queries and values?'}
+        default=False, metadata={"help": "Check retrieval queries and values?"}
     )
 
 
 @dataclass
 class HistoryCollator:
     """Collate histories, pad them, and return masks"""
+
     def __call__(self, batch_elem):
         first_elem = batch_elem[0]
         return_batch = {}
@@ -66,7 +65,7 @@ class HistoryCollator:
                 # there is only one answer
                 key = "answer"
                 batch_value = [elem[0] for elem in batch_value]
-            
+
             elif key in ["query_id", "task"]:
                 continue
 
@@ -77,7 +76,7 @@ class HistoryCollator:
 
 def main():
     parser = HfArgumentParser([LRLMArgs])
-    args, = parser.parse_args_into_dataclasses()
+    (args,) = parser.parse_args_into_dataclasses()
 
     accelerator = Accelerator(cpu=args.cpu)
 
@@ -92,13 +91,13 @@ def main():
         key_max_length=args.key_max_length,
         tie_encoders=args.tie_encoders,
         truncation_side=args.truncation_side,
-        cache_dir=args.model_cache_dir, 
+        cache_dir=args.model_cache_dir,
         dtype=args.dtype,
         accelerator=accelerator,
         # for bm25 retriever
         anserini_dir=args.anserini_dir,
         k1=args.k1,
-        b=args.b
+        b=args.b,
     )
 
     if args.add_instruction:
@@ -129,12 +128,14 @@ def main():
     logging.info(f"Loading data from {args.eval_data}...")
 
     with accelerator.main_process_first():
-        dataset = datasets.load_dataset("json", data_files=args.eval_data, split="train", cache_dir=args.dataset_cache_dir)
+        dataset = datasets.load_dataset(
+            "json", data_files=args.eval_data, split="train", cache_dir=args.dataset_cache_dir
+        )
 
     data_collator = HistoryCollator()
     dataloader = DataLoader(
-        dataset, 
-        batch_size=args.lm_batch_size, 
+        dataset,
+        batch_size=args.lm_batch_size,
         collate_fn=data_collator,
         pin_memory=True,
     )

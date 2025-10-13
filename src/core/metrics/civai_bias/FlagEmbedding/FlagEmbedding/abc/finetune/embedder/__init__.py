@@ -4,7 +4,8 @@ from .AbsArguments import (
     AbsEmbedderTrainingArguments,
 )
 from .AbsDataset import (
-    AbsEmbedderCollator, AbsEmbedderSameDatasetCollator,
+    AbsEmbedderCollator,
+    AbsEmbedderSameDatasetCollator,
     AbsEmbedderSameDatasetTrainDataset,
     AbsEmbedderTrainDataset,
     EmbedderTrainerCallbackForDataRefresh,

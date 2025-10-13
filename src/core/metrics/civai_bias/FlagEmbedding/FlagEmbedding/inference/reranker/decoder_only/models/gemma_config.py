@@ -23,6 +23,7 @@
 
 from transformers.models.gemma2.configuration_gemma2 import Gemma2Config
 
+
 class CostWiseGemmaConfig(Gemma2Config):
     r"""
     This is the configuration class to store the configuration of a [`GemmaModel`]. It is used to instantiate an Gemma
@@ -52,11 +53,11 @@ class CostWiseGemmaConfig(Gemma2Config):
     keys_to_ignore_at_inference = ["past_key_values"]
 
     def __init__(
-            self,
-            start_layer: int = 28,
-            layer_sep: int = 28,
-            layer_wise: bool = False,
-            **kwargs,
+        self,
+        start_layer: int = 28,
+        layer_sep: int = 28,
+        layer_wise: bool = False,
+        **kwargs,
     ):
         self.start_layer = start_layer
         self.layer_sep = layer_sep

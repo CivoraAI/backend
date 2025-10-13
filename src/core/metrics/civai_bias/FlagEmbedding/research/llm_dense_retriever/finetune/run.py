@@ -9,8 +9,7 @@ from transformers import (
     set_seed,
 )
 
-from arguments import ModelArguments, DataArguments, \
-    RetrieverTrainingArguments as TrainingArguments
+from arguments import ModelArguments, DataArguments, RetrieverTrainingArguments as TrainingArguments
 from data import SameDatasetTrainDataset, SameEmbedCollator
 from modeling import BiEncoderModel
 from trainer import BiTrainer
@@ -27,10 +26,10 @@ def main():
     training_args: TrainingArguments
 
     if (
-            os.path.exists(training_args.output_dir)
-            and os.listdir(training_args.output_dir)
-            and training_args.do_train
-            and not training_args.overwrite_output_dir
+        os.path.exists(training_args.output_dir)
+        and os.listdir(training_args.output_dir)
+        and training_args.do_train
+        and not training_args.overwrite_output_dir
     ):
         raise ValueError(
             f"Output directory ({training_args.output_dir}) already exists and is not empty. Use --overwrite_output_dir to overcome."
@@ -63,7 +62,7 @@ def main():
         token=model_args.token,
         cache_dir=model_args.cache_dir,
         use_fast=False,
-        add_eos_token=True
+        add_eos_token=True,
     )
 
     if tokenizer.pad_token is None:
@@ -73,11 +72,11 @@ def main():
         else:
             tokenizer.pad_token = tokenizer.eos_token
             tokenizer.pad_token_id = tokenizer.eos_token_id
-    tokenizer.padding_side = 'left'
+    tokenizer.padding_side = "left"
     # else:
     #     tokenizer.padding_side = 'right'
     if data_args.use_special_tokens:
-        special_tokens_dict = {'additional_special_tokens': ['<instruct>', '<query>', '<response>']}
+        special_tokens_dict = {"additional_special_tokens": ["<instruct>", "<query>", "<response>"]}
         add_num = tokenizer.add_special_tokens(special_tokens_dict)
     else:
         add_num = 0
@@ -93,25 +92,29 @@ def main():
         cache_dir=model_args.cache_dir,
         token=model_args.token,
     )
-    logger.info('Config: %s', config)
+    logger.info("Config: %s", config)
 
-    model = BiEncoderModel(model=base_model,
-                           tokenizer=tokenizer,
-                           normlized=training_args.normlized,
-                           negatives_cross_device=training_args.negatives_cross_device,
-                           temperature=training_args.temperature,
-                           sub_batch_size=training_args.sub_batch_size)
+    model = BiEncoderModel(
+        model=base_model,
+        tokenizer=tokenizer,
+        normlized=training_args.normlized,
+        negatives_cross_device=training_args.negatives_cross_device,
+        temperature=training_args.temperature,
+        sub_batch_size=training_args.sub_batch_size,
+    )
 
     if training_args.gradient_checkpointing:
         model.enable_input_require_grads()
 
     # if data_args.use_same_batch:
-    train_dataset = SameDatasetTrainDataset(args=data_args,
-                                            batch_size=training_args.per_device_train_batch_size,
-                                            seed=training_args.seed,
-                                            tokenizer=tokenizer,
-                                            num_processes=training_args.world_size,
-                                            process_index=training_args.process_index)
+    train_dataset = SameDatasetTrainDataset(
+        args=data_args,
+        batch_size=training_args.per_device_train_batch_size,
+        seed=training_args.seed,
+        tokenizer=tokenizer,
+        num_processes=training_args.world_size,
+        process_index=training_args.process_index,
+    )
     training_args.per_device_train_batch_size = 1
     training_args.dataloader_num_workers = 0
 
@@ -126,9 +129,9 @@ def main():
             pad_to_multiple_of=8,
             return_tensors="pt",
             padding=True,
-            sub_batch_size=training_args.sub_batch_size
+            sub_batch_size=training_args.sub_batch_size,
         ),
-        tokenizer=tokenizer
+        tokenizer=tokenizer,
     )
 
     Path(training_args.output_dir).mkdir(parents=True, exist_ok=True)
@@ -143,6 +146,7 @@ def main():
         # os.makedirs(os.path.join(training_args.output_dir, 'embedding'), exist_ok=True)
         # torch.save(base_model.model.model.embed_tokens, os.path.join(training_args.output_dir, 'embedding', 'emb.pth'))
 
+
 def save_model():
     parser = HfArgumentParser((ModelArguments, DataArguments, TrainingArguments))
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
@@ -152,6 +156,7 @@ def save_model():
 
     if model_args.save_merged_lora_model and training_args.process_index == 0:
         save_merged_model(model_args, training_args.output_dir)
+
 
 if __name__ == "__main__":
     main()

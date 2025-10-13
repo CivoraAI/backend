@@ -1,14 +1,12 @@
 from .auto_embedder import FlagAutoModel
 from .auto_reranker import FlagAutoReranker
-from .embedder import (
-    FlagModel, BGEM3FlagModel,
-    FlagICLModel, FlagLLMModel,
-    EmbedderModelClass
-)
+from .embedder import FlagModel, BGEM3FlagModel, FlagICLModel, FlagLLMModel, EmbedderModelClass
 from .reranker import (
     FlagReranker,
-    FlagLLMReranker, LayerWiseFlagLLMReranker, LightWeightFlagLLMReranker,
-    RerankerModelClass
+    FlagLLMReranker,
+    LayerWiseFlagLLMReranker,
+    LightWeightFlagLLMReranker,
+    RerankerModelClass,
 )
 
 

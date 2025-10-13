@@ -9,10 +9,10 @@ from .trainer import EncoderOnlyEmbedderTrainer
 from .runner import EncoderOnlyEmbedderRunner
 
 __all__ = [
-    'EncoderOnlyEmbedderModelArguments',
-    'EncoderOnlyEmbedderDataArguments',
-    'EncoderOnlyEmbedderTrainingArguments',
-    'BiEncoderOnlyEmbedderModel',
-    'EncoderOnlyEmbedderTrainer',
-    'EncoderOnlyEmbedderRunner',
+    "EncoderOnlyEmbedderModelArguments",
+    "EncoderOnlyEmbedderDataArguments",
+    "EncoderOnlyEmbedderTrainingArguments",
+    "BiEncoderOnlyEmbedderModel",
+    "EncoderOnlyEmbedderTrainer",
+    "EncoderOnlyEmbedderRunner",
 ]

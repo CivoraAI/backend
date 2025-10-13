@@ -57,9 +57,7 @@ class CLSClusteringFastS2S(AbsTaskClusteringFast):
         ds = {}
         for split in self.metadata.eval_splits:
             labels = list(itertools.chain.from_iterable(self.dataset[split]["labels"]))
-            sentences = list(
-                itertools.chain.from_iterable(self.dataset[split]["sentences"])
-            )
+            sentences = list(itertools.chain.from_iterable(self.dataset[split]["sentences"]))
 
             check_label_distribution(self.dataset[split])
 
@@ -117,9 +115,7 @@ class CLSClusteringFastP2P(AbsTaskClusteringFast):
         ds = {}
         for split in self.metadata.eval_splits:
             labels = list(itertools.chain.from_iterable(self.dataset[split]["labels"]))
-            sentences = list(
-                itertools.chain.from_iterable(self.dataset[split]["sentences"])
-            )
+            sentences = list(itertools.chain.from_iterable(self.dataset[split]["sentences"]))
 
             check_label_distribution(self.dataset[split])
 
@@ -247,9 +243,7 @@ class ThuNewsClusteringFastS2S(AbsTaskClusteringFast):
         ds = {}
         for split in self.metadata.eval_splits:
             labels = list(itertools.chain.from_iterable(self.dataset[split]["labels"]))
-            sentences = list(
-                itertools.chain.from_iterable(self.dataset[split]["sentences"])
-            )
+            sentences = list(itertools.chain.from_iterable(self.dataset[split]["sentences"]))
 
             check_label_distribution(self.dataset[split])
 
@@ -307,9 +301,7 @@ class ThuNewsClusteringFastP2P(AbsTaskClusteringFast):
         ds = {}
         for split in self.metadata.eval_splits:
             labels = list(itertools.chain.from_iterable(self.dataset[split]["labels"]))
-            sentences = list(
-                itertools.chain.from_iterable(self.dataset[split]["sentences"])
-            )
+            sentences = list(itertools.chain.from_iterable(self.dataset[split]["sentences"]))
 
             check_label_distribution(self.dataset[split])
 

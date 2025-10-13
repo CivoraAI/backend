@@ -13,14 +13,21 @@ logger = logging.get_logger(__name__)
 
 class Metric:
     """Class for computing metrics and some post-processings."""
+
     @classmethod
     def get_metric_fn(cls, metrics, **kwds):
-        assert isinstance(metrics, list) or isinstance(metrics, tuple), "You must pass metric_names in a list or tuple!"
+        assert isinstance(metrics, list) or isinstance(
+            metrics, tuple
+        ), "You must pass metric_names in a list or tuple!"
         return_metrics = {}
         # get all methods
         metric_fns = []
 
-        all_metric_names = [x[0] for x in inspect.getmembers(cls, predicate=inspect.isfunction) if not x[0].startswith("get_")]
+        all_metric_names = [
+            x[0]
+            for x in inspect.getmembers(cls, predicate=inspect.isfunction)
+            if not x[0].startswith("get_")
+        ]
         for metric_name in metrics:
             if metric_name in all_metric_names:
                 metric_fns.append(partial(getattr(cls, metric_name), **kwds))
@@ -35,8 +42,9 @@ class Metric:
                 if metric is not None:
                     return_metrics.update(metric)
             return return_metrics
+
         return compute_metrics
-    
+
     def get_save_path(eval_data, output_dir=None, field="result", save_name=None):
         """
         if output_dir is None:
@@ -56,10 +64,12 @@ class Metric:
 
     def save_result(preds, labels, save_path, indices=None, **kwargs):
         if len(preds) != len(labels):
-            logger.warning(f"There are {len(preds)} samples in predictions while {len(labels)} samples in labels!")
-            labels = labels[:min(len(preds), len(labels))]
-            preds = preds[:min(len(preds), len(labels))]
-        
+            logger.warning(
+                f"There are {len(preds)} samples in predictions while {len(labels)} samples in labels!"
+            )
+            labels = labels[: min(len(preds), len(labels))]
+            preds = preds[: min(len(preds), len(labels))]
+
         with open(save_path, "w", encoding="utf-8") as f:
             for i, (pred, label) in enumerate(zip(preds, labels)):
                 item = {
@@ -74,9 +84,11 @@ class Metric:
         rouge = Rouge()
 
         if len(preds) != len(labels):
-            logger.warning(f"There are {len(preds)} samples in predictions while {len(labels)} samples in labels!")
-            labels = labels[:min(len(preds), len(labels))]
-            preds = preds[:min(len(preds), len(labels))]
+            logger.warning(
+                f"There are {len(preds)} samples in predictions while {len(labels)} samples in labels!"
+            )
+            labels = labels[: min(len(preds), len(labels))]
+            preds = preds[: min(len(preds), len(labels))]
 
         preds = normalize_text(preds)
         labels = normalize_text(labels)
@@ -92,7 +104,7 @@ class Metric:
             "rouge-l": score["rouge-2"]["f"],
         }
         return metric
-    
+
     # def acc(eval_data=None, **kwds):
     #     if eval_data is not None:
     #         data_labels = Metric._prepare_label(eval_data)

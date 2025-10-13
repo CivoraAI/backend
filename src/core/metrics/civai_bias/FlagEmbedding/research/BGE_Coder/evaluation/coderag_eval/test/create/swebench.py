@@ -14,6 +14,7 @@ from create.utils import save_tsv_dict, save_file_jsonl
 
 # %% Get oracle file contents
 
+
 # get oracle file contents from the repo
 class ContextManager:
     def __init__(self, repo_path, base_commit, verbose=False):
@@ -88,6 +89,7 @@ def ingest_files(filenames):
         files_dict[filename] = content
     return files_dict
 
+
 def get_oracle_filenames(instance):
     """
     Returns the filenames that are changed in the patch
@@ -109,6 +111,7 @@ def is_test(name, test_phrases=None):
     words = set(re.split(r" |_|\/|\.", name.lower()))
     return any(word in words for word in test_phrases)
 
+
 def list_files(root_dir, include_tests=False):
     files = []
     for filename in Path(root_dir).rglob("*.py"):
@@ -117,6 +120,7 @@ def list_files(root_dir, include_tests=False):
         files.append(filename.relative_to(root_dir).as_posix())
     return files
 
+
 def detect_encoding(filename):
     """
     Detect the encoding of a file
@@ -124,6 +128,7 @@ def detect_encoding(filename):
     with open(filename, "rb") as file:
         rawdata = file.read()
     return chardet.detect(rawdata)["encoding"]
+
 
 def ingest_directory_contents(root_dir, include_tests=False):
     files_content = {}
@@ -141,6 +146,7 @@ def ingest_directory_contents(root_dir, include_tests=False):
         files_content[relative_path] = content
     return files_content
 
+
 def get_file_contents(input_instances, verbose: bool = False, tmp_dir: str = "/scratch"):
     orig_dir = os.getcwd()
     with TemporaryDirectory(dir=tmp_dir if os.path.exists(tmp_dir) else "/tmp") as root_dir:
@@ -155,10 +161,12 @@ def get_file_contents(input_instances, verbose: bool = False, tmp_dir: str = "/s
                     instance["readmes"] = ingest_files(readmes)
                     instance["oracle_file_contents"] = ingest_files(get_oracle_filenames(instance))
                     instance["file_contents"] = ingest_directory_contents(cm.repo_path)
-                    assert all([
-                        okey in instance["file_contents"] 
-                        for okey in instance["oracle_file_contents"].keys()
-                    ])
+                    assert all(
+                        [
+                            okey in instance["file_contents"]
+                            for okey in instance["oracle_file_contents"].keys()
+                        ]
+                    )
             except Exception as e:
                 print(f"Failed on instance {instance_id}", e)
                 traceback.print_exc()
@@ -170,21 +178,19 @@ def get_file_contents(input_instances, verbose: bool = False, tmp_dir: str = "/s
 
 # %% Get queries, docs, and qrels
 
+
 def document2code(data, split: str = "test"):
     subset = data[split]
     if args.num_examples is not None:
         import random
+
         indices = random.sample([i for i in range(len(subset))], args.num_examples)
         subset = subset.select(indices)
     print(subset)
 
     # get queries for each example
     queries = [
-        {
-            "_id": item["instance_id"],
-            "text": item["problem_statement"], 
-            "metadata": {}
-        }
+        {"_id": item["instance_id"], "text": item["problem_statement"], "metadata": {}}
         for item in subset
     ]
 
@@ -194,25 +200,27 @@ def document2code(data, split: str = "test"):
     # collect all docs, i.e., code chunks from the repo
     docs = []
     for instance_id, instance in subset_dict.items():
-        print(f"Instance #{instance_id}: {len(instance['oracle_file_contents'])} oracle / {len(instance['file_contents'])} files")
+        print(
+            f"Instance #{instance_id}: {len(instance['oracle_file_contents'])} oracle / {len(instance['file_contents'])} files"
+        )
         for filename, content in instance["file_contents"].items():
-            docs.append({
-                "_id": f"{instance_id}_{filename}",
-                "title": filename,
-                "text": content,
-                "metadata": {},
-            })
+            docs.append(
+                {
+                    "_id": f"{instance_id}_{filename}",
+                    "title": filename,
+                    "text": content,
+                    "metadata": {},
+                }
+            )
 
     # find ground-truth docs for each example
     qrels = []
     for instance_id, instance in subset_dict.items():
         for filename, content in instance["oracle_file_contents"].items():
-            qrels.append({
-                "query-id": instance_id,
-                "corpus-id": f"{instance_id}_{filename}",
-                "score": 1
-            })
-    
+            qrels.append(
+                {"query-id": instance_id, "corpus-id": f"{instance_id}_{filename}", "score": 1}
+            )
+
     return queries, docs, qrels
 
 
@@ -222,7 +230,7 @@ def main():
     name = "swe-bench"
     if "lite" in args.dataset_name.lower():
         name += "-lite"
-        
+
     path = os.path.join(args.output_dir, name)
     os.makedirs(path, exist_ok=True)
     os.makedirs(os.path.join(path, "qrels"), exist_ok=True)
@@ -232,12 +240,16 @@ def main():
     save_file_jsonl(docs, os.path.join(path, "corpus.jsonl"))
     qrels_path = os.path.join(path, "qrels", "test.tsv")
     save_tsv_dict(qrels, qrels_path, ["query-id", "corpus-id", "score"])
-    
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset_name", type=str, default="princeton-nlp/SWE-bench_Lite",
-                        choices=["princeton-nlp/SWE-bench", "princeton-nlp/SWE-bench_Lite"])
+    parser.add_argument(
+        "--dataset_name",
+        type=str,
+        default="princeton-nlp/SWE-bench_Lite",
+        choices=["princeton-nlp/SWE-bench", "princeton-nlp/SWE-bench_Lite"],
+    )
     parser.add_argument("--cache_dir", type=str, default="/scratch/zhiruow/data")
     parser.add_argument("--tmp_dir", type=str, default="/scratch/zhiruow/tmp")
     parser.add_argument("--output_dir", type=str, default="datasets")

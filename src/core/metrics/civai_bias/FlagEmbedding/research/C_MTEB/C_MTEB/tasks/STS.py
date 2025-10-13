@@ -311,4 +311,3 @@ class QBQTC(AbsTaskSTS):
         metadata_dict["min_score"] = 0
         metadata_dict["max_score"] = 2
         return metadata_dict
-    

@@ -2,26 +2,26 @@ from transformers import HfArgumentParser
 
 from FlagEmbedding.abc.finetune.reranker import (
     AbsRerankerDataArguments,
-    AbsRerankerTrainingArguments
+    AbsRerankerTrainingArguments,
 )
 
 from FlagEmbedding.finetune.reranker.decoder_only.base import (
     DecoderOnlyRerankerRunner,
-    RerankerModelArguments
+    RerankerModelArguments,
 )
 
 
 def main():
-    parser = HfArgumentParser((RerankerModelArguments, AbsRerankerDataArguments, AbsRerankerTrainingArguments))
+    parser = HfArgumentParser(
+        (RerankerModelArguments, AbsRerankerDataArguments, AbsRerankerTrainingArguments)
+    )
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
     model_args: RerankerModelArguments
     data_args: AbsRerankerDataArguments
     training_args: AbsRerankerTrainingArguments
 
     runner = DecoderOnlyRerankerRunner(
-        model_args=model_args,
-        data_args=data_args,
-        training_args=training_args
+        model_args=model_args, data_args=data_args, training_args=training_args
     )
     runner.run()
 

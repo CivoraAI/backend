@@ -11,8 +11,9 @@ logger = logging.getLogger(__name__)
 
 class BEIREvaluator(AbsEvaluator):
     """
-    Evaluator class of BEIR 
+    Evaluator class of BEIR
     """
+
     def check_data_info(
         self,
         data_info: Dict[str, str],
@@ -40,20 +41,13 @@ class BEIREvaluator(AbsEvaluator):
             ValueError: sub_dataset_name mismatch
         """
         if data_info["eval_name"] != self.eval_name:
-            raise ValueError(
-                f'eval_name mismatch: {data_info["eval_name"]} vs {self.eval_name}'
-            )
-        if (
-            data_info["model_name"] != model_name
-            or data_info["reranker_name"] != reranker_name
-        ):
+            raise ValueError(f'eval_name mismatch: {data_info["eval_name"]} vs {self.eval_name}')
+        if data_info["model_name"] != model_name or data_info["reranker_name"] != reranker_name:
             raise ValueError(
                 f'model_name or reranker_name mismatch: {data_info["model_name"]} vs {model_name} or {data_info["reranker_name"]} vs {reranker_name}'
             )
-        if (data_info["split"] != split):
-            raise ValueError(
-                f'split mismatch: {data_info["split"]} vs {split}'
-            )
+        if data_info["split"] != split:
+            raise ValueError(f'split mismatch: {data_info["split"]} vs {split}')
         if dataset_name is not None and data_info["dataset_name"] != dataset_name:
             raise ValueError(
                 f'dataset_name mismatch: {data_info["dataset_name"]} vs {dataset_name}'
@@ -88,7 +82,9 @@ class BEIREvaluator(AbsEvaluator):
             if dataset_name is not None:
                 save_name = f"{dataset_name}-" + "{split}.json"
                 if corpus_embd_save_dir is not None:
-                    corpus_embd_save_dir = os.path.join(corpus_embd_save_dir, str(retriever), dataset_name)
+                    corpus_embd_save_dir = os.path.join(
+                        corpus_embd_save_dir, str(retriever), dataset_name
+                    )
             else:
                 save_name = "{split}.json"
 
@@ -151,8 +147,10 @@ class BEIREvaluator(AbsEvaluator):
                     split_no_reranker_search_results_save_path = os.path.join(
                         no_reranker_search_results_save_dir, save_name.format(split=split)
                     )
-                    data_info, search_results = self.load_search_results(split_no_reranker_search_results_save_path)
-                    
+                    data_info, search_results = self.load_search_results(
+                        split_no_reranker_search_results_save_path
+                    )
+
                     self.check_data_info(
                         data_info=data_info,
                         model_name=str(retriever),
@@ -163,9 +161,13 @@ class BEIREvaluator(AbsEvaluator):
                     )
                     no_reranker_search_results_dict[split] = search_results
             retriever.stop_multi_process_pool()
-            eval_results_save_path = os.path.join(no_reranker_search_results_save_dir, 'EVAL', 'eval_results.json')
+            eval_results_save_path = os.path.join(
+                no_reranker_search_results_save_dir, "EVAL", "eval_results.json"
+            )
             if not os.path.exists(eval_results_save_path) or self.overwrite or flag:
-                retriever_eval_results = self.evaluate_results(no_reranker_search_results_save_dir, k_values=k_values)
+                retriever_eval_results = self.evaluate_results(
+                    no_reranker_search_results_save_dir, k_values=k_values
+                )
                 self.output_eval_results_to_json(retriever_eval_results, eval_results_save_path)
 
             # Reranking Stage
@@ -210,16 +212,22 @@ class BEIREvaluator(AbsEvaluator):
                         dataset_name=dataset_name,
                         sub_dataset_name=sub_dataset_name,
                     )
-                eval_results_save_path = os.path.join(reranker_search_results_save_dir, 'EVAL', 'eval_results.json')
+                eval_results_save_path = os.path.join(
+                    reranker_search_results_save_dir, "EVAL", "eval_results.json"
+                )
                 if not os.path.exists(eval_results_save_path) or self.overwrite or flag:
-                    reranker_eval_results = self.evaluate_results(reranker_search_results_save_dir, k_values=k_values)
+                    reranker_eval_results = self.evaluate_results(
+                        reranker_search_results_save_dir, k_values=k_values
+                    )
                     self.output_eval_results_to_json(reranker_eval_results, eval_results_save_path)
         else:
             for sub_dataset_name in sub_dataset_names:
                 if dataset_name is not None:
                     save_name = f"{dataset_name}-{sub_dataset_name}-" + "{split}.json"
                     if corpus_embd_save_dir is not None:
-                        corpus_embd_save_dir = os.path.join(corpus_embd_save_dir, str(retriever), dataset_name, sub_dataset_name)
+                        corpus_embd_save_dir = os.path.join(
+                            corpus_embd_save_dir, str(retriever), dataset_name, sub_dataset_name
+                        )
                 else:
                     save_name = f"{sub_dataset_name}-" + "{split}.json"
 
@@ -234,16 +242,25 @@ class BEIREvaluator(AbsEvaluator):
                     split_no_reranker_search_results_save_path = os.path.join(
                         no_reranker_search_results_save_dir, save_name.format(split=split)
                     )
-                    if not os.path.exists(split_no_reranker_search_results_save_path) or self.overwrite:
+                    if (
+                        not os.path.exists(split_no_reranker_search_results_save_path)
+                        or self.overwrite
+                    ):
                         flag = True
                         break
 
                 no_reranker_search_results_dict = {}
                 if flag:
-                    corpus = self.data_loader.load_corpus(dataset_name=dataset_name, sub_dataset_name=sub_dataset_name)
+                    corpus = self.data_loader.load_corpus(
+                        dataset_name=dataset_name, sub_dataset_name=sub_dataset_name
+                    )
 
                     queries_dict = {
-                        split: self.data_loader.load_queries(dataset_name=dataset_name, sub_dataset_name=sub_dataset_name, split=split)
+                        split: self.data_loader.load_queries(
+                            dataset_name=dataset_name,
+                            sub_dataset_name=sub_dataset_name,
+                            split=split,
+                        )
                         for split in splits
                     }
 
@@ -283,8 +300,10 @@ class BEIREvaluator(AbsEvaluator):
                         split_no_reranker_search_results_save_path = os.path.join(
                             no_reranker_search_results_save_dir, save_name.format(split=split)
                         )
-                        data_info, search_results = self.load_search_results(split_no_reranker_search_results_save_path)
-                        
+                        data_info, search_results = self.load_search_results(
+                            split_no_reranker_search_results_save_path
+                        )
+
                         self.check_data_info(
                             data_info=data_info,
                             model_name=str(retriever),
@@ -294,9 +313,13 @@ class BEIREvaluator(AbsEvaluator):
                             sub_dataset_name=sub_dataset_name,
                         )
                         no_reranker_search_results_dict[split] = search_results
-                eval_results_save_path = os.path.join(no_reranker_search_results_save_dir, 'EVAL', 'eval_results.json')
+                eval_results_save_path = os.path.join(
+                    no_reranker_search_results_save_dir, "EVAL", "eval_results.json"
+                )
                 if not os.path.exists(eval_results_save_path) or self.overwrite or flag:
-                    retriever_eval_results = self.evaluate_results(no_reranker_search_results_save_dir, k_values=k_values)
+                    retriever_eval_results = self.evaluate_results(
+                        no_reranker_search_results_save_dir, k_values=k_values
+                    )
                     self.output_eval_results_to_json(retriever_eval_results, eval_results_save_path)
 
                 # Reranking Stage
@@ -306,10 +329,16 @@ class BEIREvaluator(AbsEvaluator):
                     )
                     os.makedirs(reranker_search_results_save_dir, exist_ok=True)
 
-                    corpus = self.data_loader.load_corpus(dataset_name=dataset_name, sub_dataset_name=sub_dataset_name)
+                    corpus = self.data_loader.load_corpus(
+                        dataset_name=dataset_name, sub_dataset_name=sub_dataset_name
+                    )
 
                     queries_dict = {
-                        split: self.data_loader.load_queries(dataset_name=dataset_name, sub_dataset_name=sub_dataset_name, split=split)
+                        split: self.data_loader.load_queries(
+                            dataset_name=dataset_name,
+                            sub_dataset_name=sub_dataset_name,
+                            split=split,
+                        )
                         for split in splits
                     }
 
@@ -341,17 +370,21 @@ class BEIREvaluator(AbsEvaluator):
                             dataset_name=dataset_name,
                             sub_dataset_name=sub_dataset_name,
                         )
-                    eval_results_save_path = os.path.join(reranker_search_results_save_dir, 'EVAL', 'eval_results.json')
+                    eval_results_save_path = os.path.join(
+                        reranker_search_results_save_dir, "EVAL", "eval_results.json"
+                    )
                     if not os.path.exists(eval_results_save_path) or self.overwrite or flag:
-                        reranker_eval_results = self.evaluate_results(reranker_search_results_save_dir, k_values=k_values)
-                        self.output_eval_results_to_json(reranker_eval_results, eval_results_save_path)
+                        reranker_eval_results = self.evaluate_results(
+                            reranker_search_results_save_dir, k_values=k_values
+                        )
+                        self.output_eval_results_to_json(
+                            reranker_eval_results, eval_results_save_path
+                        )
             if reranker is not None:
                 reranker.stop_multi_process_pool()
-                
+
     def evaluate_results(
-        self,
-        search_results_save_dir: str,
-        k_values: List[int] = [1, 3, 5, 10, 100, 1000]
+        self, search_results_save_dir: str, k_values: List[int] = [1, 3, 5, 10, 100, 1000]
     ):
         """Compute metrics according to the results in the directory.
 
@@ -367,24 +400,26 @@ class BEIREvaluator(AbsEvaluator):
         cqadupstack_num = 0
 
         for file in os.listdir(search_results_save_dir):
-            if not file.endswith('.json'):
+            if not file.endswith(".json"):
                 continue
 
             file_path = os.path.join(search_results_save_dir, file)
             data_info, search_results = self.load_search_results(file_path)
 
-            _eval_name = data_info['eval_name']
-            assert _eval_name == self.eval_name, f'Mismatch eval_name: {_eval_name} vs {self.eval_name} in {file_path}'
+            _eval_name = data_info["eval_name"]
+            assert (
+                _eval_name == self.eval_name
+            ), f"Mismatch eval_name: {_eval_name} vs {self.eval_name} in {file_path}"
 
-            split = data_info['split']
-            dataset_name = data_info.get('dataset_name', None)
-            sub_dataset_name = data_info.get('sub_dataset_name', None)
-            qrels = self.data_loader.load_qrels(dataset_name=dataset_name, sub_dataset_name=sub_dataset_name, split=split)
+            split = data_info["split"]
+            dataset_name = data_info.get("dataset_name", None)
+            sub_dataset_name = data_info.get("sub_dataset_name", None)
+            qrels = self.data_loader.load_qrels(
+                dataset_name=dataset_name, sub_dataset_name=sub_dataset_name, split=split
+            )
 
             eval_results = self.compute_metrics(
-                qrels=qrels,
-                search_results=search_results,
-                k_values=k_values
+                qrels=qrels, search_results=search_results, k_values=k_values
             )
 
             if dataset_name is not None:
@@ -407,14 +442,14 @@ class BEIREvaluator(AbsEvaluator):
                     for k, v in eval_results.items():
                         cqadupstack_results[k] += v
                     cqadupstack_num += 1
-        
+
         if cqadupstack_num > 0:
             for k in cqadupstack_results.keys():
                 cqadupstack_results[k] /= cqadupstack_num
-            eval_results_dict['cqadupstack-test'] = cqadupstack_results
+            eval_results_dict["cqadupstack-test"] = cqadupstack_results
 
         return eval_results_dict
-    
+
     def save_search_results(
         self,
         eval_name: str,

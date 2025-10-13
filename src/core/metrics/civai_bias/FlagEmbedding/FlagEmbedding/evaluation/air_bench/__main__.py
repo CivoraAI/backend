@@ -1,25 +1,20 @@
 from transformers import HfArgumentParser
 
 from FlagEmbedding.evaluation.air_bench import (
-    AIRBenchEvalArgs, AIRBenchEvalModelArgs,
-    AIRBenchEvalRunner
+    AIRBenchEvalArgs,
+    AIRBenchEvalModelArgs,
+    AIRBenchEvalRunner,
 )
 
 
 def main():
-    parser = HfArgumentParser((
-        AIRBenchEvalArgs,
-        AIRBenchEvalModelArgs
-    ))
+    parser = HfArgumentParser((AIRBenchEvalArgs, AIRBenchEvalModelArgs))
 
     eval_args, model_args = parser.parse_args_into_dataclasses()
     eval_args: AIRBenchEvalArgs
     model_args: AIRBenchEvalModelArgs
 
-    runner = AIRBenchEvalRunner(
-        eval_args=eval_args,
-        model_args=model_args
-    )
+    runner = AIRBenchEvalRunner(eval_args=eval_args, model_args=model_args)
 
     runner.run()
 

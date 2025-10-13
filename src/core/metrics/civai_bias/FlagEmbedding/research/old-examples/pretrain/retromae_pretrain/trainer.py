@@ -33,7 +33,7 @@ class PreTrainer(Trainer):
         logger.info(f"Saving model checkpoint to {output_dir}")
         # Save a trained model and configuration using `save_pretrained()`.
         # They can then be reloaded using `from_pretrained()`
-        if not hasattr(self.model, 'save_pretrained'):
+        if not hasattr(self.model, "save_pretrained"):
             logger.info("Trainer.model is not a `PreTrainedModel`, only saving its state dict.")
             state_dict = self.model.state_dict()
             torch.save(state_dict, os.path.join(output_dir, "pytorch_model.bin"))

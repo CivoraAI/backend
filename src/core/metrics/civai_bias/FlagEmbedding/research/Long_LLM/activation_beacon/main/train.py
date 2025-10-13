@@ -1,14 +1,14 @@
 import logging
 from transformers import HfArgumentParser
 from transformers.integrations import is_deepspeed_zero3_enabled
-from src import ( 
+from src import (
     Data,
     DefaultDataCollator,
     ModelArgs,
     FileLogger,
     get_model_and_tokenizer,
     makedirs,
-    format_numel_str
+    format_numel_str,
 )
 from src.args import TrainingArgs
 from src.metrics import Metric
@@ -33,6 +33,7 @@ def main():
             LoraConfig,
             get_peft_model,
         )
+
         # copied from LongLoRA
         config = LoraConfig(
             r=training_args.lora_rank,
@@ -45,11 +46,13 @@ def main():
         )
         model = get_peft_model(model, config)
 
-    logger.info(f"Trainable Model params: {format_numel_str(sum(p.numel() for p in model.parameters() if p.requires_grad))}")
+    logger.info(
+        f"Trainable Model params: {format_numel_str(sum(p.numel() for p in model.parameters() if p.requires_grad))}"
+    )
 
     with training_args.main_process_first():
         train_dataset = Data.prepare_train_data(
-            model_args.train_data, 
+            model_args.train_data,
             tokenizer=tokenizer,
             max_length=model_args.max_length,
             min_length=training_args.min_length,
@@ -60,9 +63,11 @@ def main():
 
     with training_args.main_process_first():
         if is_deepspeed_zero3_enabled() and training_args.eval_method != "perplexity":
-            logger.warning(f"In deepspeed zero3, evaluation with generation is may lead to hang because of the unequal number of forward passes across different devices.")
+            logger.warning(
+                f"In deepspeed zero3, evaluation with generation is may lead to hang because of the unequal number of forward passes across different devices."
+            )
         eval_dataset = Data.prepare_eval_data(
-            model_args.eval_data, 
+            model_args.eval_data,
             tokenizer=tokenizer,
             max_length=training_args.eval_max_length,
             min_length=training_args.eval_min_length,
@@ -82,16 +87,18 @@ def main():
         file_logger=FileLogger(makedirs(training_args.log_path)),
         compute_metrics=Metric.get_metric_fn(
             metrics=training_args.metrics,
-            save_path=Metric.get_save_path(
-                model_args.eval_data,
-                training_args.output_dir
-            ) if model_args.eval_data is not None else None
-        )
+            save_path=(
+                Metric.get_save_path(model_args.eval_data, training_args.output_dir)
+                if model_args.eval_data is not None
+                else None
+            ),
+        ),
     )
     if train_dataset is not None:
         trainer.train()
     elif eval_dataset is not None:
         trainer.evaluate()
+
 
 if __name__ == "__main__":
     main()

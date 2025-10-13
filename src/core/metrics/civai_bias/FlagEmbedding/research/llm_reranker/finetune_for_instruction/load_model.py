@@ -27,7 +27,7 @@ def get_model(model_args, training_args):
                 target_modules=model_args.target_modules,
                 lora_alpha=model_args.lora_alpha,
                 lora_dropout=model_args.lora_dropout,
-                modules_to_save=model_args.lora_extra_parameters
+                modules_to_save=model_args.lora_extra_parameters,
             )
             model = get_peft_model(model, peft_config)
             model.print_trainable_parameters()

@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" Mistral model configuration"""
+"""Mistral model configuration"""
 
 from transformers.configuration_utils import PretrainedConfig
 from transformers.utils import logging
@@ -125,7 +125,7 @@ class MistralConfig(PretrainedConfig):
         beacon_window=1024,
         beacon_stride=1024,
         beacon_attn="full-coverage",
-        beacon_ratio=[2,4,8,16,32],
+        beacon_ratio=[2, 4, 8, 16, 32],
         beacon_ratio_mix="step-random",
         beacon_param=[],
         beacon_embed_init="eos",
@@ -196,6 +196,11 @@ class MistralConfig(PretrainedConfig):
             raise ValueError(
                 f"`rope_scaling`'s type field must be one of ['linear', 'dynamic'], got {rope_scaling_type}"
             )
-        if rope_scaling_factor is None or not isinstance(rope_scaling_factor, float) or rope_scaling_factor <= 1.0:
-            raise ValueError(f"`rope_scaling`'s factor field must be a float > 1, got {rope_scaling_factor}")
-
+        if (
+            rope_scaling_factor is None
+            or not isinstance(rope_scaling_factor, float)
+            or rope_scaling_factor <= 1.0
+        ):
+            raise ValueError(
+                f"`rope_scaling`'s factor field must be a float > 1, got {rope_scaling_factor}"
+            )

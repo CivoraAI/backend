@@ -12,8 +12,21 @@ from transformers import HfArgumentParser, AutoTokenizer
 from transformers.utils import logging
 from torch.utils.data import DataLoader
 
-from src import ModelArgs, DefaultDataCollator, FileLogger, get_model_and_tokenizer, makedirs, apply_chat_template
-from .infbench_utils import TASK_TO_PATH, TASK_TO_MAX_NEW_TOKENS, get_score_one, create_prompt, get_answer
+from src import (
+    ModelArgs,
+    DefaultDataCollator,
+    FileLogger,
+    get_model_and_tokenizer,
+    makedirs,
+    apply_chat_template,
+)
+from .infbench_utils import (
+    TASK_TO_PATH,
+    TASK_TO_MAX_NEW_TOKENS,
+    get_score_one,
+    create_prompt,
+    get_answer,
+)
 
 
 logger = logging.get_logger(__name__)
@@ -23,44 +36,45 @@ logger = logging.get_logger(__name__)
 class Args(ModelArgs):
     eval_data: str = field(
         default="long-llm:infbench",
-        metadata={'help': 'The directory of all infbench evaluation data.'}
+        metadata={"help": "The directory of all infbench evaluation data."},
     )
     output_dir: str = field(
         default="data/results/infbench/",
-        metadata={'help': 'The base directory for saving results and logs.'}
+        metadata={"help": "The base directory for saving results and logs."},
     )
     result_dir: Optional[str] = field(
-        default=None,
-        metadata={'help': 'The directory relative to output_dir for saving results.'}
+        default=None, metadata={"help": "The directory relative to output_dir for saving results."}
     )
 
     tasks: List[str] = field(
-        default_factory=lambda: ['longbook_qa_eng', 'longbook_sum_eng'],
-        metadata={'help': 'Which dataset to evaluate?'}
+        default_factory=lambda: ["longbook_qa_eng", "longbook_sum_eng"],
+        metadata={"help": "Which dataset to evaluate?"},
     )
     prompt_template: str = field(
         default="mistral",
-        metadata={'help': 'Which prompt template to use? (See infbench_utils.py for reference.)'}
+        metadata={"help": "Which prompt template to use? (See infbench_utils.py for reference.)"},
     )
 
-    max_length: int = field(
-        default=128000,
-        metadata={'help': 'Max input length.'}
-    )
+    max_length: int = field(default=128000, metadata={"help": "Max input length."})
     truncate_from_middle: bool = field(
-        default=True,
-        metadata={'help': 'Truncate inputs from the middle.'}
+        default=True, metadata={"help": "Truncate inputs from the middle."}
     )
-    load_result: bool = field(
-        default=False,
-        metadata={'help': 'Load result from saved files?'}
-    )
+    load_result: bool = field(default=False, metadata={"help": "Load result from saved files?"})
 
     do_sample: bool = False
 
 
-def process_infbench(data, indices, tokenizer, chat_template, task:str, prompt_template:str="mistral", max_length=100000, truncate_from_middle=True):
-    outputs = {'input_ids': [], 'attention_mask': [], "index": [], "answer": []}
+def process_infbench(
+    data,
+    indices,
+    tokenizer,
+    chat_template,
+    task: str,
+    prompt_template: str = "mistral",
+    max_length=100000,
+    truncate_from_middle=True,
+):
+    outputs = {"input_ids": [], "attention_mask": [], "index": [], "answer": []}
 
     # NOTE: high version datasets use LazyBatch to wrap data, which cannot be reverted to list of dicts, thus, we need to convert it to dict first
     data = pd.DataFrame(dict(data)).to_dict(orient="records")
@@ -73,14 +87,16 @@ def process_infbench(data, indices, tokenizer, chat_template, task:str, prompt_t
             tokenized_prompt = tokenizer.encode(prompt, add_special_tokens=False)
             if len(tokenized_prompt) > max_length:
                 half = int(max_length / 2)
-                prompt = tokenizer.decode(tokenized_prompt[:half], skip_special_tokens=True) + tokenizer.decode(tokenized_prompt[-half:], skip_special_tokens=True)
+                prompt = tokenizer.decode(
+                    tokenized_prompt[:half], skip_special_tokens=True
+                ) + tokenizer.decode(tokenized_prompt[-half:], skip_special_tokens=True)
         else:
             tokenized_prompt = tokenizer.encode(prompt, add_special_tokens=False)
             prompt = tokenizer.decode(tokenized_prompt[-max_length:], skip_special_tokens=True)
 
         encoded = apply_chat_template(
             chat_template,
-            messages=[{'role': 'user', 'content': prompt}],
+            messages=[{"role": "user", "content": prompt}],
             tokenizer=tokenizer,
             add_generation_prompt=True,
         ).encoded
@@ -111,7 +127,7 @@ def main():
 
         for task in tasks:
             process_fn = partial(
-                process_infbench, 
+                process_infbench,
                 tokenizer=tokenizer,
                 chat_template=args.chat_template,
                 max_length=args.max_length,
@@ -121,8 +137,17 @@ def main():
             )
 
             path = os.path.join(args.eval_data, TASK_TO_PATH[task])
-            raw_dataset = datasets.load_dataset("json", data_files=path, cache_dir=args.dataset_cache_dir, split="train")
-            dataset = raw_dataset.map(process_fn, batched=True, num_proc=32, batch_size=10, with_indices=True, remove_columns=raw_dataset.column_names)
+            raw_dataset = datasets.load_dataset(
+                "json", data_files=path, cache_dir=args.dataset_cache_dir, split="train"
+            )
+            dataset = raw_dataset.map(
+                process_fn,
+                batched=True,
+                num_proc=32,
+                batch_size=10,
+                with_indices=True,
+                remove_columns=raw_dataset.column_names,
+            )
 
             all_datasets[task] = dataset
 
@@ -143,8 +168,8 @@ def main():
         if not (args.load_result and os.path.exists(result_path)):
             data_collator = DefaultDataCollator(tokenizer=tokenizer)
             dataloader = DataLoader(
-                dataset, 
-                batch_size=args.batch_size, 
+                dataset,
+                batch_size=args.batch_size,
                 collate_fn=data_collator,
                 # only pin memory when no gpu
                 pin_memory=not args.cpu,

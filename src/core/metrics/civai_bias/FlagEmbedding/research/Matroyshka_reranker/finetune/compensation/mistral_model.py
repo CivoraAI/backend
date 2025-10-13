@@ -17,7 +17,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" PyTorch Mistral model."""
+"""PyTorch Mistral model."""
 import inspect
 from dataclasses import dataclass
 
@@ -33,8 +33,15 @@ from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, MSELoss
 
 from transformers.activations import ACT2FN
 from transformers.cache_utils import Cache, DynamicCache
-from transformers.modeling_attn_mask_utils import _prepare_4d_causal_attention_mask, _prepare_4d_causal_attention_mask_for_sdpa
-from transformers.modeling_outputs import BaseModelOutputWithPast, CausalLMOutputWithPast, SequenceClassifierOutputWithPast
+from transformers.modeling_attn_mask_utils import (
+    _prepare_4d_causal_attention_mask,
+    _prepare_4d_causal_attention_mask_for_sdpa,
+)
+from transformers.modeling_outputs import (
+    BaseModelOutputWithPast,
+    CausalLMOutputWithPast,
+    SequenceClassifierOutputWithPast,
+)
 from transformers.modeling_utils import PreTrainedModel
 from transformers.utils import (
     add_start_docstrings,
@@ -42,7 +49,8 @@ from transformers.utils import (
     is_flash_attn_2_available,
     is_flash_attn_greater_or_equal_2_10,
     logging,
-    replace_return_docstrings, ModelOutput,
+    replace_return_docstrings,
+    ModelOutput,
 )
 from mistral_config import CostWiseMistralConfig
 
@@ -61,12 +69,12 @@ from transformers.models.mistral.modeling_mistral import (
     MISTRAL_START_DOCSTRING,
     MistralPreTrainedModel,
     MISTRAL_INPUTS_DOCSTRING,
-
 )
 
 logger = logging.get_logger(__name__)
 
 _CONFIG_FOR_DOC = "CostWiseMistralConfig"
+
 
 @dataclass
 class CostWiseModelOutputWithPast(ModelOutput):
@@ -75,6 +83,7 @@ class CostWiseModelOutputWithPast(ModelOutput):
     hidden_states: Optional[Tuple[torch.FloatTensor]] = None
     attentions: Optional[Tuple[torch.FloatTensor]] = None
     attention_masks: Optional[Tuple[torch.FloatTensor]] = None
+
 
 @dataclass
 class CostWiseCausalLMOutputWithPast(ModelOutput):
@@ -85,35 +94,51 @@ class CostWiseCausalLMOutputWithPast(ModelOutput):
     attentions: Optional[Tuple[torch.FloatTensor]] = None
     attention_masks: Optional[Tuple[torch.FloatTensor]] = None
 
-def token_compress(compress_ratio,
-                   hidden_states,
-                   attention_mask,
-                   query_lengths,
-                   prompt_lengths,
-                   weights: torch.Tensor = None):
+
+def token_compress(
+    compress_ratio,
+    hidden_states,
+    attention_mask,
+    query_lengths,
+    prompt_lengths,
+    weights: torch.Tensor = None,
+):
     # hidden_states = hidden_states.to('cpu')
     # attention_mask = attention_mask.to('cpu')
     # query_lengths = query_lengths.to('cpu')
     # prompt_lengths = prompt_lengths.to('cpu')
     # weights = weights.to('cpu')
     # get some specific parameters
-    passage_lengths = torch.sum(attention_mask, dim=1, dtype=torch.int) - query_lengths - prompt_lengths # the raw passage lengths
-    retain_passage_lengths = (passage_lengths + compress_ratio - 1) // compress_ratio # the passage lengths need to be retained
-    final_useful_lengths = query_lengths + prompt_lengths + retain_passage_lengths # the final useful length after compress
-    max_passage_length = torch.max(passage_lengths) # the max passage lengths
-    max_final_lengths = torch.max(final_useful_lengths) # the max useful lengths after compress
+    passage_lengths = (
+        torch.sum(attention_mask, dim=1, dtype=torch.int) - query_lengths - prompt_lengths
+    )  # the raw passage lengths
+    retain_passage_lengths = (
+        passage_lengths + compress_ratio - 1
+    ) // compress_ratio  # the passage lengths need to be retained
+    final_useful_lengths = (
+        query_lengths + prompt_lengths + retain_passage_lengths
+    )  # the final useful length after compress
+    max_passage_length = torch.max(passage_lengths)  # the max passage lengths
+    max_final_lengths = torch.max(final_useful_lengths)  # the max useful lengths after compress
     # make new hidden states and new attention masks
-    new_hidden_states = torch.zeros((hidden_states.shape[0], max_final_lengths,
-                                     hidden_states.shape[-1]), dtype=hidden_states.dtype).to(hidden_states.device)
-    new_attention_mask = torch.ones((hidden_states.shape[0], max_final_lengths), dtype=attention_mask.dtype).to(attention_mask.device)
+    new_hidden_states = torch.zeros(
+        (hidden_states.shape[0], max_final_lengths, hidden_states.shape[-1]),
+        dtype=hidden_states.dtype,
+    ).to(hidden_states.device)
+    new_attention_mask = torch.ones(
+        (hidden_states.shape[0], max_final_lengths), dtype=attention_mask.dtype
+    ).to(attention_mask.device)
     # get new attention mask
-    mask_attention_index = torch.arange(max_final_lengths, device=hidden_states.device).unsqueeze(0) >= final_useful_lengths[:, None]
+    mask_attention_index = (
+        torch.arange(max_final_lengths, device=hidden_states.device).unsqueeze(0)
+        >= final_useful_lengths[:, None]
+    )
     new_attention_mask[mask_attention_index] = 0
     # get new hidden states
     # add query into new hidden states
     query_index = torch.arange(max_final_lengths, device=hidden_states.device).unsqueeze(0)
     mask_query_index = query_index < query_lengths[:, None]
-    new_hidden_states[mask_query_index] = hidden_states[:, : max_final_lengths, :][mask_query_index]
+    new_hidden_states[mask_query_index] = hidden_states[:, :max_final_lengths, :][mask_query_index]
     # add prompt into new hidden states
     # get the index of the prompt in new hidden states
     new_prompt_start_length = query_lengths + retain_passage_lengths
@@ -125,7 +150,9 @@ def token_compress(compress_ratio,
     # get the index of the prompt in hidden states
     raw_prompt_start_length = query_lengths + passage_lengths
     raw_prompt_end_length = raw_prompt_start_length + prompt_lengths
-    raw_prompt_index = torch.arange(hidden_states.shape[1], device=hidden_states.device).unsqueeze(0)
+    raw_prompt_index = torch.arange(hidden_states.shape[1], device=hidden_states.device).unsqueeze(
+        0
+    )
     raw_mask_prompt_index_start = raw_prompt_index >= raw_prompt_start_length[:, None]
     raw_mask_prompt_index_end = raw_prompt_index < raw_prompt_end_length[:, None]
     raw_mask_prompt_index = raw_mask_prompt_index_start & raw_mask_prompt_index_end
@@ -154,41 +181,61 @@ def token_compress(compress_ratio,
     mask_psg_index = mask_psg_index_start & mask_psg_index_end
 
     hidden_states = hidden_states * mask_psg_index.unsqueeze(-1)
-    passage_hidden_states = torch.zeros((hidden_states.shape[0],
-                                         (max_passage_length + compress_ratio - 1) // compress_ratio * compress_ratio,
-                                         hidden_states.shape[-1]), dtype=hidden_states.dtype).to(hidden_states.device)
+    passage_hidden_states = torch.zeros(
+        (
+            hidden_states.shape[0],
+            (max_passage_length + compress_ratio - 1) // compress_ratio * compress_ratio,
+            hidden_states.shape[-1],
+        ),
+        dtype=hidden_states.dtype,
+    ).to(hidden_states.device)
     passage_end_length = passage_lengths
-    passage_index = torch.arange(passage_hidden_states.shape[1], device=hidden_states.device).unsqueeze(0) # maybe exceed the max passage length
+    passage_index = torch.arange(
+        passage_hidden_states.shape[1], device=hidden_states.device
+    ).unsqueeze(
+        0
+    )  # maybe exceed the max passage length
     mask_passage_index = passage_index < passage_end_length[:, None]
 
     raw_passage_end_length = query_lengths + passage_lengths
     raw_passage_start_length = query_lengths
-    raw_passage_index = torch.arange(hidden_states.shape[1], device=hidden_states.device).unsqueeze(0)
+    raw_passage_index = torch.arange(hidden_states.shape[1], device=hidden_states.device).unsqueeze(
+        0
+    )
     raw_mask_passage_index_start = raw_passage_index >= raw_passage_start_length[:, None]
     raw_mask_passage_index_end = raw_passage_index < raw_passage_end_length[:, None]
     raw_mask_passage_index = raw_mask_passage_index_start & raw_mask_passage_index_end
     passage_hidden_states[mask_passage_index] = hidden_states[raw_mask_passage_index]
 
-    passage_weights = torch.zeros((weights.shape[0],
-                                   (max_passage_length + compress_ratio - 1) // compress_ratio * compress_ratio)
-                                  , dtype=weights.dtype).to(hidden_states.device)
+    passage_weights = torch.zeros(
+        (
+            weights.shape[0],
+            (max_passage_length + compress_ratio - 1) // compress_ratio * compress_ratio,
+        ),
+        dtype=weights.dtype,
+    ).to(hidden_states.device)
     weights = torch.sum(weights, dim=1)
     passage_weights[mask_passage_index] = weights[raw_mask_passage_index]
     passage_weights = passage_weights.view(passage_weights.shape[0], -1, compress_ratio)
-    passage_weights = passage_weights / torch.sum(passage_weights, dim=-1
-                                                  ).view(passage_weights.shape[0], -1, 1)
+    passage_weights = passage_weights / torch.sum(passage_weights, dim=-1).view(
+        passage_weights.shape[0], -1, 1
+    )
     passage_weights = passage_weights.view(passage_weights.shape[0], -1)
     # passage_weights = torch.where(passage_weights == torch.nan, 0, passage_weights)
     passage_hidden_states = passage_hidden_states * passage_weights.unsqueeze(-1)
-    passage_hidden_states = passage_hidden_states.view(passage_hidden_states.shape[0], -1, compress_ratio,
-                                                       passage_hidden_states.shape[-1])
+    passage_hidden_states = passage_hidden_states.view(
+        passage_hidden_states.shape[0], -1, compress_ratio, passage_hidden_states.shape[-1]
+    )
     passage_hidden_states = torch.sum(passage_hidden_states, dim=2)
     passage_end_length = retain_passage_lengths
-    passage_index = torch.arange(passage_hidden_states.shape[1], device=hidden_states.device).unsqueeze(0)
+    passage_index = torch.arange(
+        passage_hidden_states.shape[1], device=hidden_states.device
+    ).unsqueeze(0)
     mask_passage_index = passage_index < passage_end_length[:, None]
     new_hidden_states[new_mask_passage_index] = passage_hidden_states[mask_passage_index]
 
     return new_hidden_states, new_attention_mask
+
 
 @add_start_docstrings(
     "The bare Mistral Model outputting raw hidden-states without any specific head on top.",
@@ -209,7 +256,10 @@ class CostWiseMistralModel(MistralPreTrainedModel):
 
         self.embed_tokens = nn.Embedding(config.vocab_size, config.hidden_size, self.padding_idx)
         self.layers = nn.ModuleList(
-            [MistralDecoderLayer(config, layer_idx) for layer_idx in range(config.num_hidden_layers)]
+            [
+                MistralDecoderLayer(config, layer_idx)
+                for layer_idx in range(config.num_hidden_layers)
+            ]
         )
         self._attn_implementation = config._attn_implementation
         self.norm = MistralRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
@@ -242,14 +292,18 @@ class CostWiseMistralModel(MistralPreTrainedModel):
         query_lengths: Optional[int] = None,
         prompt_lengths: Optional[int] = None,
     ) -> Union[Tuple, CostWiseModelOutputWithPast]:
-        output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
+        output_attentions = (
+            output_attentions if output_attentions is not None else self.config.output_attentions
+        )
 
         compress_ratio = None if compress_ratio == 1 else compress_ratio
         if compress_layer is not None and compress_ratio is not None:
             output_attentions = True
 
         output_hidden_states = (
-            output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
+            output_hidden_states
+            if output_hidden_states is not None
+            else self.config.output_hidden_states
         )
 
         if self.config.layer_wise:
@@ -260,13 +314,17 @@ class CostWiseMistralModel(MistralPreTrainedModel):
 
         # retrieve input_ids and inputs_embeds
         if input_ids is not None and inputs_embeds is not None:
-            raise ValueError("You cannot specify both decoder_input_ids and decoder_inputs_embeds at the same time")
+            raise ValueError(
+                "You cannot specify both decoder_input_ids and decoder_inputs_embeds at the same time"
+            )
         elif input_ids is not None:
             batch_size, seq_length = input_ids.shape
         elif inputs_embeds is not None:
             batch_size, seq_length, _ = inputs_embeds.shape
         else:
-            raise ValueError("You have to specify either decoder_input_ids or decoder_inputs_embeds")
+            raise ValueError(
+                "You have to specify either decoder_input_ids or decoder_inputs_embeds"
+            )
 
         if self.gradient_checkpointing and self.training:
             if use_cache:
@@ -292,7 +350,10 @@ class CostWiseMistralModel(MistralPreTrainedModel):
         if position_ids is None:
             device = input_ids.device if input_ids is not None else inputs_embeds.device
             position_ids = torch.arange(
-                past_key_values_length, seq_length + past_key_values_length, dtype=torch.long, device=device
+                past_key_values_length,
+                seq_length + past_key_values_length,
+                dtype=torch.long,
+                device=device,
             )
             position_ids = position_ids.unsqueeze(0).view(-1, seq_length)
         else:
@@ -301,7 +362,11 @@ class CostWiseMistralModel(MistralPreTrainedModel):
         if inputs_embeds is None:
             inputs_embeds = self.embed_tokens(input_ids)
 
-        if attention_mask is not None and self._attn_implementation == "flash_attention_2" and use_cache:
+        if (
+            attention_mask is not None
+            and self._attn_implementation == "flash_attention_2"
+            and use_cache
+        ):
             is_padding_right = attention_mask[:, -1].sum().item() != batch_size
             if is_padding_right:
                 raise ValueError(
@@ -312,7 +377,9 @@ class CostWiseMistralModel(MistralPreTrainedModel):
 
         if self._attn_implementation == "flash_attention_2":
             # 2d mask is passed through the layers
-            input_attention_mask = attention_mask if (attention_mask is not None and 0 in attention_mask) else None
+            input_attention_mask = (
+                attention_mask if (attention_mask is not None and 0 in attention_mask) else None
+            )
         elif self._attn_implementation == "sdpa" and not output_attentions:
             # output_attentions=True can not be supported when using SDPA, and we fall back on
             # the manual implementation that requires a 4D causal mask in all cases.
@@ -342,7 +409,8 @@ class CostWiseMistralModel(MistralPreTrainedModel):
         next_decoder_cache = None
 
         left_padding = (attention_mask[:, -1].sum() == attention_mask.shape[0]) and (
-                torch.sum(attention_mask) != attention_mask.shape[0] * attention_mask.shape[1])
+            torch.sum(attention_mask) != attention_mask.shape[0] * attention_mask.shape[1]
+        )
         query_lengths = [0] * hidden_states.shape[0] if query_lengths is None else query_lengths
         prompt_lengths = [0] * hidden_states.shape[0] if prompt_lengths is None else prompt_lengths
         if not isinstance(query_lengths, torch.Tensor):
@@ -369,7 +437,12 @@ class CostWiseMistralModel(MistralPreTrainedModel):
             elif output_hidden_states:
                 all_hidden_states += (hidden_states,)
 
-            if compress_layer is not None and compress_ratio is not None and idx in compress_layer and idx != 0:
+            if (
+                compress_layer is not None
+                and compress_ratio is not None
+                and idx in compress_layer
+                and idx != 0
+            ):
                 # if all_self_attns is not None:
                 #     # weights = all_self_attns[-1][:, :, -1, :]
                 #     weights = all_self_attns
@@ -377,20 +450,32 @@ class CostWiseMistralModel(MistralPreTrainedModel):
                 #     weights = None
 
                 if left_padding:
-                    raise ValueError('You must use right padding...')
-                hidden_states, attention_mask = token_compress(compress_ratio, hidden_states, attention_mask,
-                                                               query_lengths, prompt_lengths, all_self_attns)
+                    raise ValueError("You must use right padding...")
+                hidden_states, attention_mask = token_compress(
+                    compress_ratio,
+                    hidden_states,
+                    attention_mask,
+                    query_lengths,
+                    prompt_lengths,
+                    all_self_attns,
+                )
                 torch.cuda.empty_cache()
                 device = input_ids.device if input_ids is not None else inputs_embeds.device
                 seq_length = hidden_states.shape[1]
                 position_ids = torch.arange(
-                    past_key_values_length, seq_length + past_key_values_length, dtype=torch.long, device=device
+                    past_key_values_length,
+                    seq_length + past_key_values_length,
+                    dtype=torch.long,
+                    device=device,
                 )
                 position_ids = position_ids.unsqueeze(0)
                 if self._attn_implementation == "flash_attention_2":
                     # 2d mask is passed through the layers
-                    input_attention_mask = attention_mask if (
-                                attention_mask is not None and 0 in attention_mask) else None
+                    input_attention_mask = (
+                        attention_mask
+                        if (attention_mask is not None and 0 in attention_mask)
+                        else None
+                    )
                 elif self._attn_implementation == "sdpa" and not output_attentions:
                     # output_attentions=True can not be supported when using SDPA, and we fall back on
                     # the manual implementation that requires a 4D causal mask in all cases.
@@ -403,7 +488,10 @@ class CostWiseMistralModel(MistralPreTrainedModel):
                 else:
                     # 4d mask is passed through the layers
                     input_attention_mask = _prepare_4d_causal_attention_mask(
-                        attention_mask, (batch_size, seq_length), inputs_embeds, past_key_values_length
+                        attention_mask,
+                        (batch_size, seq_length),
+                        inputs_embeds,
+                        past_key_values_length,
                     )
 
             if self.gradient_checkpointing and self.training:
@@ -449,21 +537,32 @@ class CostWiseMistralModel(MistralPreTrainedModel):
 
         next_cache = None
         if use_cache:
-            next_cache = next_decoder_cache.to_legacy_cache() if use_legacy_cache else next_decoder_cache
+            next_cache = (
+                next_decoder_cache.to_legacy_cache() if use_legacy_cache else next_decoder_cache
+            )
 
         torch.cuda.empty_cache()
 
         if not return_dict:
             return tuple(
-                v for v in [hidden_states, next_cache, all_hidden_states, all_self_attns, all_attention_masks] if
-                v is not None)
+                v
+                for v in [
+                    hidden_states,
+                    next_cache,
+                    all_hidden_states,
+                    all_self_attns,
+                    all_attention_masks,
+                ]
+                if v is not None
+            )
         return CostWiseModelOutputWithPast(
             last_hidden_state=hidden_states,
             past_key_values=next_cache,
             hidden_states=all_hidden_states,
             attentions=all_self_attns,
-            attention_masks=all_attention_masks
+            attention_masks=all_attention_masks,
         )
+
 
 class CostWiseHead(nn.Module):
     """Head for sentence-level classification tasks."""
@@ -474,6 +573,7 @@ class CostWiseHead(nn.Module):
 
     def forward(self, **kwargs):
         return self.linear_head(**kwargs)
+
 
 class CostWiseMistralForCausalLM(MistralPreTrainedModel):
     _tied_weights_keys = ["lm_head.weight"]
@@ -486,9 +586,12 @@ class CostWiseMistralForCausalLM(MistralPreTrainedModel):
             self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
         else:
             self.lm_head = nn.ModuleList(
-                [CostWiseHead(config.hidden_size, 1) for _ in range(
-                    config.start_layer, config.num_hidden_layers + 1, config.layer_sep
-                )]
+                [
+                    CostWiseHead(config.hidden_size, 1)
+                    for _ in range(
+                        config.start_layer, config.num_hidden_layers + 1, config.layer_sep
+                    )
+                ]
             )
 
         # Initialize weights and apply final processing
@@ -558,9 +661,13 @@ class CostWiseMistralForCausalLM(MistralPreTrainedModel):
         "Hey, are you conscious? Can you talk to me?\nI'm not conscious, but I can talk to you."
         ```"""
 
-        output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
+        output_attentions = (
+            output_attentions if output_attentions is not None else self.config.output_attentions
+        )
         output_hidden_states = (
-            output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
+            output_hidden_states
+            if output_hidden_states is not None
+            else self.config.output_hidden_states
         )
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
@@ -572,7 +679,13 @@ class CostWiseMistralForCausalLM(MistralPreTrainedModel):
                 cutoff_layers = [self.config.num_hidden_layers]
             elif isinstance(cutoff_layers, int):
                 cutoff_layers = [cutoff_layers]
-            can_use_layers = list(range(self.config.start_layer, self.config.num_hidden_layers + 1, self.config.layer_sep))
+            can_use_layers = list(
+                range(
+                    self.config.start_layer,
+                    self.config.num_hidden_layers + 1,
+                    self.config.layer_sep,
+                )
+            )
             remove_layers = [i for i in cutoff_layers if i not in can_use_layers]
             if len(remove_layers) > 0:
                 logger.warning_once(
@@ -580,7 +693,9 @@ class CostWiseMistralForCausalLM(MistralPreTrainedModel):
                 )
             cutoff_layers = [i for i in cutoff_layers if i not in remove_layers]
             if len(cutoff_layers) == 0:
-                raise ValueError(f"Your cutoff layers must in [{self.config.start_layer}, {self.config.num_hidden_layers}]")
+                raise ValueError(
+                    f"Your cutoff layers must in [{self.config.start_layer}, {self.config.num_hidden_layers}]"
+                )
 
         # decoder outputs consists of (dec_features, layer_state, dec_hidden, dec_attn)
         outputs = self.model(
@@ -597,7 +712,7 @@ class CostWiseMistralForCausalLM(MistralPreTrainedModel):
             compress_ratio=compress_ratio,
             query_lengths=query_lengths,
             prompt_lengths=prompt_lengths,
-            cutoff_layers=cutoff_layers
+            cutoff_layers=cutoff_layers,
         )
 
         if not self.config.layer_wise:
@@ -636,7 +751,7 @@ class CostWiseMistralForCausalLM(MistralPreTrainedModel):
             past_key_values=outputs.past_key_values,
             hidden_states=outputs.hidden_states,
             attentions=outputs.attentions,
-            attention_masks=outputs[-1] if self.model.config.layer_wise else outputs[-1][-1]
+            attention_masks=outputs[-1] if self.model.config.layer_wise else outputs[-1][-1],
         )
 
     def prepare_inputs_for_generation(
@@ -701,6 +816,9 @@ class CostWiseMistralForCausalLM(MistralPreTrainedModel):
         reordered_past = ()
         for layer_past in past_key_values:
             reordered_past += (
-                tuple(past_state.index_select(0, beam_idx.to(past_state.device)) for past_state in layer_past),
+                tuple(
+                    past_state.index_select(0, beam_idx.to(past_state.device))
+                    for past_state in layer_past
+                ),
             )
         return reordered_past

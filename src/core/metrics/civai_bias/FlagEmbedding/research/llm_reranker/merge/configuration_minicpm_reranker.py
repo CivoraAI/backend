@@ -17,7 +17,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" MiniCPM model configuration"""
+"""MiniCPM model configuration"""
 
 from transformers.configuration_utils import PretrainedConfig
 from transformers.utils import logging
@@ -25,6 +25,7 @@ from transformers.utils import logging
 logger = logging.get_logger(__name__)
 
 MINICPM_PRETRAINED_CONFIG_ARCHIVE_MAP = {}
+
 
 class LayerWiseMiniCPMConfig(PretrainedConfig):
     r"""
@@ -181,6 +182,7 @@ class LayerWiseMiniCPMConfig(PretrainedConfig):
         )
         try:
             import flash_attn
+
             self._attn_implementation = "flash_attention_2"
         except:
             pass
@@ -203,5 +205,11 @@ class LayerWiseMiniCPMConfig(PretrainedConfig):
             raise ValueError(
                 f"`rope_scaling`'s type field must be one of ['linear', 'dynamic'], got {rope_scaling_type}"
             )
-        if rope_scaling_factor is None or not isinstance(rope_scaling_factor, float) or rope_scaling_factor <= 1.0:
-            raise ValueError(f"`rope_scaling`'s factor field must be a float > 1, got {rope_scaling_factor}")
+        if (
+            rope_scaling_factor is None
+            or not isinstance(rope_scaling_factor, float)
+            or rope_scaling_factor <= 1.0
+        ):
+            raise ValueError(
+                f"`rope_scaling`'s factor field must be a float > 1, got {rope_scaling_factor}"
+            )

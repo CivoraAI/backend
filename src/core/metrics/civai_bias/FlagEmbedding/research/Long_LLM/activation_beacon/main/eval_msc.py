@@ -13,7 +13,16 @@ from dataclasses import dataclass, field, asdict
 from collections import defaultdict
 from functools import partial
 
-from src import ModelArgs, DefaultDataCollator, FileLogger, get_model_and_tokenizer, makedirs, split_file_dir_name_ext, apply_chat_template, normalize_text
+from src import (
+    ModelArgs,
+    DefaultDataCollator,
+    FileLogger,
+    get_model_and_tokenizer,
+    makedirs,
+    split_file_dir_name_ext,
+    apply_chat_template,
+    normalize_text,
+)
 from .longbench_utils import qa_f1_score
 
 logger = logging.get_logger(__name__)
@@ -22,41 +31,41 @@ logger = logging.get_logger(__name__)
 @dataclass
 class Args(ModelArgs):
     eval_data: str = field(
-        default="long-llm:memgpt/msc.json",
-        metadata={'help': 'Evaluation json data.'}
+        default="long-llm:memgpt/msc.json", metadata={"help": "Evaluation json data."}
     )
     output_dir: str = field(
         default="data/results/msc/",
-        metadata={'help': 'The base directory for saving results and logs.'}
+        metadata={"help": "The base directory for saving results and logs."},
     )
     result_dir: Optional[str] = field(
-        default=None,
-        metadata={'help': 'The directory relative to output_dir for saving results.'}
+        default=None, metadata={"help": "The directory relative to output_dir for saving results."}
     )
 
-    chat_template: str = field(
-        default='no'
-    )
-    max_length: int = field(
-        default=None
-    )
+    chat_template: str = field(default="no")
+    max_length: int = field(default=None)
     do_sample: bool = False
     max_new_tokens: int = 20
 
 
-
 def process_msc(data, tokenizer, max_length, chat_template):
-    outputs = {'input_ids': [], 'attention_mask': [], 'target': []}
-    
-    for context, input_, output in zip(data['context'], data['input'], data['output']):
+    outputs = {"input_ids": [], "attention_mask": [], "target": []}
+
+    for context, input_, output in zip(data["context"], data["input"], data["output"]):
         prompt = context + "\n" + input_
 
         if max_length is not None:
-            prompt = tokenizer.decode(tokenizer.encode(prompt, add_special_tokens=False)[-max_length:])
+            prompt = tokenizer.decode(
+                tokenizer.encode(prompt, add_special_tokens=False)[-max_length:]
+            )
 
-        encoded = apply_chat_template(chat_template, [{'role': 'user', 'content': prompt}], tokenizer=tokenizer, add_generation_prompt=True).encoded
+        encoded = apply_chat_template(
+            chat_template,
+            [{"role": "user", "content": prompt}],
+            tokenizer=tokenizer,
+            add_generation_prompt=True,
+        ).encoded
         encoded["target"] = output
-    
+
         for k, v in encoded.items():
             outputs[k].append(v)
     return outputs
@@ -71,19 +80,28 @@ def main():
     model, tokenizer = get_model_and_tokenizer(args, device=accelerator.device)
 
     with accelerator.main_process_first():
-        process_fn = partial(process_msc, tokenizer=tokenizer, chat_template=args.chat_template, max_length=args.max_length)
-        raw_dataset = datasets.load_dataset("json", data_files=args.eval_data, cache_dir=args.dataset_cache_dir, split="train")
-        dataset = raw_dataset.map(process_fn, batched=True, num_proc=32, remove_columns=raw_dataset.column_names)
+        process_fn = partial(
+            process_msc,
+            tokenizer=tokenizer,
+            chat_template=args.chat_template,
+            max_length=args.max_length,
+        )
+        raw_dataset = datasets.load_dataset(
+            "json", data_files=args.eval_data, cache_dir=args.dataset_cache_dir, split="train"
+        )
+        dataset = raw_dataset.map(
+            process_fn, batched=True, num_proc=32, remove_columns=raw_dataset.column_names
+        )
 
     data_collator = DefaultDataCollator(tokenizer=tokenizer)
-    
+
     results = []
 
     all_targets = dataset["target"]
     dataset = dataset.remove_columns(["target"])
     dataloader = DataLoader(
-        dataset, 
-        batch_size=args.batch_size, 
+        dataset,
+        batch_size=args.batch_size,
         collate_fn=data_collator,
         # only pin memory when no gpu
         pin_memory=not args.cpu,
@@ -110,7 +128,7 @@ def main():
 
         if isinstance(output, torch.Tensor):
             # 1, max_new_tokens
-            output = output[:, x['input_ids'].shape[1]:]
+            output = output[:, x["input_ids"].shape[1] :]
             output = tokenizer.batch_decode(output, skip_special_tokens=True)
         elif isinstance(output, list):
             pass
@@ -122,19 +140,25 @@ def main():
 
     if accelerator.process_index == 0:
         rouge = Rouge()
-        score = rouge.get_scores(normalize_text(all_outputs), normalize_text(all_targets), avg=True)["rouge-l"]["r"]
+        score = rouge.get_scores(
+            normalize_text(all_outputs), normalize_text(all_targets), avg=True
+        )["rouge-l"]["r"]
 
         for output, target in zip(all_outputs, all_targets):
             results.append({"target": target, "prediction": output})
 
-        result_dir = os.path.join(args.output_dir, args.result_dir) if args.result_dir is not None else args.output_dir
-        with open(makedirs(os.path.join(result_dir, "results.json")), "w", encoding='utf-8') as f:
+        result_dir = (
+            os.path.join(args.output_dir, args.result_dir)
+            if args.result_dir is not None
+            else args.output_dir
+        )
+        with open(makedirs(os.path.join(result_dir, "results.json")), "w", encoding="utf-8") as f:
             json.dump(results, f)
         # also save config
         args.save(os.path.join(result_dir, "config.json"))
 
         file_logger = FileLogger(makedirs(os.path.join(args.output_dir, "metrics.log")))
-        file_logger.log({'rouge': score}, Args=asdict(args))
+        file_logger.log({"rouge": score}, Args=asdict(args))
 
 
 if __name__ == "__main__":

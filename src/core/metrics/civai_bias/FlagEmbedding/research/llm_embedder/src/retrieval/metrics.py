@@ -12,12 +12,19 @@ logger = logging.getLogger(__name__)
 
 class RetrievalMetric:
     """Class for computing metrics and some post-processings."""
+
     @classmethod
     def get_metric_fn(cls, metric_names, **kwds):
-        assert isinstance(metric_names, list) or isinstance(metric_names, tuple), "You must pass metric_names in a list or tuple!"
+        assert isinstance(metric_names, list) or isinstance(
+            metric_names, tuple
+        ), "You must pass metric_names in a list or tuple!"
         all_metrics = {}
         # get all methods
-        all_implemented_fns = [x[0] for x in inspect.getmembers(cls, predicate=inspect.isfunction) if not x[0].startswith("_")]
+        all_implemented_fns = [
+            x[0]
+            for x in inspect.getmembers(cls, predicate=inspect.isfunction)
+            if not x[0].startswith("_")
+        ]
 
         def compute_metrics(*args, **kwargs):
             for metric_name in metric_names:
@@ -31,8 +38,9 @@ class RetrievalMetric:
                 else:
                     raise NotImplementedError(f"Metric {metric_name} not implemented!")
             return all_metrics
+
         return compute_metrics
-    
+
     @staticmethod
     def _get_save_path(eval_data, output_dir=None, field="result", save_name=None):
         """
@@ -66,7 +74,7 @@ class RetrievalMetric:
                 if scores is not None:
                     res["score"] = scores[i]
                 f.write(json.dumps(res, ensure_ascii=False) + "\n")
-    
+
     @staticmethod
     def _load_result(result_path):
         logger.info(f"loading retrieval results from {result_path}...")
@@ -104,7 +112,7 @@ class RetrievalMetric:
             return pred, score
         else:
             return pred
-    
+
     @staticmethod
     def _prepare_label(eval_data):
         labels = {}
@@ -129,10 +137,12 @@ class RetrievalMetric:
         def compute_metric(query_ids, preds, labels=None, **kwargs):
             if labels is None:
                 labels = data_labels
-            
+
             if len(preds) != len(labels):
-                logger.warning(f"There are {len(preds)} queries in predictions while {len(labels)} queries in labels!")
-            
+                logger.warning(
+                    f"There are {len(preds)} queries in predictions while {len(labels)} queries in labels!"
+                )
+
             mrrs = np.zeros(len(cutoffs))
             for query_id, pred in zip(query_ids, preds):
                 label = labels[query_id]
@@ -157,6 +167,7 @@ class RetrievalMetric:
                 metric[f"{metric_name}@{cutoff}"] = mrr
 
             return metric
+
         return compute_metric
 
     @staticmethod
@@ -170,7 +181,9 @@ class RetrievalMetric:
                 labels = data_labels
 
             if len(preds) != len(labels):
-                logger.warning(f"There are {len(preds)} queries in predictions while {len(labels)} queries in labels!")
+                logger.warning(
+                    f"There are {len(preds)} queries in predictions while {len(labels)} queries in labels!"
+                )
 
             recalls = np.zeros(len(cutoffs))
             for query_id, pred in zip(query_ids, preds):
@@ -188,8 +201,9 @@ class RetrievalMetric:
                 metric[f"{metric_name}@{cutoff}"] = recall
 
             return metric
+
         return compute_metric
-    
+
     @staticmethod
     def ndcg(eval_data=None, cutoffs=[10], **kwds):
         metric_name = inspect.currentframe().f_code.co_name
@@ -201,8 +215,10 @@ class RetrievalMetric:
                 labels = data_labels
 
             if len(preds) != len(labels):
-                logger.warning(f"There are {len(preds)} queries in predictions while {len(labels)} queries in labels!")
-            
+                logger.warning(
+                    f"There are {len(preds)} queries in predictions while {len(labels)} queries in labels!"
+                )
+
             ndcgs = np.zeros(len(cutoffs))
             for query_id, pred in zip(query_ids, preds):
                 label = labels[query_id]
@@ -228,6 +244,7 @@ class RetrievalMetric:
                 ndcg = ndcgs[i]
                 metric[f"{metric_name}@{cutoff}"] = ndcg
             return metric
+
         return compute_metric
 
     @staticmethod
@@ -238,19 +255,23 @@ class RetrievalMetric:
             for i, pred in enumerate(preds):
                 retrieval_result[i] = RetrievalMetric._clean_pred(pred)
 
-            metrics = evaluate_nq(retrieval_result, eval_data=eval_data, corpus=corpus, cache_dir=cache_dir)
+            metrics = evaluate_nq(
+                retrieval_result, eval_data=eval_data, corpus=corpus, cache_dir=cache_dir
+            )
             return metrics
+
         return compute_metric
 
     @staticmethod
     def collate_key(eval_data, save_name, corpus, output_dir=None, save_to_output=False, **kwds):
         """
-        Collate retrieval results for evaluation. 
+        Collate retrieval results for evaluation.
         Append a 'keys' column in the eval_data where each key is a piece of retrieved text;
         Delete 'pos' and 'neg' column.
         If output_dir is None, save at {eval_data}.keys.{save_name}.json
         Else, save at {output_dir}.keys.{save_name}.json
         """
+
         def collate(query_ids, preds, **kwargs):
             query_id_2_pred = {}
             for query_id, pred in zip(query_ids, preds):
@@ -260,9 +281,13 @@ class RetrievalMetric:
             del preds
 
             if save_to_output and output_dir is not None:
-                save_path = RetrievalMetric._get_save_path(eval_data, output_dir, field="key", save_name=save_name)
+                save_path = RetrievalMetric._get_save_path(
+                    eval_data, output_dir, field="key", save_name=save_name
+                )
             else:
-                save_path = RetrievalMetric._get_save_path(eval_data, None, field="key", save_name=save_name)
+                save_path = RetrievalMetric._get_save_path(
+                    eval_data, None, field="key", save_name=save_name
+                )
 
             logger.info(f"saving key to {save_path}...")
             with open(eval_data) as f, open(save_path, "w") as g:
@@ -290,15 +315,26 @@ class RetrievalMetric:
                     # if "teacher_scores" in item:
                     #     del item["teacher_scores"]
                     g.write(json.dumps(item, ensure_ascii=False) + "\n")
+
         return collate
 
     @staticmethod
-    def collate_neg(eval_data, save_name, corpus, max_neg_num=100, filter_answers=False, output_dir=None, save_to_output=False, **kwds):
+    def collate_neg(
+        eval_data,
+        save_name,
+        corpus,
+        max_neg_num=100,
+        filter_answers=False,
+        output_dir=None,
+        save_to_output=False,
+        **kwds,
+    ):
         """
-        Collate retrieval results for training. 
+        Collate retrieval results for training.
         Append 'pos' and 'neg' columns in the eval_data where each element is a piece of retrieved text;
         Save at {output_dir}.neg.{save_name}.json
         """
+
         def collate(query_ids, preds, **kwargs):
             query_id_2_pred = {}
             for query_id, pred in zip(query_ids, preds):
@@ -308,9 +344,13 @@ class RetrievalMetric:
             del preds
 
             if save_to_output and output_dir is not None:
-                save_path = RetrievalMetric._get_save_path(eval_data, output_dir, field="neg", save_name=save_name)
+                save_path = RetrievalMetric._get_save_path(
+                    eval_data, output_dir, field="neg", save_name=save_name
+                )
             else:
-                save_path = RetrievalMetric._get_save_path(eval_data, None, field="neg", save_name=save_name)
+                save_path = RetrievalMetric._get_save_path(
+                    eval_data, None, field="neg", save_name=save_name
+                )
 
             logger.info(f"saving {max_neg_num} negatives to {save_path}...")
             with open(eval_data) as f, open(save_path, "w") as g:
@@ -341,7 +381,11 @@ class RetrievalMetric:
                     # NOTE: here we do not use pos_index to distinguish pos and neg, because different pos_index may correpond to the same content due to duplication in the corpus
                     if filter_answers:
                         answers = item.get("answers", [])
-                        valid_index = [i for i, x in enumerate(neg) if (x not in pos) and (not any(a.lower() in x.lower() for a in answers))]
+                        valid_index = [
+                            i
+                            for i, x in enumerate(neg)
+                            if (x not in pos) and (not any(a.lower() in x.lower() for a in answers))
+                        ]
                     else:
                         valid_index = [i for i, x in enumerate(neg) if x not in pos]
                     valid_index = valid_index[:max_neg_num]
@@ -357,16 +401,18 @@ class RetrievalMetric:
                         del item["teacher_scores"]
 
                     g.write(json.dumps(item, ensure_ascii=False) + "\n")
+
         return collate
-    
+
     @staticmethod
     def collate_score(eval_data, save_name, output_dir=None, save_to_output=False, **kwds):
         """
-        Collate scores generated by the reranking model. 
+        Collate scores generated by the reranking model.
         Append 'teacher_scores' column in the eval_data where each element is the score of 'pos' unioned 'neg';
         If output_dir is None, save at {eval_data}.score.{save_name}.json
         Else, save at {output_dir}.score.{save_name}.json
         """
+
         def collate(query_ids, preds, scores, **kwargs):
             query_id_2_pred = {}
             for query_id, pred, score in zip(query_ids, preds, scores):
@@ -375,11 +421,15 @@ class RetrievalMetric:
             del query_ids
             del preds
             del scores
-            
+
             if save_to_output and output_dir is not None:
-                save_path = RetrievalMetric._get_save_path(eval_data, output_dir, field="scored", save_name=save_name)
+                save_path = RetrievalMetric._get_save_path(
+                    eval_data, output_dir, field="scored", save_name=save_name
+                )
             else:
-                save_path = RetrievalMetric._get_save_path(eval_data, None, field="scored", save_name=save_name)
+                save_path = RetrievalMetric._get_save_path(
+                    eval_data, None, field="scored", save_name=save_name
+                )
 
             logger.info(f"saving scores to {save_path}...")
             with open(eval_data) as f, open(save_path, "w") as g:
@@ -388,7 +438,7 @@ class RetrievalMetric:
                     query_id = item["query_id"]
 
                     pred, score = query_id_2_pred[query_id]
-                    
+
                     # NOTE: there must be key_index
                     if "pos_index" in item:
                         key_index = item["pos_index"] + item["neg_index"]
@@ -402,4 +452,5 @@ class RetrievalMetric:
                     item["teacher_scores"] = teacher_scores
 
                     g.write(json.dumps(item, ensure_ascii=False) + "\n")
+
         return collate
