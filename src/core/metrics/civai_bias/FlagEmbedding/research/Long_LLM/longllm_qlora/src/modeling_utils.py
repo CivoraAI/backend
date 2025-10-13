@@ -15,6 +15,7 @@ def optional_grad_ctx(with_grad=False):
     else:
         return torch.no_grad()
 
+
 def move_to_device(data, device):
     """
     Prepares one `data` before feeding it to the model, be it a tensor or a nested list/dictionary of tensors.
@@ -28,6 +29,7 @@ def move_to_device(data, device):
         return data.to(**kwargs)
     else:
         return data
+
 
 def compute_loss(logits, labels, shift=False):
     """
@@ -43,14 +45,14 @@ def compute_loss(logits, labels, shift=False):
 
     # NOTE: the loss on -100 labels is 0 by default
     token_loss = torch.nn.functional.cross_entropy(
-        logits.flatten(0, 1), 
-        labels.reshape(-1), 
-        reduction="none"
-    ).reshape(batch_size, -1)   # batch_size, seq_len
-    
+        logits.flatten(0, 1), labels.reshape(-1), reduction="none"
+    ).reshape(
+        batch_size, -1
+    )  # batch_size, seq_len
+
     valid_token_num = (labels != -100).sum(-1)  # batch_size
     all_valid_token_num = valid_token_num.sum()
-    
+
     if all_valid_token_num > 0:
         loss = token_loss.sum() / valid_token_num.sum()
     else:
@@ -59,13 +61,13 @@ def compute_loss(logits, labels, shift=False):
     batch_loss = token_loss.sum(-1) / valid_token_num
     # prevent nan
     if (valid_token_num == 0).any():
-        batch_loss = batch_loss.masked_fill(valid_token_num == 0, 0.)
+        batch_loss = batch_loss.masked_fill(valid_token_num == 0, 0.0)
 
     return loss, batch_loss, valid_token_num
 
 
 @torch.no_grad()
-def evaluate_perplexity(model, dataloader, accelerator:Optional[Accelerator]=None):
+def evaluate_perplexity(model, dataloader, accelerator: Optional[Accelerator] = None):
     if accelerator is not None and type(dataloader) == torch.utils.data.DataLoader:
         # if the dataloader has been prepared, we shall not prepare it twice, especially in case of deepspeed
         dataloader = accelerator.prepare(dataloader)
@@ -109,25 +111,33 @@ def evaluate_perplexity(model, dataloader, accelerator:Optional[Accelerator]=Non
     for _id, loss_and_num in all_loss.items():
         # sum up the loss for all valid tokens in the entire sequence, and divide the number of valid tokens
         all_loss[_id] = sum([x[0] for x in loss_and_num]) / sum(x[1] for x in loss_and_num)
-    
+
     # average across then take exp
     perplexity = math.exp(sum(all_loss.values()) / len(all_loss))
     return perplexity
 
 
 @torch.no_grad()
-def evaluate_generation(model, dataloader, accelerator:Optional[Accelerator]=None, tokenizer=None, return_new_tokens_only=True, return_decoded=True, **generation_config):
+def evaluate_generation(
+    model,
+    dataloader,
+    accelerator: Optional[Accelerator] = None,
+    tokenizer=None,
+    return_new_tokens_only=True,
+    return_decoded=True,
+    **generation_config,
+):
     if accelerator is not None and type(dataloader) == torch.utils.data.DataLoader:
         # if the dataloader has been prepared, we shall not prepare it twice, especially in case of deepspeed
         dataloader = accelerator.prepare(dataloader)
 
     all_indices = []
     all_outputs = []
-    
+
     for i, x in enumerate(tqdm(dataloader, desc="Computing Generation")):
         # if i > 3:
         #     break
-        
+
         # NOTE: important to reset memory for every batch
         if hasattr(model, "memory"):
             model.memory.reset()
@@ -143,7 +153,9 @@ def evaluate_generation(model, dataloader, accelerator:Optional[Accelerator]=Non
 
         if accelerator is not None and accelerator.num_processes > 1:
             # must be contiguous
-            outputs = accelerator.pad_across_processes(outputs.contiguous(), pad_index=tokenizer.pad_token_id, dim=1)
+            outputs = accelerator.pad_across_processes(
+                outputs.contiguous(), pad_index=tokenizer.pad_token_id, dim=1
+            )
             outputs = accelerator.gather_for_metrics(outputs)
             indices = accelerator.gather_for_metrics(indices)
 
@@ -158,7 +170,7 @@ def evaluate_generation(model, dataloader, accelerator:Optional[Accelerator]=Non
 
 
 @torch.no_grad()
-def evaluate_nll(model, dataloader, accelerator:Optional[Accelerator]=None):
+def evaluate_nll(model, dataloader, accelerator: Optional[Accelerator] = None):
     if accelerator is not None and type(dataloader) == torch.utils.data.DataLoader:
         # if the dataloader has been prepared, we shall not prepare it twice, especially in case of deepspeed
         dataloader = accelerator.prepare(dataloader)
@@ -200,7 +212,6 @@ def evaluate_nll(model, dataloader, accelerator:Optional[Accelerator]=None):
             all_loss[_id].append(_loss)
 
     return all_loss
-
 
 
 @dataclass

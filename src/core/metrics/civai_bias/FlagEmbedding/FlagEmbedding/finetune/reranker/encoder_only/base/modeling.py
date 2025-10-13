@@ -14,6 +14,7 @@ class CrossEncoderModel(AbsRerankerModel):
         tokenizer (AutoTokenizer, optional): The tokenizer for encoding input text. Defaults to ``None``.
         train_batch_size (int, optional): The batch size to use. Defaults to ``4``.
     """
+
     def __init__(
         self,
         base_model: PreTrainedModel,

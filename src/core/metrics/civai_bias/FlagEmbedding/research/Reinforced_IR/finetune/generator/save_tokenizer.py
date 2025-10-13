@@ -9,8 +9,8 @@ from transformers import AutoTokenizer
 def parse_option():
     parser = argparse.ArgumentParser("")
 
-    parser.add_argument('--model_path', type=str, default=None)
-    parser.add_argument('--output_path', type=str, default=None)
+    parser.add_argument("--model_path", type=str, default=None)
+    parser.add_argument("--output_path", type=str, default=None)
 
     opt = parser.parse_args()
 

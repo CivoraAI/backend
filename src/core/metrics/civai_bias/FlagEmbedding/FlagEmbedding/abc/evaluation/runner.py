@@ -16,11 +16,12 @@ logger = logging.getLogger(__name__)
 class AbsEvalRunner:
     """
     Abstract class of evaluation runner.
-    
+
     Args:
         eval_args (AbsEvalArgs): :class:AbsEvalArgs object with the evaluation arguments.
         model_args (AbsEvalModelArgs): :class:AbsEvalModelArgs object with the model arguments.
     """
+
     def __init__(
         self,
         eval_args: AbsEvalArgs,
@@ -41,7 +42,7 @@ class AbsEvalRunner:
             model_args (AbsEvalModelArgs): :class:AbsEvalModelArgs object with the model arguments.
 
         Returns:
-            Tuple[AbsEmbedder, Union[AbsReranker, None]]: A :class:AbsEmbedder object of embedding model, and 
+            Tuple[AbsEmbedder, Union[AbsReranker, None]]: A :class:AbsEmbedder object of embedding model, and
                 :class:AbsReranker object of reranker model if path provided.
         """
         embedder = FlagAutoModel.from_finetuned(
@@ -98,9 +99,7 @@ class AbsEvalRunner:
         """
         embedder, reranker = self.get_models(self.model_args)
         retriever = EvalDenseRetriever(
-            embedder,
-            search_top_k=self.eval_args.search_top_k,
-            overwrite=self.eval_args.overwrite
+            embedder, search_top_k=self.eval_args.search_top_k, overwrite=self.eval_args.overwrite
         )
         if reranker is not None:
             reranker = EvalReranker(reranker, rerank_top_k=self.eval_args.rerank_top_k)
@@ -139,7 +138,7 @@ class AbsEvalRunner:
         search_results_save_dir: str,
         output_method: str = "markdown",
         output_path: str = "./eval_dev_results.md",
-        metrics: Union[str, List[str]] = ["ndcg_at_10", "recall_at_10"]
+        metrics: Union[str, List[str]] = ["ndcg_at_10", "recall_at_10"],
     ):
         """Evaluate the provided metrics and write the results.
 
@@ -159,12 +158,16 @@ class AbsEvalRunner:
             if not os.path.isdir(model_search_results_save_dir):
                 continue
             for reranker_name in sorted(os.listdir(model_search_results_save_dir)):
-                reranker_search_results_save_dir = os.path.join(model_search_results_save_dir, reranker_name)
+                reranker_search_results_save_dir = os.path.join(
+                    model_search_results_save_dir, reranker_name
+                )
                 if not os.path.isdir(reranker_search_results_save_dir):
                     continue
-                eval_results_path = os.path.join(reranker_search_results_save_dir, 'EVAL', "eval_results.json")
+                eval_results_path = os.path.join(
+                    reranker_search_results_save_dir, "EVAL", "eval_results.json"
+                )
                 if os.path.exists(eval_results_path):
-                    eval_results = json.load(open(eval_results_path, encoding='utf-8'))
+                    eval_results = json.load(open(eval_results_path, encoding="utf-8"))
                 else:
                     logger.warning(f"Eval results not found: {eval_results_path}")
                     continue
@@ -178,7 +181,9 @@ class AbsEvalRunner:
         elif output_method == "markdown":
             AbsEvaluator.output_eval_results_to_markdown(eval_results_dict, output_path, metrics)
         else:
-            raise ValueError(f"Invalid output method: {output_method}. Available methods: ['json', 'markdown']")
+            raise ValueError(
+                f"Invalid output method: {output_method}. Available methods: ['json', 'markdown']"
+            )
 
     def run(self):
         """
@@ -198,11 +203,13 @@ class AbsEvalRunner:
                 reranker=self.reranker,
                 corpus_embd_save_dir=self.eval_args.corpus_embd_save_dir,
                 ignore_identical_ids=self.eval_args.ignore_identical_ids,
-                k_values=self.eval_args.k_values
+                k_values=self.eval_args.k_values,
             )
             logger.info(f"{self.eval_args.eval_name} evaluation completed.")
         else:
-            logger.info(f"Running {self.eval_args.eval_name} evaluation on the following dataset names: {dataset_names}")
+            logger.info(
+                f"Running {self.eval_args.eval_name} evaluation on the following dataset names: {dataset_names}"
+            )
             for dataset_name in dataset_names:
                 logger.info(f"Running {self.eval_args.eval_name} evaluation on: {dataset_name}")
                 self.evaluator(
@@ -222,5 +229,5 @@ class AbsEvalRunner:
             search_results_save_dir=self.eval_args.output_dir,
             output_method=self.eval_args.eval_output_method,
             output_path=self.eval_args.eval_output_path,
-            metrics=self.eval_args.eval_metrics
+            metrics=self.eval_args.eval_metrics,
         )

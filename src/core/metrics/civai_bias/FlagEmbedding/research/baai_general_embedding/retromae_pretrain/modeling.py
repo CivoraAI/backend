@@ -14,16 +14,16 @@ logger = logging.getLogger(__name__)
 
 class RetroMAEForPretraining(nn.Module):
     def __init__(
-            self,
-            bert: BertForMaskedLM,
-            model_args: ModelArguments,
+        self,
+        bert: BertForMaskedLM,
+        model_args: ModelArguments,
     ):
         super(RetroMAEForPretraining, self).__init__()
         self.lm = bert
 
-        if hasattr(self.lm, 'bert'):
+        if hasattr(self.lm, "bert"):
             self.decoder_embeddings = self.lm.bert.embeddings
-        elif hasattr(self.lm, 'roberta'):
+        elif hasattr(self.lm, "roberta"):
             self.decoder_embeddings = self.lm.roberta.embeddings
         else:
             self.decoder_embeddings = self.lm.bert.embeddings
@@ -38,15 +38,22 @@ class RetroMAEForPretraining(nn.Module):
     def gradient_checkpointing_enable(self, **kwargs):
         self.lm.gradient_checkpointing_enable(**kwargs)
 
-    def forward(self,
-                encoder_input_ids, encoder_attention_mask, encoder_labels,
-                decoder_input_ids, decoder_attention_mask, decoder_labels):
+    def forward(
+        self,
+        encoder_input_ids,
+        encoder_attention_mask,
+        encoder_labels,
+        decoder_input_ids,
+        decoder_attention_mask,
+        decoder_labels,
+    ):
 
         lm_out: MaskedLMOutput = self.lm(
-            encoder_input_ids, encoder_attention_mask,
+            encoder_input_ids,
+            encoder_attention_mask,
             labels=encoder_labels,
             output_hidden_states=True,
-            return_dict=True
+            return_dict=True,
         )
         cls_hiddens = lm_out.hidden_states[-1][:, :1]  # B 1 D
 
@@ -61,42 +68,35 @@ class RetroMAEForPretraining(nn.Module):
         query = self.decoder_embeddings(inputs_embeds=cls_hiddens)
 
         matrix_attention_mask = self.lm.get_extended_attention_mask(
-            decoder_attention_mask,
-            decoder_attention_mask.shape,
-            decoder_attention_mask.device
+            decoder_attention_mask, decoder_attention_mask.shape, decoder_attention_mask.device
         )
 
-        hiddens = self.c_head(query=query,
-                              key=hiddens,
-                              value=hiddens,
-                              attention_mask=matrix_attention_mask)[0]
+        hiddens = self.c_head(
+            query=query, key=hiddens, value=hiddens, attention_mask=matrix_attention_mask
+        )[0]
         pred_scores, loss = self.mlm_loss(hiddens, decoder_labels)
 
         return (loss + lm_out.loss,)
 
     def mlm_loss(self, hiddens, labels):
-        if hasattr(self.lm, 'cls'):
+        if hasattr(self.lm, "cls"):
             pred_scores = self.lm.cls(hiddens)
-        elif hasattr(self.lm, 'lm_head'):
+        elif hasattr(self.lm, "lm_head"):
             pred_scores = self.lm.lm_head(hiddens)
         else:
             raise NotImplementedError
 
         masked_lm_loss = self.cross_entropy(
-            pred_scores.view(-1, self.lm.config.vocab_size),
-            labels.view(-1)
+            pred_scores.view(-1, self.lm.config.vocab_size), labels.view(-1)
         )
         return pred_scores, masked_lm_loss
 
     def save_pretrained(self, output_dir: str):
         self.lm.save_pretrained(os.path.join(output_dir, "encoder_model"))
-        torch.save(self.state_dict(), os.path.join(output_dir, 'pytorch_model.bin'))
+        torch.save(self.state_dict(), os.path.join(output_dir, "pytorch_model.bin"))
 
     @classmethod
-    def from_pretrained(
-            cls, model_args: ModelArguments,
-            *args, **kwargs
-    ):
+    def from_pretrained(cls, model_args: ModelArguments, *args, **kwargs):
         hf_model = AutoModelForMaskedLM.from_pretrained(*args, **kwargs)
         model = cls(hf_model, model_args)
         return model

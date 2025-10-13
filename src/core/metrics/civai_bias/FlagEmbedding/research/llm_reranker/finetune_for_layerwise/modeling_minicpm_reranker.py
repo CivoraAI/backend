@@ -17,7 +17,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" PyTorch MiniCPM model."""
+"""PyTorch MiniCPM model."""
 import sys
 
 import math
@@ -38,8 +38,11 @@ from transformers.modeling_attn_mask_utils import (
     _prepare_4d_causal_attention_mask,
     _prepare_4d_causal_attention_mask_for_sdpa,
 )
-from transformers.modeling_outputs import BaseModelOutputWithPast, CausalLMOutputWithPast, \
-    SequenceClassifierOutputWithPast
+from transformers.modeling_outputs import (
+    BaseModelOutputWithPast,
+    CausalLMOutputWithPast,
+    SequenceClassifierOutputWithPast,
+)
 from transformers.modeling_utils import PreTrainedModel
 from transformers.pytorch_utils import ALL_LAYERNORM_LAYERS, is_torch_greater_or_equal_than_1_13
 from transformers.utils import (
@@ -94,13 +97,19 @@ def _expand_mask(mask: torch.Tensor, dtype: torch.dtype, tgt_len: Optional[int] 
 
 
 def _make_causal_mask(
-        input_ids_shape: torch.Size, dtype: torch.dtype, device: torch.device, past_key_values_length: int = 0
+    input_ids_shape: torch.Size,
+    dtype: torch.dtype,
+    device: torch.device,
+    past_key_values_length: int = 0,
 ):
     warnings.warn(
         "Calling `transformers.models.minicpm.modeling_minicpm._make_causal_mask` is deprecated and will be removed in v4.37. Use `transformers.models.minicpm.modeling_minicpm.AttentionMaskConverter._make_causal_mask"
     )
     return AttentionMaskConverter._make_causal_mask(
-        input_ids_shape=input_ids_shape, dtype=dtype, device=device, past_key_values_length=past_key_values_length
+        input_ids_shape=input_ids_shape,
+        dtype=dtype,
+        device=device,
+        past_key_values_length=past_key_values_length,
     )
 
 
@@ -141,7 +150,9 @@ class MiniCPMRotaryEmbedding(nn.Module):
         # Build here to make `torch.jit.trace` work.
         self._set_cos_sin_cache(
             # seq_len=max_position_embeddings, device=self.inv_freq.device, dtype=torch.get_default_dtype()
-            seq_len=max_position_embeddings, device=self.inv_freq.device, dtype=torch.float32
+            seq_len=max_position_embeddings,
+            device=self.inv_freq.device,
+            dtype=torch.float32,
         )
 
     def _set_cos_sin_cache(self, seq_len, device, dtype):
@@ -168,7 +179,9 @@ class MiniCPMRotaryEmbedding(nn.Module):
 class MiniCPMLinearScalingRotaryEmbedding(MiniCPMRotaryEmbedding):
     """MiniCPMRotaryEmbedding extended with linear scaling. Credits to the Reddit user /u/kaiokendev"""
 
-    def __init__(self, dim, max_position_embeddings=2048, base=10000, device=None, scaling_factor=1.0):
+    def __init__(
+        self, dim, max_position_embeddings=2048, base=10000, device=None, scaling_factor=1.0
+    ):
         self.scaling_factor = scaling_factor
         super().__init__(dim, max_position_embeddings, base, device)
 
@@ -187,7 +200,9 @@ class MiniCPMLinearScalingRotaryEmbedding(MiniCPMRotaryEmbedding):
 class MiniCPMDynamicNTKScalingRotaryEmbedding(MiniCPMRotaryEmbedding):
     """MiniCPMRotaryEmbedding extended with Dynamic NTK scaling. Credits to the Reddit users /u/bloc97 and /u/emozilla"""
 
-    def __init__(self, dim, max_position_embeddings=2048, base=10000, device=None, scaling_factor=1.0):
+    def __init__(
+        self, dim, max_position_embeddings=2048, base=10000, device=None, scaling_factor=1.0
+    ):
         self.scaling_factor = scaling_factor
         super().__init__(dim, max_position_embeddings, base, device)
 
@@ -196,7 +211,8 @@ class MiniCPMDynamicNTKScalingRotaryEmbedding(MiniCPMRotaryEmbedding):
 
         if seq_len > self.max_position_embeddings:
             base = self.base * (
-                    (self.scaling_factor * seq_len / self.max_position_embeddings) - (self.scaling_factor - 1)
+                (self.scaling_factor * seq_len / self.max_position_embeddings)
+                - (self.scaling_factor - 1)
             ) ** (self.dim / (self.dim - 2))
             inv_freq = 1.0 / (base ** (torch.arange(0, self.dim, 2).float().to(device) / self.dim))
             self.register_buffer("inv_freq", inv_freq, persistent=False)
@@ -214,7 +230,7 @@ class MiniCPMDynamicNTKScalingRotaryEmbedding(MiniCPMRotaryEmbedding):
 def rotate_half(x):
     """Rotates half the hidden dims of the input."""
     x1 = x[..., : x.shape[-1] // 2]
-    x2 = x[..., x.shape[-1] // 2:]
+    x2 = x[..., x.shape[-1] // 2 :]
     return torch.cat((-x2, x1), dim=-1)
 
 
@@ -272,13 +288,17 @@ class MiniCPMMLP(nn.Module):
             down_proj_slices = self.down_proj.weight.split(slice, dim=1)
 
             gate_proj = torch.cat(
-                [F.linear(x, gate_proj_slices[i]) for i in range(self.config.pretraining_tp)], dim=-1
+                [F.linear(x, gate_proj_slices[i]) for i in range(self.config.pretraining_tp)],
+                dim=-1,
             )
-            up_proj = torch.cat([F.linear(x, up_proj_slices[i]) for i in range(self.config.pretraining_tp)], dim=-1)
+            up_proj = torch.cat(
+                [F.linear(x, up_proj_slices[i]) for i in range(self.config.pretraining_tp)], dim=-1
+            )
 
             intermediate_states = (self.act_fn(gate_proj) * up_proj).split(slice, dim=2)
             down_proj = [
-                F.linear(intermediate_states[i], down_proj_slices[i]) for i in range(self.config.pretraining_tp)
+                F.linear(intermediate_states[i], down_proj_slices[i])
+                for i in range(self.config.pretraining_tp)
             ]
             down_proj = sum(down_proj)
         else:
@@ -295,7 +315,9 @@ def repeat_kv(hidden_states: torch.Tensor, n_rep: int) -> torch.Tensor:
     batch, num_key_value_heads, slen, head_dim = hidden_states.shape
     if n_rep == 1:
         return hidden_states
-    hidden_states = hidden_states[:, :, None, :, :].expand(batch, num_key_value_heads, n_rep, slen, head_dim)
+    hidden_states = hidden_states[:, :, None, :, :].expand(
+        batch, num_key_value_heads, n_rep, slen, head_dim
+    )
     return hidden_states.reshape(batch, num_key_value_heads * n_rep, slen, head_dim)
 
 
@@ -329,10 +351,18 @@ class MiniCPMAttention(nn.Module):
                 f" and `num_heads`: {self.num_heads})."
             )
 
-        self.q_proj = nn.Linear(self.hidden_size, self.num_heads * self.head_dim, bias=config.attention_bias)
-        self.k_proj = nn.Linear(self.hidden_size, self.num_key_value_heads * self.head_dim, bias=config.attention_bias)
-        self.v_proj = nn.Linear(self.hidden_size, self.num_key_value_heads * self.head_dim, bias=config.attention_bias)
-        self.o_proj = nn.Linear(self.num_heads * self.head_dim, self.hidden_size, bias=config.attention_bias)
+        self.q_proj = nn.Linear(
+            self.hidden_size, self.num_heads * self.head_dim, bias=config.attention_bias
+        )
+        self.k_proj = nn.Linear(
+            self.hidden_size, self.num_key_value_heads * self.head_dim, bias=config.attention_bias
+        )
+        self.v_proj = nn.Linear(
+            self.hidden_size, self.num_key_value_heads * self.head_dim, bias=config.attention_bias
+        )
+        self.o_proj = nn.Linear(
+            self.num_heads * self.head_dim, self.hidden_size, bias=config.attention_bias
+        )
         self._init_rope()
 
     def _init_rope(self):
@@ -366,14 +396,14 @@ class MiniCPMAttention(nn.Module):
         return tensor.view(bsz, seq_len, self.num_heads, self.head_dim).transpose(1, 2).contiguous()
 
     def forward(
-            self,
-            hidden_states: torch.Tensor,
-            attention_mask: Optional[torch.Tensor] = None,
-            position_ids: Optional[torch.LongTensor] = None,
-            past_key_value: Optional[Cache] = None,
-            output_attentions: bool = False,
-            use_cache: bool = False,
-            **kwargs,
+        self,
+        hidden_states: torch.Tensor,
+        attention_mask: Optional[torch.Tensor] = None,
+        position_ids: Optional[torch.LongTensor] = None,
+        past_key_value: Optional[Cache] = None,
+        output_attentions: bool = False,
+        use_cache: bool = False,
+        **kwargs,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[Tuple[torch.Tensor]]]:
         if "padding_mask" in kwargs:
             warnings.warn(
@@ -383,20 +413,28 @@ class MiniCPMAttention(nn.Module):
         bsz, q_len, _ = hidden_states.size()
 
         if self.config.pretraining_tp > 1:
-            key_value_slicing = (self.num_key_value_heads * self.head_dim) // self.config.pretraining_tp
+            key_value_slicing = (
+                self.num_key_value_heads * self.head_dim
+            ) // self.config.pretraining_tp
             query_slices = self.q_proj.weight.split(
                 (self.num_heads * self.head_dim) // self.config.pretraining_tp, dim=0
             )
             key_slices = self.k_proj.weight.split(key_value_slicing, dim=0)
             value_slices = self.v_proj.weight.split(key_value_slicing, dim=0)
 
-            query_states = [F.linear(hidden_states, query_slices[i]) for i in range(self.config.pretraining_tp)]
+            query_states = [
+                F.linear(hidden_states, query_slices[i]) for i in range(self.config.pretraining_tp)
+            ]
             query_states = torch.cat(query_states, dim=-1)
 
-            key_states = [F.linear(hidden_states, key_slices[i]) for i in range(self.config.pretraining_tp)]
+            key_states = [
+                F.linear(hidden_states, key_slices[i]) for i in range(self.config.pretraining_tp)
+            ]
             key_states = torch.cat(key_states, dim=-1)
 
-            value_states = [F.linear(hidden_states, value_slices[i]) for i in range(self.config.pretraining_tp)]
+            value_states = [
+                F.linear(hidden_states, value_slices[i]) for i in range(self.config.pretraining_tp)
+            ]
             value_states = torch.cat(value_states, dim=-1)
 
         else:
@@ -405,8 +443,12 @@ class MiniCPMAttention(nn.Module):
             value_states = self.v_proj(hidden_states)
 
         query_states = query_states.view(bsz, q_len, self.num_heads, self.head_dim).transpose(1, 2)
-        key_states = key_states.view(bsz, q_len, self.num_key_value_heads, self.head_dim).transpose(1, 2)
-        value_states = value_states.view(bsz, q_len, self.num_key_value_heads, self.head_dim).transpose(1, 2)
+        key_states = key_states.view(bsz, q_len, self.num_key_value_heads, self.head_dim).transpose(
+            1, 2
+        )
+        value_states = value_states.view(
+            bsz, q_len, self.num_key_value_heads, self.head_dim
+        ).transpose(1, 2)
 
         kv_seq_len = key_states.shape[-2]
         if past_key_value is not None:
@@ -419,16 +461,22 @@ class MiniCPMAttention(nn.Module):
             kv_seq_len += past_key_value.get_usable_length(kv_seq_len, self.layer_idx)
         cos, sin = self.rotary_emb(value_states.to(torch.float32), seq_len=kv_seq_len)
 
-        query_states, key_states = apply_rotary_pos_emb(query_states, key_states, cos, sin, position_ids)
+        query_states, key_states = apply_rotary_pos_emb(
+            query_states, key_states, cos, sin, position_ids
+        )
 
         if past_key_value is not None:
             cache_kwargs = {"sin": sin, "cos": cos}  # Specific to RoPE models
-            key_states, value_states = past_key_value.update(key_states, value_states, self.layer_idx, cache_kwargs)
+            key_states, value_states = past_key_value.update(
+                key_states, value_states, self.layer_idx, cache_kwargs
+            )
 
         key_states = repeat_kv(key_states, self.num_key_value_groups)
         value_states = repeat_kv(value_states, self.num_key_value_groups)
 
-        attn_weights = torch.matmul(query_states, key_states.transpose(2, 3)) / math.sqrt(self.head_dim)
+        attn_weights = torch.matmul(query_states, key_states.transpose(2, 3)) / math.sqrt(
+            self.head_dim
+        )
         if attn_weights.size() != (bsz, self.num_heads, q_len, kv_seq_len):
             raise ValueError(
                 f"Attention weights should be of size {(bsz, self.num_heads, q_len, kv_seq_len)}, but is"
@@ -443,8 +491,12 @@ class MiniCPMAttention(nn.Module):
             attn_weights = attn_weights + attention_mask
 
         # upcast attention to fp32
-        attn_weights = nn.functional.softmax(attn_weights, dim=-1, dtype=torch.float32).to(query_states.dtype)
-        attn_weights = nn.functional.dropout(attn_weights, p=self.attention_dropout, training=self.training)
+        attn_weights = nn.functional.softmax(attn_weights, dim=-1, dtype=torch.float32).to(
+            query_states.dtype
+        )
+        attn_weights = nn.functional.dropout(
+            attn_weights, p=self.attention_dropout, training=self.training
+        )
         attn_output = torch.matmul(attn_weights, value_states)
 
         if attn_output.size() != (bsz, self.num_heads, q_len, self.head_dim):
@@ -459,8 +511,15 @@ class MiniCPMAttention(nn.Module):
 
         if self.config.pretraining_tp > 1:
             attn_output = attn_output.split(self.hidden_size // self.config.pretraining_tp, dim=2)
-            o_proj_slices = self.o_proj.weight.split(self.hidden_size // self.config.pretraining_tp, dim=1)
-            attn_output = sum([F.linear(attn_output[i], o_proj_slices[i]) for i in range(self.config.pretraining_tp)])
+            o_proj_slices = self.o_proj.weight.split(
+                self.hidden_size // self.config.pretraining_tp, dim=1
+            )
+            attn_output = sum(
+                [
+                    F.linear(attn_output[i], o_proj_slices[i])
+                    for i in range(self.config.pretraining_tp)
+                ]
+            )
         else:
             attn_output = self.o_proj(attn_output)
 
@@ -486,14 +545,14 @@ class MiniCPMFlashAttention2(MiniCPMAttention):
         self._flash_attn_uses_top_left_mask = not is_flash_attn_greater_or_equal_2_10()
 
     def forward(
-            self,
-            hidden_states: torch.Tensor,
-            attention_mask: Optional[torch.LongTensor] = None,
-            position_ids: Optional[torch.LongTensor] = None,
-            past_key_value: Optional[Cache] = None,
-            output_attentions: bool = False,
-            use_cache: bool = False,
-            **kwargs,
+        self,
+        hidden_states: torch.Tensor,
+        attention_mask: Optional[torch.LongTensor] = None,
+        position_ids: Optional[torch.LongTensor] = None,
+        past_key_value: Optional[Cache] = None,
+        output_attentions: bool = False,
+        use_cache: bool = False,
+        **kwargs,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[Tuple[torch.Tensor]]]:
         # MiniCPMFlashAttention2 attention does not support output_attentions
         if "padding_mask" in kwargs:
@@ -516,18 +575,26 @@ class MiniCPMFlashAttention2(MiniCPMAttention):
         # batch_size x seq_length x head_dim x hidden_dim
         # therefore we just need to keep the original shape
         query_states = query_states.view(bsz, q_len, self.num_heads, self.head_dim).transpose(1, 2)
-        key_states = key_states.view(bsz, q_len, self.num_key_value_heads, self.head_dim).transpose(1, 2)
-        value_states = value_states.view(bsz, q_len, self.num_key_value_heads, self.head_dim).transpose(1, 2)
+        key_states = key_states.view(bsz, q_len, self.num_key_value_heads, self.head_dim).transpose(
+            1, 2
+        )
+        value_states = value_states.view(
+            bsz, q_len, self.num_key_value_heads, self.head_dim
+        ).transpose(1, 2)
 
         kv_seq_len = key_states.shape[-2]
         if past_key_value is not None:
             kv_seq_len += past_key_value.get_usable_length(kv_seq_len, self.layer_idx)
         cos, sin = self.rotary_emb(value_states.to(torch.float32), seq_len=kv_seq_len)
-        query_states, key_states = apply_rotary_pos_emb(query_states, key_states, cos, sin, position_ids)
+        query_states, key_states = apply_rotary_pos_emb(
+            query_states, key_states, cos, sin, position_ids
+        )
 
         if past_key_value is not None:
             cache_kwargs = {"sin": sin, "cos": cos}  # Specific to RoPE models
-            key_states, value_states = past_key_value.update(key_states, value_states, self.layer_idx, cache_kwargs)
+            key_states, value_states = past_key_value.update(
+                key_states, value_states, self.layer_idx, cache_kwargs
+            )
 
         # TODO: These transpose are quite inefficient but Flash Attention requires the layout [batch_size, sequence_length, num_heads, head_dim]. We would need to refactor the KV cache
         # to be able to avoid many of these transpose/reshape/view.
@@ -574,7 +641,14 @@ class MiniCPMFlashAttention2(MiniCPMAttention):
         return attn_output, attn_weights, past_key_value
 
     def _flash_attention_forward(
-            self, query_states, key_states, value_states, attention_mask, query_length, dropout=0.0, softmax_scale=None
+        self,
+        query_states,
+        key_states,
+        value_states,
+        attention_mask,
+        query_length,
+        dropout=0.0,
+        softmax_scale=None,
     ):
         """
         Calls the forward method of Flash Attention - if the input hidden states contain at least one padding token
@@ -603,8 +677,10 @@ class MiniCPMFlashAttention2(MiniCPMAttention):
         # Contains at least one padding token in the sequence
         if attention_mask is not None:
             batch_size = query_states.shape[0]
-            query_states, key_states, value_states, indices_q, cu_seq_lens, max_seq_lens = self._upad_input(
-                query_states, key_states, value_states, attention_mask, query_length
+            query_states, key_states, value_states, indices_q, cu_seq_lens, max_seq_lens = (
+                self._upad_input(
+                    query_states, key_states, value_states, attention_mask, query_length
+                )
             )
 
             cu_seqlens_q, cu_seqlens_k = cu_seq_lens
@@ -625,7 +701,12 @@ class MiniCPMFlashAttention2(MiniCPMAttention):
             attn_output = pad_input(attn_output_unpad, indices_q, batch_size, query_length)
         else:
             attn_output = flash_attn_func(
-                query_states, key_states, value_states, dropout, softmax_scale=softmax_scale, causal=causal
+                query_states,
+                key_states,
+                value_states,
+                dropout,
+                softmax_scale=softmax_scale,
+                causal=causal,
             )
 
         return attn_output
@@ -657,7 +738,9 @@ class MiniCPMFlashAttention2(MiniCPMAttention):
         else:
             # The -q_len: slice assumes left padding.
             attention_mask = attention_mask[:, -query_length:]
-            query_layer, indices_q, cu_seqlens_q, max_seqlen_in_batch_q = unpad_input(query_layer, attention_mask)
+            query_layer, indices_q, cu_seqlens_q, max_seqlen_in_batch_q = unpad_input(
+                query_layer, attention_mask
+            )
 
         return (
             query_layer,
@@ -678,13 +761,13 @@ class MiniCPMSdpaAttention(MiniCPMAttention):
 
     # Adapted from MiniCPMAttention.forward
     def forward(
-            self,
-            hidden_states: torch.Tensor,
-            attention_mask: Optional[torch.Tensor] = None,
-            position_ids: Optional[torch.LongTensor] = None,
-            past_key_value: Optional[Cache] = None,
-            output_attentions: bool = False,
-            use_cache: bool = False,
+        self,
+        hidden_states: torch.Tensor,
+        attention_mask: Optional[torch.Tensor] = None,
+        position_ids: Optional[torch.LongTensor] = None,
+        past_key_value: Optional[Cache] = None,
+        output_attentions: bool = False,
+        use_cache: bool = False,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[Tuple[torch.Tensor]]]:
         if output_attentions:
             # TODO: Improve this warning with e.g. `model.config.attn_implementation = "manual"` once this is implemented.
@@ -708,19 +791,27 @@ class MiniCPMSdpaAttention(MiniCPMAttention):
         value_states = self.v_proj(hidden_states)
 
         query_states = query_states.view(bsz, q_len, self.num_heads, self.head_dim).transpose(1, 2)
-        key_states = key_states.view(bsz, q_len, self.num_key_value_heads, self.head_dim).transpose(1, 2)
-        value_states = value_states.view(bsz, q_len, self.num_key_value_heads, self.head_dim).transpose(1, 2)
+        key_states = key_states.view(bsz, q_len, self.num_key_value_heads, self.head_dim).transpose(
+            1, 2
+        )
+        value_states = value_states.view(
+            bsz, q_len, self.num_key_value_heads, self.head_dim
+        ).transpose(1, 2)
 
         kv_seq_len = key_states.shape[-2]
         if past_key_value is not None:
             kv_seq_len += past_key_value.get_usable_length(kv_seq_len, self.layer_idx)
         cos, sin = self.rotary_emb(value_states, seq_len=kv_seq_len)
 
-        query_states, key_states = apply_rotary_pos_emb(query_states, key_states, cos, sin, position_ids)
+        query_states, key_states = apply_rotary_pos_emb(
+            query_states, key_states, cos, sin, position_ids
+        )
 
         if past_key_value is not None:
             cache_kwargs = {"sin": sin, "cos": cos}  # Specific to RoPE models
-            key_states, value_states = past_key_value.update(key_states, value_states, self.layer_idx, cache_kwargs)
+            key_states, value_states = past_key_value.update(
+                key_states, value_states, self.layer_idx, cache_kwargs
+            )
 
         key_states = repeat_kv(key_states, self.num_key_value_groups)
         value_states = repeat_kv(value_states, self.num_key_value_groups)
@@ -767,7 +858,9 @@ class MiniCPMDecoderLayer(nn.Module):
     def __init__(self, config: LayerWiseMiniCPMConfig, layer_idx: int):
         super().__init__()
         self.hidden_size = config.hidden_size
-        self.self_attn = MINICPM_ATTENTION_CLASSES[config._attn_implementation](config=config, layer_idx=layer_idx)
+        self.self_attn = MINICPM_ATTENTION_CLASSES[config._attn_implementation](
+            config=config, layer_idx=layer_idx
+        )
 
         self.mlp = MiniCPMMLP(config)
         self.input_layernorm = MiniCPMRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
@@ -777,14 +870,14 @@ class MiniCPMDecoderLayer(nn.Module):
         self.num_hidden_layers = config.num_hidden_layers
 
     def forward(
-            self,
-            hidden_states: torch.Tensor,
-            attention_mask: Optional[torch.Tensor] = None,
-            position_ids: Optional[torch.LongTensor] = None,
-            past_key_value: Optional[Tuple[torch.Tensor]] = None,
-            output_attentions: Optional[bool] = False,
-            use_cache: Optional[bool] = False,
-            **kwargs,
+        self,
+        hidden_states: torch.Tensor,
+        attention_mask: Optional[torch.Tensor] = None,
+        position_ids: Optional[torch.LongTensor] = None,
+        past_key_value: Optional[Tuple[torch.Tensor]] = None,
+        output_attentions: Optional[bool] = False,
+        use_cache: Optional[bool] = False,
+        **kwargs,
     ) -> Tuple[torch.FloatTensor, Optional[Tuple[torch.FloatTensor, torch.FloatTensor]]]:
         """
         Args:
@@ -818,14 +911,18 @@ class MiniCPMDecoderLayer(nn.Module):
             **kwargs,
         )
 
-        hidden_states = residual + hidden_states * (self.scale_depth / math.sqrt(self.num_hidden_layers))
+        hidden_states = residual + hidden_states * (
+            self.scale_depth / math.sqrt(self.num_hidden_layers)
+        )
 
         # Fully Connected
         residual = hidden_states
         hidden_states = self.post_attention_layernorm(hidden_states)
 
         hidden_states = self.mlp(hidden_states)
-        hidden_states = residual + hidden_states * (self.scale_depth / math.sqrt(self.num_hidden_layers))
+        hidden_states = residual + hidden_states * (
+            self.scale_depth / math.sqrt(self.num_hidden_layers)
+        )
 
         outputs = (hidden_states,)
 
@@ -970,7 +1067,10 @@ class LayerWiseMiniCPMModel(MiniCPMPreTrainedModel):
 
         self.embed_tokens = nn.Embedding(config.vocab_size, config.hidden_size, self.padding_idx)
         self.layers = nn.ModuleList(
-            [MiniCPMDecoderLayer(config, layer_idx) for layer_idx in range(config.num_hidden_layers)]
+            [
+                MiniCPMDecoderLayer(config, layer_idx)
+                for layer_idx in range(config.num_hidden_layers)
+            ]
         )
         self._use_sdpa = config._attn_implementation == "sdpa"
         self._use_flash_attention_2 = config._attn_implementation == "flash_attention_2"
@@ -989,21 +1089,25 @@ class LayerWiseMiniCPMModel(MiniCPMPreTrainedModel):
 
     @add_start_docstrings_to_model_forward(MINICPM_INPUTS_DOCSTRING)
     def forward(
-            self,
-            input_ids: torch.LongTensor = None,
-            attention_mask: Optional[torch.Tensor] = None,
-            position_ids: Optional[torch.LongTensor] = None,
-            past_key_values: Optional[List[torch.FloatTensor]] = None,
-            inputs_embeds: Optional[torch.FloatTensor] = None,
-            use_cache: Optional[bool] = None,
-            output_attentions: Optional[bool] = None,
-            output_hidden_states: Optional[bool] = None,
-            return_dict: Optional[bool] = None,
-            cutoff_layers: Optional[Union[int, List]] = None,
+        self,
+        input_ids: torch.LongTensor = None,
+        attention_mask: Optional[torch.Tensor] = None,
+        position_ids: Optional[torch.LongTensor] = None,
+        past_key_values: Optional[List[torch.FloatTensor]] = None,
+        inputs_embeds: Optional[torch.FloatTensor] = None,
+        use_cache: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
+        output_hidden_states: Optional[bool] = None,
+        return_dict: Optional[bool] = None,
+        cutoff_layers: Optional[Union[int, List]] = None,
     ) -> Union[Tuple, BaseModelOutputWithPast]:
-        output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
+        output_attentions = (
+            output_attentions if output_attentions is not None else self.config.output_attentions
+        )
         output_hidden_states = (
-            output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
+            output_hidden_states
+            if output_hidden_states is not None
+            else self.config.output_hidden_states
         )
         use_cache = use_cache if use_cache is not None else self.config.use_cache
 
@@ -1036,7 +1140,10 @@ class LayerWiseMiniCPMModel(MiniCPMPreTrainedModel):
         if position_ids is None:
             device = input_ids.device if input_ids is not None else inputs_embeds.device
             position_ids = torch.arange(
-                past_key_values_length, seq_length + past_key_values_length, dtype=torch.long, device=device
+                past_key_values_length,
+                seq_length + past_key_values_length,
+                dtype=torch.long,
+                device=device,
             )
             position_ids = position_ids.unsqueeze(0)
 
@@ -1045,7 +1152,9 @@ class LayerWiseMiniCPMModel(MiniCPMPreTrainedModel):
 
         if self._use_flash_attention_2:
             # 2d mask is passed through the layers
-            attention_mask = attention_mask if (attention_mask is not None and 0 in attention_mask) else None
+            attention_mask = (
+                attention_mask if (attention_mask is not None and 0 in attention_mask) else None
+            )
         elif self._use_sdpa and not output_attentions:
             # output_attentions=True can not be supported when using SDPA, and we fall back on
             # the manual implementation that requires a 4D causal mask in all cases.
@@ -1121,9 +1230,15 @@ class LayerWiseMiniCPMModel(MiniCPMPreTrainedModel):
 
         next_cache = None
         if use_cache:
-            next_cache = next_decoder_cache.to_legacy_cache() if use_legacy_cache else next_decoder_cache
+            next_cache = (
+                next_decoder_cache.to_legacy_cache() if use_legacy_cache else next_decoder_cache
+            )
         if not return_dict:
-            return tuple(v for v in [hidden_states, next_cache, all_hidden_states, all_self_attns] if v is not None)
+            return tuple(
+                v
+                for v in [hidden_states, next_cache, all_hidden_states, all_self_attns]
+                if v is not None
+            )
         return BaseModelOutputWithPast(
             last_hidden_state=hidden_states,
             past_key_values=next_cache,
@@ -1142,6 +1257,7 @@ class LayerWiseHead(nn.Module):
     def forward(self, **kwargs):
         return self.linear_head(**kwargs)
 
+
 class LayerWiseMiniCPMForCausalLM(MiniCPMPreTrainedModel):
     _tied_weights_keys = ["lm_head.weight"]
 
@@ -1150,15 +1266,19 @@ class LayerWiseMiniCPMForCausalLM(MiniCPMPreTrainedModel):
         self.model = LayerWiseMiniCPMModel(config)
         self.vocab_size = config.vocab_size
 
-        if self.config.head_type == 'raw':
+        if self.config.head_type == "raw":
             if not self.config.head_multi:
                 self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
             else:
-                self.lm_head = nn.ModuleList([nn.Linear(
-                    config.hidden_size, config.vocab_size, bias=False) for _ in range(
-                    self.config.start_layer,
-                    self.model.config.num_hidden_layers + 1)])
-        elif self.config.head_type == 'complex':
+                self.lm_head = nn.ModuleList(
+                    [
+                        nn.Linear(config.hidden_size, config.vocab_size, bias=False)
+                        for _ in range(
+                            self.config.start_layer, self.model.config.num_hidden_layers + 1
+                        )
+                    ]
+                )
+        elif self.config.head_type == "complex":
             if not self.config.head_multi:
                 # self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
                 self.lm_head = LayerWiseHead(config.hidden_size, config.vocab_size)
@@ -1167,10 +1287,14 @@ class LayerWiseMiniCPMForCausalLM(MiniCPMPreTrainedModel):
                 #     config.hidden_size, config.vocab_size, bias=False) for _ in range(
                 #     self.config.start_layer,
                 #     self.model.config.num_hidden_layers + 1)])
-                self.lm_head = nn.ModuleList([LayerWiseHead(
-                    config.hidden_size, config.vocab_size) for _ in range(
-                    self.config.start_layer,
-                    self.model.config.num_hidden_layers + 1)])
+                self.lm_head = nn.ModuleList(
+                    [
+                        LayerWiseHead(config.hidden_size, config.vocab_size)
+                        for _ in range(
+                            self.config.start_layer, self.model.config.num_hidden_layers + 1
+                        )
+                    ]
+                )
         else:
             if not self.config.head_multi:
                 # self.lm_head = nn.Linear(config.hidden_size, 1, bias=False)
@@ -1180,10 +1304,14 @@ class LayerWiseMiniCPMForCausalLM(MiniCPMPreTrainedModel):
                 #     config.hidden_size, 1, bias=False) for _ in range(
                 #     self.config.start_layer,
                 #     self.model.config.num_hidden_layers + 1)])
-                self.lm_head = nn.ModuleList([LayerWiseHead(
-                    config.hidden_size, 1) for _ in range(
-                    self.config.start_layer,
-                    self.model.config.num_hidden_layers + 1)])
+                self.lm_head = nn.ModuleList(
+                    [
+                        LayerWiseHead(config.hidden_size, 1)
+                        for _ in range(
+                            self.config.start_layer, self.model.config.num_hidden_layers + 1
+                        )
+                    ]
+                )
 
         # Initialize weights and apply final processing
         self.post_init()
@@ -1209,19 +1337,19 @@ class LayerWiseMiniCPMForCausalLM(MiniCPMPreTrainedModel):
     @add_start_docstrings_to_model_forward(MINICPM_INPUTS_DOCSTRING)
     @replace_return_docstrings(output_type=CausalLMOutputWithPast, config_class=_CONFIG_FOR_DOC)
     def forward(
-            self,
-            input_ids: torch.LongTensor = None,
-            attention_mask: Optional[torch.Tensor] = None,
-            position_ids: Optional[torch.LongTensor] = None,
-            past_key_values: Optional[List[torch.FloatTensor]] = None,
-            inputs_embeds: Optional[torch.FloatTensor] = None,
-            labels: Optional[torch.LongTensor] = None,
-            use_cache: Optional[bool] = None,
-            output_attentions: Optional[bool] = None,
-            output_hidden_states: Optional[bool] = None,
-            return_dict: Optional[bool] = None,
-            cutoff_layers: Optional[Union[int, List]] = None,
-            only_for_one_logit: Optional[int] = None
+        self,
+        input_ids: torch.LongTensor = None,
+        attention_mask: Optional[torch.Tensor] = None,
+        position_ids: Optional[torch.LongTensor] = None,
+        past_key_values: Optional[List[torch.FloatTensor]] = None,
+        inputs_embeds: Optional[torch.FloatTensor] = None,
+        labels: Optional[torch.LongTensor] = None,
+        use_cache: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
+        output_hidden_states: Optional[bool] = None,
+        return_dict: Optional[bool] = None,
+        cutoff_layers: Optional[Union[int, List]] = None,
+        only_for_one_logit: Optional[int] = None,
     ) -> Union[Tuple, CausalLMOutputWithPast]:
         r"""
         Args:
@@ -1248,9 +1376,13 @@ class LayerWiseMiniCPMForCausalLM(MiniCPMPreTrainedModel):
         >>> tokenizer.batch_decode(generate_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0]
         "Hey, are you conscious? Can you talk to me?\nI'm not conscious, but I can talk to you."
         ```"""
-        output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
+        output_attentions = (
+            output_attentions if output_attentions is not None else self.config.output_attentions
+        )
         output_hidden_states = (
-            output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
+            output_hidden_states
+            if output_hidden_states is not None
+            else self.config.output_hidden_states
         )
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
@@ -1259,7 +1391,11 @@ class LayerWiseMiniCPMForCausalLM(MiniCPMPreTrainedModel):
         elif isinstance(cutoff_layers, int):
             cutoff_layers = [cutoff_layers]
 
-        remove_layers = [i for i in cutoff_layers if self.config.start_layer > i or i > self.config.num_hidden_layers]
+        remove_layers = [
+            i
+            for i in cutoff_layers
+            if self.config.start_layer > i or i > self.config.num_hidden_layers
+        ]
         if len(remove_layers) > 0:
             logger.warning_once(
                 f"layers {remove_layers} are incompatible with the setting. They will be removed..."
@@ -1267,7 +1403,9 @@ class LayerWiseMiniCPMForCausalLM(MiniCPMPreTrainedModel):
 
         cutoff_layers = [i for i in cutoff_layers if i not in remove_layers]
         if len(cutoff_layers) == 0:
-            raise ValueError(f"Your cutoff layers must in [{self.config.start_layer}, {self.config.num_hidden_layers}]")
+            raise ValueError(
+                f"Your cutoff layers must in [{self.config.start_layer}, {self.config.num_hidden_layers}]"
+            )
 
         # decoder outputs consists of (dec_features, layer_state, dec_hidden, dec_attn)
         outputs = self.model(
@@ -1280,88 +1418,142 @@ class LayerWiseMiniCPMForCausalLM(MiniCPMPreTrainedModel):
             output_attentions=output_attentions,
             output_hidden_states=True,
             return_dict=return_dict,
-            cutoff_layers=cutoff_layers
+            cutoff_layers=cutoff_layers,
         )
 
         hidden_states = outputs[0]
 
         all_logits = ()
-        if only_for_one_logit is None and (self.config.head_type == 'complex' or self.config.head_type == 'raw'):
-            if self.config.head_type == 'raw':
+        if only_for_one_logit is None and (
+            self.config.head_type == "complex" or self.config.head_type == "raw"
+        ):
+            if self.config.head_type == "raw":
                 for i in range(len(outputs.hidden_states)):
                     if self.config.head_multi == False:
                         if self.config.pretraining_tp > 1:
-                            lm_head_slices = self.lm_head.weight.split(self.vocab_size // self.config.pretraining_tp, dim=0)
-                            logits = [F.linear(outputs.hidden_states[i], lm_head_slices[i]) for i in range(self.config.pretraining_tp)]
+                            lm_head_slices = self.lm_head.weight.split(
+                                self.vocab_size // self.config.pretraining_tp, dim=0
+                            )
+                            logits = [
+                                F.linear(outputs.hidden_states[i], lm_head_slices[i])
+                                for i in range(self.config.pretraining_tp)
+                            ]
                             logits = torch.cat(logits, dim=-1)
                         else:
-                            logits = self.lm_head(outputs.hidden_states[i] / (self.config.hidden_size / self.config.dim_model_base))
+                            logits = self.lm_head(
+                                outputs.hidden_states[i]
+                                / (self.config.hidden_size / self.config.dim_model_base)
+                            )
                     else:
                         if self.config.pretraining_tp > 1:
-                            lm_head_slices = self.lm_head[cutoff_layers[i] - self.config.start_layer].weight.split(self.vocab_size // self.config.pretraining_tp, dim=0)
-                            logits = [F.linear(outputs.hidden_states[i], lm_head_slices[i]) for i in range(self.config.pretraining_tp)]
+                            lm_head_slices = self.lm_head[
+                                cutoff_layers[i] - self.config.start_layer
+                            ].weight.split(self.vocab_size // self.config.pretraining_tp, dim=0)
+                            logits = [
+                                F.linear(outputs.hidden_states[i], lm_head_slices[i])
+                                for i in range(self.config.pretraining_tp)
+                            ]
                             logits = torch.cat(logits, dim=-1)
                         else:
-                            logits = self.lm_head[cutoff_layers[i] - self.config.start_layer](outputs.hidden_states[i] / (self.config.hidden_size / self.config.dim_model_base))
+                            logits = self.lm_head[cutoff_layers[i] - self.config.start_layer](
+                                outputs.hidden_states[i]
+                                / (self.config.hidden_size / self.config.dim_model_base)
+                            )
                     logits = logits.float()
                     logits = logits.reshape(input_ids.shape[0], -1)
-                    all_logits = all_logits + (logits, )
+                    all_logits = all_logits + (logits,)
             else:
                 for i in range(len(outputs.hidden_states)):
                     if self.config.head_multi == False:
                         if self.config.pretraining_tp > 1:
-                            lm_head_slices = self.lm_head.linear_head.weight.split(self.vocab_size // self.config.pretraining_tp, dim=0)
-                            logits = [F.linear(outputs.hidden_states[i], lm_head_slices[i]) for i in range(self.config.pretraining_tp)]
+                            lm_head_slices = self.lm_head.linear_head.weight.split(
+                                self.vocab_size // self.config.pretraining_tp, dim=0
+                            )
+                            logits = [
+                                F.linear(outputs.hidden_states[i], lm_head_slices[i])
+                                for i in range(self.config.pretraining_tp)
+                            ]
                             logits = torch.cat(logits, dim=-1)
                         else:
-                            logits = self.lm_head.linear_head(outputs.hidden_states[i] / (self.config.hidden_size / self.config.dim_model_base))
+                            logits = self.lm_head.linear_head(
+                                outputs.hidden_states[i]
+                                / (self.config.hidden_size / self.config.dim_model_base)
+                            )
                     else:
                         if self.config.pretraining_tp > 1:
-                            lm_head_slices = self.lm_head[cutoff_layers[i] - self.config.start_layer].linear_head.weight.split(self.vocab_size // self.config.pretraining_tp, dim=0)
-                            logits = [F.linear(outputs.hidden_states[i], lm_head_slices[i]) for i in range(self.config.pretraining_tp)]
+                            lm_head_slices = self.lm_head[
+                                cutoff_layers[i] - self.config.start_layer
+                            ].linear_head.weight.split(
+                                self.vocab_size // self.config.pretraining_tp, dim=0
+                            )
+                            logits = [
+                                F.linear(outputs.hidden_states[i], lm_head_slices[i])
+                                for i in range(self.config.pretraining_tp)
+                            ]
                             logits = torch.cat(logits, dim=-1)
                         else:
-                            logits = self.lm_head[cutoff_layers[i] - self.config.start_layer].linear_head(outputs.hidden_states[i] / (self.config.hidden_size / self.config.dim_model_base))
+                            logits = self.lm_head[
+                                cutoff_layers[i] - self.config.start_layer
+                            ].linear_head(
+                                outputs.hidden_states[i]
+                                / (self.config.hidden_size / self.config.dim_model_base)
+                            )
                     logits = logits.float()
                     logits = logits.reshape(input_ids.shape[0], -1)
-                    all_logits = all_logits + (logits, )
+                    all_logits = all_logits + (logits,)
         else:
-            if self.config.head_type == 'raw':
+            if self.config.head_type == "raw":
                 if only_for_one_logit is None:
-                    raise ValueError("Cannot handle `only_for_one_logit` is None if the head type is complex.")
+                    raise ValueError(
+                        "Cannot handle `only_for_one_logit` is None if the head type is complex."
+                    )
 
                 if self.config.head_multi == False:
                     lm_head_slices = self.lm_head.weight.split(1, dim=0)
                     for i in range(len(outputs.hidden_states)):
-                        logits = F.linear(outputs.hidden_states[i], lm_head_slices[only_for_one_logit])
+                        logits = F.linear(
+                            outputs.hidden_states[i], lm_head_slices[only_for_one_logit]
+                        )
                         logits = logits.float()
                         logits = logits.reshape(input_ids.shape[0], -1)
                         all_logits = all_logits + (logits,)
                 else:
                     for i in range(len(outputs.hidden_states)):
-                        lm_head_slices = self.lm_head[cutoff_layers[i] - self.config.start_layer].weight.split(1, dim=0)
-                        logits = F.linear(outputs.hidden_states[i], lm_head_slices[only_for_one_logit])
+                        lm_head_slices = self.lm_head[
+                            cutoff_layers[i] - self.config.start_layer
+                        ].weight.split(1, dim=0)
+                        logits = F.linear(
+                            outputs.hidden_states[i], lm_head_slices[only_for_one_logit]
+                        )
                         logits = logits.float()
                         logits = logits.reshape(input_ids.shape[0], -1)
-                        all_logits = all_logits + (logits, )
-            elif self.config.head_type == 'complex':
+                        all_logits = all_logits + (logits,)
+            elif self.config.head_type == "complex":
                 if only_for_one_logit is None:
-                    raise ValueError("Cannot handle `only_for_one_logit` is None if the head type is complex.")
+                    raise ValueError(
+                        "Cannot handle `only_for_one_logit` is None if the head type is complex."
+                    )
 
                 if self.config.head_multi == False:
                     lm_head_slices = self.lm_head.linear_head.weight.split(1, dim=0)
                     for i in range(len(outputs.hidden_states)):
-                        logits = F.linear(outputs.hidden_states[i], lm_head_slices[only_for_one_logit])
+                        logits = F.linear(
+                            outputs.hidden_states[i], lm_head_slices[only_for_one_logit]
+                        )
                         logits = logits.float()
                         logits = logits.reshape(input_ids.shape[0], -1)
                         all_logits = all_logits + (logits,)
                 else:
                     for i in range(len(outputs.hidden_states)):
-                        lm_head_slices = self.lm_head[cutoff_layers[i] - self.config.start_layer].linear_head.weight.split(1, dim=0)
-                        logits = F.linear(outputs.hidden_states[i], lm_head_slices[only_for_one_logit])
+                        lm_head_slices = self.lm_head[
+                            cutoff_layers[i] - self.config.start_layer
+                        ].linear_head.weight.split(1, dim=0)
+                        logits = F.linear(
+                            outputs.hidden_states[i], lm_head_slices[only_for_one_logit]
+                        )
                         logits = logits.float()
                         logits = logits.reshape(input_ids.shape[0], -1)
-                        all_logits = all_logits + (logits, )
+                        all_logits = all_logits + (logits,)
             else:
                 if self.config.head_multi == False:
                     for i in range(len(outputs.hidden_states)):
@@ -1371,13 +1563,15 @@ class LayerWiseMiniCPMForCausalLM(MiniCPMPreTrainedModel):
                         all_logits = all_logits + (logits,)
                 else:
                     for i in range(len(outputs.hidden_states)):
-                        logits = self.lm_head[cutoff_layers[i] - self.config.start_layer].linear_head(outputs.hidden_states[i])
+                        logits = self.lm_head[
+                            cutoff_layers[i] - self.config.start_layer
+                        ].linear_head(outputs.hidden_states[i])
                         logits = logits.float()
                         logits = logits.reshape(input_ids.shape[0], -1)
                         all_logits = all_logits + (logits,)
 
         loss = None
-        if labels is not None and not only_for_one_logit and self.config.head_type == 'complex':
+        if labels is not None and not only_for_one_logit and self.config.head_type == "complex":
             # Shift so that tokens < n predict n
             loss = 0
             for logits in all_logits:
@@ -1406,7 +1600,7 @@ class LayerWiseMiniCPMForCausalLM(MiniCPMPreTrainedModel):
         )
 
     def prepare_inputs_for_generation(
-            self, input_ids, past_key_values=None, attention_mask=None, inputs_embeds=None, **kwargs
+        self, input_ids, past_key_values=None, attention_mask=None, inputs_embeds=None, **kwargs
     ):
         if past_key_values is not None:
             if isinstance(past_key_values, Cache):
@@ -1422,7 +1616,7 @@ class LayerWiseMiniCPMForCausalLM(MiniCPMPreTrainedModel):
             # some of the inputs are exclusivelly passed as part of the cache (e.g. when passing input_embeds as
             # input)
             if attention_mask is not None and attention_mask.shape[1] > input_ids.shape[1]:
-                input_ids = input_ids[:, -(attention_mask.shape[1] - past_length):]
+                input_ids = input_ids[:, -(attention_mask.shape[1] - past_length) :]
             # 2 - If the past_length is smaller than input_ids', then input_ids holds all input tokens. We can discard
             # input_ids based on the past_length.
             elif past_length < input_ids.shape[1]:
@@ -1431,9 +1625,9 @@ class LayerWiseMiniCPMForCausalLM(MiniCPMPreTrainedModel):
 
             # If we are about to go beyond the maximum cache length, we need to crop the input attention mask.
             if (
-                    max_cache_length is not None
-                    and attention_mask is not None
-                    and cache_length + input_ids.shape[1] > max_cache_length
+                max_cache_length is not None
+                and attention_mask is not None
+                and cache_length + input_ids.shape[1] > max_cache_length
             ):
                 attention_mask = attention_mask[:, -max_cache_length:]
 
@@ -1443,7 +1637,7 @@ class LayerWiseMiniCPMForCausalLM(MiniCPMPreTrainedModel):
             position_ids = attention_mask.long().cumsum(-1) - 1
             position_ids.masked_fill_(attention_mask == 0, 1)
             if past_key_values:
-                position_ids = position_ids[:, -input_ids.shape[1]:]
+                position_ids = position_ids[:, -input_ids.shape[1] :]
 
         # if `inputs_embeds` are passed, we only want to use them in the 1st generation step
         if inputs_embeds is not None and past_key_values is None:
@@ -1466,28 +1660,58 @@ class LayerWiseMiniCPMForCausalLM(MiniCPMPreTrainedModel):
         reordered_past = ()
         for layer_past in past_key_values:
             reordered_past += (
-                tuple(past_state.index_select(0, beam_idx.to(past_state.device)) for past_state in layer_past),
+                tuple(
+                    past_state.index_select(0, beam_idx.to(past_state.device))
+                    for past_state in layer_past
+                ),
             )
         return reordered_past
 
     @torch.inference_mode()
-    def chat(self, tokenizer, query: str, history: List[Dict] = None, role: str = "user",
-             max_length: int = 4096, num_beams=1, do_sample=True, top_p=0.8, temperature=0.3, logits_processor=None,
-             **kwargs):
+    def chat(
+        self,
+        tokenizer,
+        query: str,
+        history: List[Dict] = None,
+        role: str = "user",
+        max_length: int = 4096,
+        num_beams=1,
+        do_sample=True,
+        top_p=0.8,
+        temperature=0.3,
+        logits_processor=None,
+        **kwargs,
+    ):
         if history is None:
             history = []
         if logits_processor:
-            gen_kwargs = {"max_length": max_length, "num_beams": num_beams, "do_sample": do_sample, "top_p": top_p,
-                          "temperature": temperature, "logits_processor": logits_processor, **kwargs}
+            gen_kwargs = {
+                "max_length": max_length,
+                "num_beams": num_beams,
+                "do_sample": do_sample,
+                "top_p": top_p,
+                "temperature": temperature,
+                "logits_processor": logits_processor,
+                **kwargs,
+            }
         else:
-            gen_kwargs = {"max_length": max_length, "num_beams": num_beams, "do_sample": do_sample, "top_p": top_p,
-                          "temperature": temperature, "logits_processor": logits_processor, **kwargs}
+            gen_kwargs = {
+                "max_length": max_length,
+                "num_beams": num_beams,
+                "do_sample": do_sample,
+                "top_p": top_p,
+                "temperature": temperature,
+                "logits_processor": logits_processor,
+                **kwargs,
+            }
 
         history.append({"role": role, "content": query})
-        history_str = tokenizer.apply_chat_template(history, tokenize=False, add_generation_prompt=False)
-        inputs = tokenizer(history_str, return_tensors='pt').to(self.device)
+        history_str = tokenizer.apply_chat_template(
+            history, tokenize=False, add_generation_prompt=False
+        )
+        inputs = tokenizer(history_str, return_tensors="pt").to(self.device)
         outputs = self.generate(**inputs, **gen_kwargs)
-        outputs = outputs.tolist()[0][len(inputs["input_ids"][0]):-1]
+        outputs = outputs.tolist()[0][len(inputs["input_ids"][0]) : -1]
         response = tokenizer.decode(outputs)
         pattern = re.compile(r".*?(?=<AI>|<用户>)", re.DOTALL)
         matches = pattern.findall(response)

@@ -17,33 +17,49 @@ query_instruction_for_retrieval_dict = {
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model_name_or_path', default="BAAI/bge-large-zh", type=str)
-    parser.add_argument('--task_type', default=None, type=str)
-    parser.add_argument('--add_instruction', action='store_true', help="whether to add instruction for query")
-    parser.add_argument('--pooling_method', default='cls', type=str)
+    parser.add_argument("--model_name_or_path", default="BAAI/bge-large-zh", type=str)
+    parser.add_argument("--task_type", default=None, type=str)
+    parser.add_argument(
+        "--add_instruction", action="store_true", help="whether to add instruction for query"
+    )
+    parser.add_argument("--pooling_method", default="cls", type=str)
     return parser.parse_args()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     args = get_args()
 
-    model = FlagDRESModel(model_name_or_path=args.model_name_or_path,
-                          query_instruction_for_retrieval="为这个句子生成表示以用于检索相关文章：",
-                          pooling_method=args.pooling_method)
-    
+    model = FlagDRESModel(
+        model_name_or_path=args.model_name_or_path,
+        query_instruction_for_retrieval="为这个句子生成表示以用于检索相关文章：",
+        pooling_method=args.pooling_method,
+    )
+
     print(ChineseTaskList)
 
     for task in ChineseTaskList:
-        if task in ['T2Retrieval', 'MMarcoRetrieval', 'DuRetrieval',
-                    'CovidRetrieval', 'CmedqaRetrieval',
-                    'EcomRetrieval', 'MedicalRetrieval', 'VideoRetrieval',
-                    'T2Reranking', 'MMarcoReranking', 'CMedQAv1-reranking', 'CMedQAv2-reranking']:
+        if task in [
+            "T2Retrieval",
+            "MMarcoRetrieval",
+            "DuRetrieval",
+            "CovidRetrieval",
+            "CmedqaRetrieval",
+            "EcomRetrieval",
+            "MedicalRetrieval",
+            "VideoRetrieval",
+            "T2Reranking",
+            "MMarcoReranking",
+            "CMedQAv1-reranking",
+            "CMedQAv2-reranking",
+        ]:
             if args.model_name_or_path not in query_instruction_for_retrieval_dict:
                 if args.add_instruction:
                     instruction = "为这个句子生成表示以用于检索相关文章："
                 else:
                     instruction = None
-                print(f"{args.model_name_or_path} not in query_instruction_for_retrieval_dict, set instruction={instruction}")
+                print(
+                    f"{args.model_name_or_path} not in query_instruction_for_retrieval_dict, set instruction={instruction}"
+                )
             else:
                 instruction = query_instruction_for_retrieval_dict[args.model_name_or_path]
         else:

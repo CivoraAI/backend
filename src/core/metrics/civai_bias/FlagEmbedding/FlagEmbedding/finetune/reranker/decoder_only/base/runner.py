@@ -1,10 +1,11 @@
 import logging
 from typing import Tuple
 from pathlib import Path
-from FlagEmbedding.abc.finetune.reranker.AbsArguments import AbsRerankerDataArguments, AbsRerankerTrainingArguments
-from transformers import (
-    AutoTokenizer, PreTrainedTokenizer
+from FlagEmbedding.abc.finetune.reranker.AbsArguments import (
+    AbsRerankerDataArguments,
+    AbsRerankerTrainingArguments,
 )
+from transformers import AutoTokenizer, PreTrainedTokenizer
 
 from FlagEmbedding.abc.finetune.reranker import AbsRerankerRunner, AbsRerankerModel
 
@@ -19,17 +20,18 @@ logger = logging.getLogger(__name__)
 class DecoderOnlyRerankerRunner(AbsRerankerRunner):
     """
     Decoder only reranker runner for finetuning.
-    
+
     Args:
         model_args (RerankerModelArguments): Model arguments instance.
         data_args (AbsRerankerDataArguments): Data arguments instance.
         training_args (AbsRerankerTrainingArguments): Trainer arguments.
     """
+
     def __init__(
         self,
         model_args: RerankerModelArguments,
         data_args: AbsRerankerDataArguments,
-        training_args: AbsRerankerTrainingArguments
+        training_args: AbsRerankerTrainingArguments,
     ):
         super().__init__(model_args, data_args, training_args)
 
@@ -40,7 +42,11 @@ class DecoderOnlyRerankerRunner(AbsRerankerRunner):
             Tuple[PreTrainedTokenizer, AbsEmbedderModel]: Tokenizer and model instances.
         """
         tokenizer = AutoTokenizer.from_pretrained(
-            self.model_args.tokenizer_name if self.model_args.tokenizer_name else self.model_args.model_name_or_path,
+            (
+                self.model_args.tokenizer_name
+                if self.model_args.tokenizer_name
+                else self.model_args.model_name_or_path
+            ),
             token=self.model_args.token,
             cache_dir=self.model_args.cache_dir,
             use_fast=self.model_args.use_fast_tokenizer,
@@ -63,7 +69,7 @@ class DecoderOnlyRerankerRunner(AbsRerankerRunner):
                 tokenizer.pad_token = tokenizer.eos_token
                 tokenizer.pad_token_id = tokenizer.eos_token_id
         # if 'mistral' in self.model_args.model_name_or_path.lower():
-        tokenizer.padding_side = 'left'
+        tokenizer.padding_side = "left"
 
         base_model = get_model(self.model_args)
 
@@ -89,7 +95,7 @@ class DecoderOnlyRerankerRunner(AbsRerankerRunner):
             args=self.training_args,
             train_dataset=self.train_dataset,
             data_collator=self.data_collator,
-            tokenizer=self.tokenizer
+            tokenizer=self.tokenizer,
         )
         return trainer
 

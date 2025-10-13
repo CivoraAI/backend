@@ -1,6 +1,7 @@
 """
 Adapted from https://github.com/AIR-Bench/AIR-Bench/blob/0.1.0/air_benchmark/evaluation_utils/evaluator.py
 """
+
 import json
 import logging
 import os
@@ -18,12 +19,13 @@ logger = logging.getLogger(__name__)
 class AbsEvaluator:
     """
     Base class of Evaluator.
-    
+
     Args:
         eval_name (str): The experiment name of current evaluation.
         data_loader (AbsEvalDataLoader): The data_loader to deal with data.
         overwrite (bool): If true, will overwrite the existing results.
     """
+
     def __init__(
         self,
         eval_name: str,
@@ -58,20 +60,13 @@ class AbsEvaluator:
             ValueError: dataset_name mismatch
         """
         if data_info["eval_name"] != self.eval_name:
-            raise ValueError(
-                f'eval_name mismatch: {data_info["eval_name"]} vs {self.eval_name}'
-            )
-        if (
-            data_info["model_name"] != model_name
-            or data_info["reranker_name"] != reranker_name
-        ):
+            raise ValueError(f'eval_name mismatch: {data_info["eval_name"]} vs {self.eval_name}')
+        if data_info["model_name"] != model_name or data_info["reranker_name"] != reranker_name:
             raise ValueError(
                 f'model_name or reranker_name mismatch: {data_info["model_name"]} vs {model_name} or {data_info["reranker_name"]} vs {reranker_name}'
             )
-        if (data_info["split"] != split):
-            raise ValueError(
-                f'split mismatch: {data_info["split"]} vs {split}'
-            )
+        if data_info["split"] != split:
+            raise ValueError(f'split mismatch: {data_info["split"]} vs {split}')
         if dataset_name is not None and data_info["dataset_name"] != dataset_name:
             raise ValueError(
                 f'dataset_name mismatch: {data_info["dataset_name"]} vs {dataset_name}'
@@ -81,20 +76,22 @@ class AbsEvaluator:
         self,
         retriever_name: str,
         corpus_embd_save_dir: Optional[str] = None,
-        dataset_name: Optional[str] = None
+        dataset_name: Optional[str] = None,
     ):
         """
-        If corpus_embd_save_dir is not None, then it will be used as the base directory to save the corpus embeddings. For dataset such as MKQA, 
+        If corpus_embd_save_dir is not None, then it will be used as the base directory to save the corpus embeddings. For dataset such as MKQA,
             the corpus for all languages is the same, so the subclass can override this method to save the corpus embeddings in the same directory.
-        
+
         Args:
             retriever_name (str): Name of the retriever.
             corpus_embd_save_dir (str, optional): Directory that saving the corpus embedding.
-            dataset_name (str, optional): 
+            dataset_name (str, optional):
         """
         if corpus_embd_save_dir is not None:
             if dataset_name is not None:
-                corpus_embd_save_dir = os.path.join(corpus_embd_save_dir, retriever_name, dataset_name)
+                corpus_embd_save_dir = os.path.join(
+                    corpus_embd_save_dir, retriever_name, dataset_name
+                )
             else:
                 corpus_embd_save_dir = os.path.join(corpus_embd_save_dir, retriever_name)
         return corpus_embd_save_dir
@@ -138,7 +135,7 @@ class AbsEvaluator:
         corpus_embd_save_dir = self.get_corpus_embd_save_dir(
             retriever_name=str(retriever),
             corpus_embd_save_dir=corpus_embd_save_dir,
-            dataset_name=dataset_name
+            dataset_name=dataset_name,
         )
 
         # Retrieval Stage
@@ -200,7 +197,9 @@ class AbsEvaluator:
                 split_no_reranker_search_results_save_path = os.path.join(
                     no_reranker_search_results_save_dir, save_name.format(split=split)
                 )
-                data_info, search_results = self.load_search_results(split_no_reranker_search_results_save_path)
+                data_info, search_results = self.load_search_results(
+                    split_no_reranker_search_results_save_path
+                )
 
                 self.check_data_info(
                     data_info=data_info,
@@ -211,9 +210,13 @@ class AbsEvaluator:
                 )
                 no_reranker_search_results_dict[split] = search_results
         retriever.stop_multi_process_pool()
-        eval_results_save_path = os.path.join(no_reranker_search_results_save_dir, 'EVAL', 'eval_results.json')
+        eval_results_save_path = os.path.join(
+            no_reranker_search_results_save_dir, "EVAL", "eval_results.json"
+        )
         if not os.path.exists(eval_results_save_path) or self.overwrite or flag:
-            retriever_eval_results = self.evaluate_results(no_reranker_search_results_save_dir, k_values=k_values)
+            retriever_eval_results = self.evaluate_results(
+                no_reranker_search_results_save_dir, k_values=k_values
+            )
             self.output_eval_results_to_json(retriever_eval_results, eval_results_save_path)
 
         # Reranking Stage
@@ -258,9 +261,13 @@ class AbsEvaluator:
                     dataset_name=dataset_name,
                 )
             reranker.stop_multi_process_pool()
-            eval_results_save_path = os.path.join(reranker_search_results_save_dir, 'EVAL', 'eval_results.json')
+            eval_results_save_path = os.path.join(
+                reranker_search_results_save_dir, "EVAL", "eval_results.json"
+            )
             if not os.path.exists(eval_results_save_path) or self.overwrite or flag:
-                reranker_eval_results = self.evaluate_results(reranker_search_results_save_dir, k_values=k_values)
+                reranker_eval_results = self.evaluate_results(
+                    reranker_search_results_save_dir, k_values=k_values
+                )
                 self.output_eval_results_to_json(reranker_eval_results, eval_results_save_path)
 
     @staticmethod
@@ -310,7 +317,7 @@ class AbsEvaluator:
         """
         with open(input_path, "r", encoding="utf-8") as f:
             data_info = json.load(f)
-        
+
         search_results = data_info.pop("search_results")
         return data_info, search_results
 
@@ -350,9 +357,7 @@ class AbsEvaluator:
         return scores
 
     def evaluate_results(
-        self,
-        search_results_save_dir: str,
-        k_values: List[int] = [1, 3, 5, 10, 100, 1000]
+        self, search_results_save_dir: str, k_values: List[int] = [1, 3, 5, 10, 100, 1000]
     ):
         """Compute metrics according to the results in the directory.
 
@@ -366,23 +371,23 @@ class AbsEvaluator:
         eval_results_dict = {}
 
         for file in os.listdir(search_results_save_dir):
-            if not file.endswith('.json'):
+            if not file.endswith(".json"):
                 continue
 
             file_path = os.path.join(search_results_save_dir, file)
             data_info, search_results = self.load_search_results(file_path)
 
-            _eval_name = data_info['eval_name']
-            assert _eval_name == self.eval_name, f'Mismatch eval_name: {_eval_name} vs {self.eval_name} in {file_path}'
+            _eval_name = data_info["eval_name"]
+            assert (
+                _eval_name == self.eval_name
+            ), f"Mismatch eval_name: {_eval_name} vs {self.eval_name} in {file_path}"
 
-            split = data_info['split']
-            dataset_name = data_info.get('dataset_name', None)
+            split = data_info["split"]
+            dataset_name = data_info.get("dataset_name", None)
             qrels = self.data_loader.load_qrels(dataset_name=dataset_name, split=split)
 
             eval_results = self.compute_metrics(
-                qrels=qrels,
-                search_results=search_results,
-                k_values=k_values
+                qrels=qrels, search_results=search_results, k_values=k_values
             )
 
             if dataset_name is not None:
@@ -403,7 +408,7 @@ class AbsEvaluator:
         """
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-        with open(output_path, 'w', encoding='utf-8') as f:
+        with open(output_path, "w", encoding="utf-8") as f:
             json.dump(eval_results_dict, f, indent=4)
         logger.info(f"Results saved to {output_path}")
 
@@ -438,27 +443,35 @@ class AbsEvaluator:
                 all_splits.update(reranker_results.keys())
 
         index = [(model, reranker) for model, reranker in model_reranker_pairs]
-        multi_index = pd.MultiIndex.from_tuples(index, names=['Model', 'Reranker'])
-        
+        multi_index = pd.MultiIndex.from_tuples(index, names=["Model", "Reranker"])
+
         all_splits = sorted(list(all_splits))
-        overall_columns = ['average'] + all_splits
+        overall_columns = ["average"] + all_splits
         overall_df = pd.DataFrame(index=multi_index, columns=overall_columns)
-        
+
         for model, reranker in model_reranker_pairs:
             for split in all_splits:
-                if model in results_dict and reranker in results_dict[model] and split in results_dict[model][reranker]:
+                if (
+                    model in results_dict
+                    and reranker in results_dict[model]
+                    and split in results_dict[model][reranker]
+                ):
                     overall_df.loc[(model, reranker), split] = results_dict[model][reranker][split]
                 else:
                     overall_df.loc[(model, reranker), split] = None
             if overall_df.loc[(model, reranker), all_splits].isnull().any():
-                overall_df.loc[(model, reranker), 'average'] = None
+                overall_df.loc[(model, reranker), "average"] = None
             else:
-                overall_df.loc[(model, reranker), 'average'] = overall_df.loc[(model, reranker), all_splits].mean()
+                overall_df.loc[(model, reranker), "average"] = overall_df.loc[
+                    (model, reranker), all_splits
+                ].mean()
 
         return overall_df
 
     @staticmethod
-    def output_eval_results_to_markdown(eval_results_dict: dict, output_path: str, metrics: Union[List[str], str]):
+    def output_eval_results_to_markdown(
+        eval_results_dict: dict, output_path: str, metrics: Union[List[str], str]
+    ):
         """Write the evaluation results to a markdown file.
 
         Args:
@@ -471,7 +484,7 @@ class AbsEvaluator:
         if isinstance(metrics, str):
             metrics = [metrics]
 
-        with open(output_path, 'w', encoding='utf-8') as f:
+        with open(output_path, "w", encoding="utf-8") as f:
             for metric in metrics:
                 f.write(f"## {metric}\n\n")
                 results_df = AbsEvaluator.get_results_df(metric, eval_results_dict)
@@ -486,9 +499,9 @@ class AbsEvaluator:
                             line += "- | "
                         else:
                             if i != max_index[s]:
-                                line += f'{v*100:.3f} | '
+                                line += f"{v*100:.3f} | "
                             else:
-                                line += f'**{v*100:.3f}** | '
+                                line += f"**{v*100:.3f}** | "
                     f.write(line + "\n")
                 f.write("\n")
         logger.info(f"Results saved to {output_path}")

@@ -12,6 +12,7 @@ class EncoderOnlyEmbedderM3Trainer(AbsEmbedderTrainer):
     """
     Trainer class for M3.
     """
+
     def _save(self, output_dir: Optional[str] = None, state_dict=None):
         """Save the model to directory.
 
@@ -26,10 +27,10 @@ class EncoderOnlyEmbedderM3Trainer(AbsEmbedderTrainer):
         logger.info("Saving model checkpoint to %s", output_dir)
         # Save a trained model and configuration using `save_pretrained()`.
         # They can then be reloaded using `from_pretrained()`
-        if not hasattr(self.model, 'save'):
+        if not hasattr(self.model, "save"):
             raise NotImplementedError(
-                f'MODEL {self.model.__class__.__name__} '
-                f'does not support save interface')
+                f"MODEL {self.model.__class__.__name__} " f"does not support save interface"
+            )
         else:
             self.model.save(output_dir)
         if self.tokenizer is not None and self.is_world_process_zero():

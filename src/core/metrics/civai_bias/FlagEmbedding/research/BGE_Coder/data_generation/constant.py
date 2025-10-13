@@ -65,16 +65,16 @@ class TaskType(Enum):
 def get_task_def_by_task_type(task_type: Union[str, TaskType]) -> Tuple[str, TaskType, str]:
     """
     Given a task type, return the main task type, task type, and task instruction.
-    
+
     Args:
     - task_type: Union[str, TaskType]: the task type, either as a string or as a TaskType enum. Example: "web_code_retrieval" or TaskType.web_code_retrieval
-    
+
     Returns:
     - main_task_type: str: the main task type. Example: "text2code"
     - task_type: TaskType: the task type. Example: TaskType.web_code_retrieval
     - task_instruction: str: the task instruction. Example: "Given a web search query, retrieve relevant code that can help answer the query."
     """
-    
+
     task_type_to_instruct: Dict[TaskType, str] = {
         # text2code
         TaskType.web_code_retrieval: "Given a web search query, retrieve relevant code that can help answer the query.",
@@ -87,7 +87,6 @@ def get_task_def_by_task_type(task_type: Union[str, TaskType]) -> Tuple[str, Tas
         TaskType.pseudocode_retrieval: "Given a pseudocode description of an procedure, retrieve code implementations of the procedure.",
         TaskType.tutorial_query_retrieval: "Given a query related to a programming tutorial or learning material, retrieve code examples that are relevant to the query.",
         TaskType.algorithm_desc_retrieval: "Given a textual description of an algorithm, retrieve code implementations of the described algorithm.",
-        
         # code2text
         TaskType.code_summary_retrieval: "Given a piece of code, retrieve the document string that summarizes the code.",
         TaskType.code_review_retrieval: "Given a piece of code, retrieve the review that explains its role.",
@@ -99,7 +98,6 @@ def get_task_def_by_task_type(task_type: Union[str, TaskType]) -> Tuple[str, Tas
         TaskType.code_walkthrough_retrieval: "Given a piece of code, retrieve a step-by-step walkthrough or detailed explanation of the code's logic and execution flow.",
         TaskType.code_error_explanation_retrieval: "Given a piece of code, retrieve the document that explains potential errors or exceptions that may arise from the code.",
         TaskType.code_to_requirement_retrieval: "Given a piece of code, retrieve the software requirement or user story it fulfills.",
-        
         # code2code
         TaskType.code_context_retrieval: "Given a piece of code segment, retrieve the code segment that is the latter part of the code.",
         TaskType.similar_code_retrieval: "Given a piece of code, retrieve code that is semantically equivalent to the input code.",
@@ -119,7 +117,6 @@ def get_task_def_by_task_type(task_type: Union[str, TaskType]) -> Tuple[str, Tas
         TaskType.error_handling_code_retrieval: "Given a piece of code, retrieve code that incorporates error-checking or exception-handling mechanisms relevant to the input code.",
         TaskType.code_documentation_retrieval: "Given a piece of code, retrieve code with inline comments or documentation explaining its functionality.",
         TaskType.library_adaptation_retrieval: "Given a piece of code using one library or framework, retrieve code that achieves the same functionality using a different library or framework.",
-        
         # hybrid
         TaskType.code_modification_retrieval: "Given a code snippet and a natural language description of desired modifications, retrieve relevant code that implements the requested modifications.",
         # TaskType.code_modification_retrieval: "Given a question that consists of a mix of text and code snippets, retrieve relevant code that answers the question.",
@@ -134,7 +131,7 @@ def get_task_def_by_task_type(task_type: Union[str, TaskType]) -> Tuple[str, Tas
         TaskType.code_best_practices_retrieval: "Given a code snippet and a natural language query about coding best practices, retrieve relevant document including guidelines, design patterns, or recommendations that can help improve the quality of the code.",
         TaskType.security_vulnerability_fix_retrieval: "Given a code snippet and a text description of a security concern, retrieve secure code alternatives that address the security vulnerability.",
     }
-    
+
     task_type_to_main_type: Dict[TaskType, str] = {
         # text2code
         TaskType.web_code_retrieval: "text2code",
@@ -147,7 +144,6 @@ def get_task_def_by_task_type(task_type: Union[str, TaskType]) -> Tuple[str, Tas
         TaskType.pseudocode_retrieval: "text2code",
         TaskType.tutorial_query_retrieval: "text2code",
         TaskType.algorithm_desc_retrieval: "text2code",
-        
         # code2text
         TaskType.code_summary_retrieval: "code2text",
         TaskType.code_review_retrieval: "code2text",
@@ -159,7 +155,6 @@ def get_task_def_by_task_type(task_type: Union[str, TaskType]) -> Tuple[str, Tas
         TaskType.code_walkthrough_retrieval: "code2text",
         TaskType.code_error_explanation_retrieval: "code2text",
         TaskType.code_to_requirement_retrieval: "code2text",
-        
         # code2code
         TaskType.code_context_retrieval: "code2code",
         TaskType.similar_code_retrieval: "code2code",
@@ -179,7 +174,6 @@ def get_task_def_by_task_type(task_type: Union[str, TaskType]) -> Tuple[str, Tas
         TaskType.error_handling_code_retrieval: "code2code",
         TaskType.code_documentation_retrieval: "code2code",
         TaskType.library_adaptation_retrieval: "code2code",
-        
         # hybrid
         TaskType.code_modification_retrieval: "hybrid",
         # TaskType.single_turn_code_qa: "hybrid",
@@ -196,42 +190,42 @@ def get_task_def_by_task_type(task_type: Union[str, TaskType]) -> Tuple[str, Tas
 
     if isinstance(task_type, str):
         task_type = TaskType[task_type]
-    
+
     task_instruction = task_type_to_instruct[task_type]
     main_task_type = task_type_to_main_type[task_type]
-    
+
     return main_task_type, task_type, task_instruction
 
 
 class Language(Enum):
     # 主流语言 (2): 每种任务和每种 code language 均生产 (不包含文本的只生产 English)
-    en = 'English'  # 英语
-    zh = 'Simplified Chinese'  # 简体中文
-    
+    en = "English"  # 英语
+    zh = "Simplified Chinese"  # 简体中文
+
     # 其他语言 (20)：从 text2code, code2text 中各 sample 3 个任务类型，再从 High 的 code language (java python javascript php ruby go csharp cplusplus) 中 sample 3 个 code language 出来，每个下面是 750 条，总共是 20 * 5 * 3 * 750 + 20 * 750 = 240K 条 (12K / language)
-    ## Tasks: 1) web_code_retrieval, code_explanation_retrieval, text2sql_retrieval; 
+    ## Tasks: 1) web_code_retrieval, code_explanation_retrieval, text2sql_retrieval;
     #         2) code_review_retrieval, code_walkthrough_retrieval, code_to_requirement_retrieval
     ## Code Languages: random sample 3 code languages
-    ar = 'Arabic'  # 阿拉伯语
-    bn = 'Bengali'  # 孟加拉语
-    es = 'Spanish'  # 西班牙语
-    fa = 'Persian'  # 波斯语
-    fi = 'Finnish'  # 芬兰语
-    fr = 'French'  # 法语
-    hi = 'Hindi'  # 印地语
-    id = 'Indonesian'  # 印度尼西亚语
-    ja = 'Japanese'  # 日语
-    ko = 'Korean'  # 韩语
-    ru = 'Russian'  # 俄语
-    sw = 'Swahili'  # 斯瓦希里语
-    te = 'Telugu'  # 泰卢固语
-    th = 'Thai'  # 泰语
-    de = 'German'  # 德语
-    yo = 'Yoruba'  # 约鲁巴语
-    it = 'Italian'  # 意大利语
-    pt = 'Portuguese'  # 葡萄牙语
-    vi = 'Vietnamese'  # 越南语
-    zh_tw = 'Traditional Chinese'   # 繁体中文
+    ar = "Arabic"  # 阿拉伯语
+    bn = "Bengali"  # 孟加拉语
+    es = "Spanish"  # 西班牙语
+    fa = "Persian"  # 波斯语
+    fi = "Finnish"  # 芬兰语
+    fr = "French"  # 法语
+    hi = "Hindi"  # 印地语
+    id = "Indonesian"  # 印度尼西亚语
+    ja = "Japanese"  # 日语
+    ko = "Korean"  # 韩语
+    ru = "Russian"  # 俄语
+    sw = "Swahili"  # 斯瓦希里语
+    te = "Telugu"  # 泰卢固语
+    th = "Thai"  # 泰语
+    de = "German"  # 德语
+    yo = "Yoruba"  # 约鲁巴语
+    it = "Italian"  # 意大利语
+    pt = "Portuguese"  # 葡萄牙语
+    vi = "Vietnamese"  # 越南语
+    zh_tw = "Traditional Chinese"  # 繁体中文
 
     # nl = 'Dutch'  # 荷兰语
     # no = 'Norwegian'  # 挪威语
@@ -267,6 +261,7 @@ class Language(Enum):
     # mi = 'Maori'  # 毛利语
     # mn = 'Mongolian'  # 蒙古语
 
+
 class CodeLanguage(Enum):
     # High (8): 3000 / language
     java = "Java"
@@ -291,10 +286,10 @@ class CodeLanguage(Enum):
     lua = "Lua"
     powershell = "PowerShell"
     visual_basic = "Visual Basic"
-    
+
     # NULL for tasks that do not require code language
     null = ""
-    
+
     # assembly = "Assembly"
     # cmake = "CMake"
     # css = "CSS"
@@ -344,10 +339,7 @@ class Task:
 
 
 def get_task(
-    task_type: str,
-    language: str,
-    code_language: str,
-    tgt_code_language: Optional[str] = None
+    task_type: str, language: str, code_language: str, tgt_code_language: Optional[str] = None
 ) -> Task:
     main_task_type, task_type, task_instruction = get_task_def_by_task_type(task_type)
 
@@ -358,7 +350,9 @@ def get_task(
     code_language = CodeLanguage[code_language]
     tgt_code_language = CodeLanguage[tgt_code_language]
 
-    task_instruction = task_instruction.replace("{src_language}", code_language.value).replace("{tgt_language}", tgt_code_language.value)
+    task_instruction = task_instruction.replace("{src_language}", code_language.value).replace(
+        "{tgt_language}", tgt_code_language.value
+    )
 
     task = Task(
         task_type=task_type,
@@ -366,7 +360,7 @@ def get_task(
         code_language=code_language,
         task_instruction=task_instruction,
         tgt_code_language=tgt_code_language,
-        main_task_type=main_task_type
+        main_task_type=main_task_type,
     )
     return task
 
@@ -406,10 +400,10 @@ def get_pos_as_input_by_task_type(task_type: TaskType) -> bool:
         TaskType.code_best_practices_retrieval: False,
         TaskType.security_vulnerability_fix_retrieval: False,
     }
-    
+
     if task_type in SPECIAL_TASKS:
         return SPECIAL_TASKS[task_type]
-    
+
     # normal rules
     main_task_type, _, _ = get_task_def_by_task_type(task_type)
     if main_task_type in ["text2code", "hybrid"]:
@@ -425,22 +419,22 @@ def get_generation_prompt(
     text: str,
     text_b: Optional[str] = None,
     examples: Optional[List[dict]] = None,
-    idx: Optional[int] = None
+    idx: Optional[int] = None,
 ) -> str:
     """
     Given a task, return the generation prompt for the task.
-    
+
     Args:
     - task: Task: the task object
     - text: str: the input text
     - text_b: str: the second input text (optional), used for code_modification_retrieval task
     - examples: List[dict]: the examples for the task
     - idx: int: the index of gen_instruction in the instruction list (optional), used for tasks that need multiple steps to generate the output
-    
+
     Returns:
     - gen_prompt: str: the generation prompt
     """
-    
+
     task_to_gen_instruction: Dict[TaskType, str] = {
         # text2code (gen: code -> text)
         TaskType.web_code_retrieval: "Given a piece of {code_language} code, generate a web query in {language} that can be solved by the code.",
@@ -456,7 +450,6 @@ def get_generation_prompt(
         TaskType.pseudocode_retrieval: "Given a piece of {code_language} code, generate a pseudocode in {language} that describes the code functionality.",
         TaskType.tutorial_query_retrieval: "Given a piece of {code_language} code, generate a programming tutorial query in {language} that can be answered by the code as an example.",
         TaskType.algorithm_desc_retrieval: "Given a piece of {code_language} code, generate an algorithm description in {language} that can be implemented by the code.",
-        
         # code2text (gen: code -> text)
         TaskType.code_summary_retrieval: "Given a piece of {code_language} code, generate a summary in {language} of the code.",
         TaskType.code_review_retrieval: "Given a piece of {code_language} code, generate a review in {language} that explains its role.",
@@ -471,7 +464,6 @@ def get_generation_prompt(
         TaskType.code_walkthrough_retrieval: "Given a piece of {code_language} code, generate a step-by-step walkthrough or detailed explanation of the code's logic and execution flow in {language}.",
         TaskType.code_error_explanation_retrieval: "Given a piece of {code_language} code, generate a detailed explanation of the errors or exceptions that may arise from the code in {language}.",
         TaskType.code_to_requirement_retrieval: "Given a piece of {code_language} code, generate a software requirement or user story it fulfills in {language}.",
-
         # code2code (gen: code-prefix -> code-suffix)
         TaskType.code_context_retrieval: "Given a piece of {code_language} code, generate a piece of code that is the latter part of the input code.",
         TaskType.similar_code_retrieval: "Given a piece of {code_language} code, generate a piece of {code_language} code that is semantically equivalent to the input code.",
@@ -495,7 +487,6 @@ def get_generation_prompt(
         TaskType.error_handling_code_retrieval: "Given a piece of {code_language} code, generate a piece of code that incorporates error-checking or exception-handling mechanisms relevant to the input code.",
         TaskType.code_documentation_retrieval: "Given a piece of {code_language} code, generate a piece of code with inline comments or documentation explaining its functionality.",
         TaskType.library_adaptation_retrieval: "Given a piece of {code_language} code, generate a piece of code that achieves the same functionality using a different library or framework.",
-        
         # hybrid (gen: code -> hybrid)
         TaskType.code_modification_retrieval: [
             "Given a piece of input code and a piece of output code, generate the differences in {language} between the input code and output code.",
@@ -536,7 +527,7 @@ def get_generation_prompt(
             "Given a piece of {code_language} code and a text description in {language} of a security concern, generate secure code alternatives that address the vulnerability.",
         ],
     }
-    
+
     task_to_gen_output: Dict[TaskType, str] = {
         # text2code (gen: code -> text)
         TaskType.web_code_retrieval: "the generated web query in {language}",
@@ -552,7 +543,6 @@ def get_generation_prompt(
         TaskType.pseudocode_retrieval: "the generated pseudocode in {language}",
         TaskType.tutorial_query_retrieval: "the generated programming tutorial query in {language}",
         TaskType.algorithm_desc_retrieval: "the generated algorithm description in {language}",
-        
         # code2text (gen: code -> text)
         TaskType.code_summary_retrieval: "the generated summary in {language}",
         TaskType.code_review_retrieval: "the generated review in {language}",
@@ -567,7 +557,6 @@ def get_generation_prompt(
         TaskType.code_walkthrough_retrieval: "the generated walkthrough in {language}",
         TaskType.code_error_explanation_retrieval: "the generated error explanation in {language}",
         TaskType.code_to_requirement_retrieval: "the generated requirement in {language}",
-
         # code2code (gen: code-prefix -> code-suffix)
         TaskType.code_context_retrieval: "the generated piece of {code_language} code",
         TaskType.similar_code_retrieval: "the generated piece of {code_language} code",
@@ -591,7 +580,6 @@ def get_generation_prompt(
         TaskType.error_handling_code_retrieval: "the generated piece of {code_language} code",
         TaskType.code_documentation_retrieval: "the generated piece of {code_language} code",
         TaskType.library_adaptation_retrieval: "the generated piece of {code_language} code",
-        
         # hybrid (gen: code -> hybrid)
         TaskType.code_modification_retrieval: [
             "the generated differences in {language} between the input code and output code",
@@ -601,19 +589,19 @@ def get_generation_prompt(
         # TaskType.multi_turn_code_qa: "the generated multi-turn conversation history that consists of a mix of {language} text and code snippets",
         TaskType.code_bug_fix_example_retrieval: [
             "the generated buggy version of the code and a description in {language} of the bug or error",
-            "the generated piece of {code_language} code"
+            "the generated piece of {code_language} code",
         ],
         TaskType.code_refactoring_pattern_retrieval: [
             "the generated description of the desired refactoring goals or patterns in {language}",
-            "the generated piece of {code_language} code"
+            "the generated piece of {code_language} code",
         ],
         TaskType.code_style_guideline_example_retrieval: [
             "the generated query describing a desired coding style or best practice to improve it in {language}",
-            "the generated piece of {code_language} code"
+            "the generated piece of {code_language} code",
         ],
         TaskType.code_migration_retrieval: [
             "the generated specific migration requirement in {language} based on the code",
-            "the generated piece of {code_language} code"
+            "the generated piece of {code_language} code",
         ],
         TaskType.code_optimization_hybrid_retrieval: [
             "the generated question in {language} that requests a specific optimization for the code",
@@ -632,22 +620,30 @@ def get_generation_prompt(
             "the generated piece of {code_language} code",
         ],
     }
-    
+
     gen_instruction = task_to_gen_instruction[task.task_type]
     gen_output = task_to_gen_output[task.task_type]
-    
+
     if idx is not None:
         assert isinstance(gen_instruction, list)
         gen_instruction = gen_instruction[idx]
         assert isinstance(gen_output, list)
         gen_output = gen_output[idx]
-    
+
     assert isinstance(gen_instruction, str)
     assert isinstance(gen_output, str)
-    
-    gen_instruction = gen_instruction.replace("{language}", task.language.value).replace("{code_language}", task.code_language.value).replace("{tgt_code_language}", task.tgt_code_language.value)
-    gen_output = gen_output.replace("{language}", task.language.value).replace("{code_language}", task.code_language.value).replace("{tgt_code_language}", task.tgt_code_language.value)
-    
+
+    gen_instruction = (
+        gen_instruction.replace("{language}", task.language.value)
+        .replace("{code_language}", task.code_language.value)
+        .replace("{tgt_code_language}", task.tgt_code_language.value)
+    )
+    gen_output = (
+        gen_output.replace("{language}", task.language.value)
+        .replace("{code_language}", task.code_language.value)
+        .replace("{tgt_code_language}", task.tgt_code_language.value)
+    )
+
     if task.task_type == TaskType.code_modification_retrieval:
         if idx == 0:
             assert text_b is not None
@@ -733,7 +729,8 @@ Note:
 """
 
     if idx != 0 and examples is not None:
-        examples_str_list = [f"""\
+        examples_str_list = [
+            f"""\
 - Example {i + 1}:
     {prefix}
     ```{task.code_language.name}
@@ -744,8 +741,10 @@ Note:
     {example['output']}
     ```
 
-""" for i, example in enumerate(examples)]
-        
+"""
+            for i, example in enumerate(examples)
+        ]
+
         gen_prompt += f"""\
 Here are a few examples for your reference:
 {''.join(examples_str_list)}
@@ -763,14 +762,14 @@ def get_quality_control_prompt(
 ) -> str:
     """
     Given a task, return the quality control prompt for the task.
-    
+
     Args:
     - task: Task: the task object
-    
+
     Returns:
     - qc_prompt: str: the quality control prompt
     """
-    
+
     # return tuples of (mission, query_type, doc_type, qc_options)
     task_to_qc_mission: Dict[TaskType, str] = {
         # text2code
@@ -781,7 +780,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the code can help answer the web search query.",
                 "No, the code cannot help answer the web search query.",
-            ]
+            ],
         ),
         TaskType.code_contest_retrieval: (
             "judge whether the code can help solve the code contest problem",
@@ -790,7 +789,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the code can help solve the code contest problem.",
                 "No, the code cannot help solve the code contest problem.",
-            ]
+            ],
         ),
         TaskType.text2sql_retrieval: (
             "judge whether the code is an appropriate response to the text query",
@@ -799,7 +798,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the code is an appropriate response to the text query.",
                 "No, the code is not an appropriate response to the text query.",
-            ]
+            ],
         ),
         TaskType.error_message_retrieval: (
             "judge whether the code can help resolve the error message",
@@ -808,7 +807,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the code can help resolve the error message.",
                 "No, the code cannot help resolve the error message.",
-            ]
+            ],
         ),
         TaskType.code_explanation_retrieval: (
             "judge whether the code implements the functionality described in the explanation",
@@ -817,7 +816,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the code implements the functionality described in the explanation.",
                 "No, the code does not implement the functionality described in the explanation.",
-            ]
+            ],
         ),
         TaskType.api_usage_retrieval: (
             "judge whether the code demonstrates the usage description of the API or library",
@@ -826,7 +825,7 @@ def get_quality_control_prompt(
             [
                 "Yes, and the code demonstrates the usage description of the API or library.",
                 "No, the code does not demonstrate the usage description of the API or library.",
-            ]
+            ],
         ),
         TaskType.bug_desc_retrieval: (
             "judge whether the code can help address the described bug",
@@ -835,7 +834,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the code can help address the described bug.",
                 "No, the code cannot help address the described bug.",
-            ]
+            ],
         ),
         TaskType.pseudocode_retrieval: (
             "judge whether the code implements the procedure described in the pseudocode",
@@ -844,7 +843,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the code implements the procedure described in the pseudocode.",
                 "No, the code does not implement the procedure described in the pseudocode.",
-            ]
+            ],
         ),
         TaskType.tutorial_query_retrieval: (
             "judge whether the code can answer the programming tutorial query",
@@ -853,7 +852,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the code can answer the programming tutorial query.",
                 "No, the code cannot answer the programming tutorial query.",
-            ]
+            ],
         ),
         TaskType.algorithm_desc_retrieval: (
             "judge whether the code implements the algorithm described in the text",
@@ -862,9 +861,8 @@ def get_quality_control_prompt(
             [
                 "Yes, the code implements the algorithm described in the text.",
                 "No, the code does not implement the algorithm described in the text.",
-            ]
+            ],
         ),
-        
         # code2text
         TaskType.code_summary_retrieval: (
             "judge whether the text summarizes the code",
@@ -873,7 +871,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the text summarizes the code.",
                 "No, the text does not summarize the code.",
-            ]
+            ],
         ),
         TaskType.code_review_retrieval: (
             "judge whether the review explains the role of the code",
@@ -882,7 +880,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the review explains the role of the code.",
                 "No, the review does not explain the role of the code.",
-            ]
+            ],
         ),
         TaskType.code_intent_retrieval: (
             "judge whether the text describes the intent of the code",
@@ -891,7 +889,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the text describes the intent of the code.",
                 "No, the text does not describe the intent of the code.",
-            ]
+            ],
         ),
         TaskType.code_optimization_retrieval: (
             "judge whether the text provides optimization suggestions or performance analysis reports for the code",
@@ -900,7 +898,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the text provides optimization suggestions or performance analysis reports for the code.",
                 "No, the text provides neither optimization suggestions nor performance analysis reports for the code.",
-            ]
+            ],
         ),
         TaskType.tutorial_retrieval: (
             "judge whether the text is a tutorial or how-to guide that demonstrates how to use or implement similar code",
@@ -909,7 +907,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the text is a tutorial or how-to guide that demonstrates how to use or implement similar code.",
                 "No, the text neither provides instructional guidance for using similar code nor demonstrates how to implement similar code.",
-            ]
+            ],
         ),
         TaskType.code_error_explanation_retrieval: (
             "judge whether the text describes potential errors or exceptions that may arise from the code",
@@ -918,7 +916,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the text describes potential errors or exceptions that may arise from the code.",
                 "No, the text neither describes potential errors nor discuss exceptions that may arise from the code.",
-            ]
+            ],
         ),
         TaskType.code_issue_discussion_retrieval: (
             "judge whether the text is a discussion or issue report related to the code",
@@ -927,7 +925,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the text is a discussion or issue report related to the code.",
                 "No, the text is neither a discussion about the code nor an issue report related to the code.",
-            ]
+            ],
         ),
         TaskType.api_reference_retrieval: (
             "judge whether the text is an API reference documentation for the APIs or libraries used in the code",
@@ -936,7 +934,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the text is an API reference documentation for the APIs or libraries used in the code.",
                 "No, the text is not an API reference documentation for the APIs or libraries used in the code.",
-            ]
+            ],
         ),
         TaskType.code_walkthrough_retrieval: (
             "judge whether the text is a step-by-step walkthrough or detailed explanation of the code's logic and execution flow",
@@ -945,7 +943,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the text is a step-by-step walkthrough or detailed explanation of the code's logic and execution flow.",
                 "No, the text is neither a step-by-step walkthrough nor a detailed explanation of the code's logic and execution flow.",
-            ]
+            ],
         ),
         TaskType.code_to_requirement_retrieval: (
             "judge whether the text is a software requirement or user story that the code fulfills",
@@ -954,9 +952,8 @@ def get_quality_control_prompt(
             [
                 "Yes, the text is a software requirement or user story that the code fulfills.",
                 "No, the text is neither a software requirement nor a user story that the code fulfills.",
-            ]
+            ],
         ),
-        
         # code2code
         TaskType.code_context_retrieval: (
             "judge whether the output code is the latter part of the input code",
@@ -965,7 +962,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the output code is the latter part of the input code.",
                 "No, the output code is not the latter part of the input code.",
-            ]
+            ],
         ),
         TaskType.similar_code_retrieval: (
             "judge whether the output code is semantically equivalent to the input code",
@@ -974,7 +971,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the output code is semantically equivalent to the input code.",
                 "No, the output code is not semantically equivalent to the input code.",
-            ]
+            ],
         ),
         TaskType.code_translation_retrieval: (
             "judge whether the output code is semantically equivalent to the input code",
@@ -983,7 +980,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the output code is semantically equivalent to the input code.",
                 "No, the output code is not semantically equivalent to the input code.",
-            ]
+            ],
         ),
         TaskType.code_refinement_retrieval: (
             "judge whether the output code is a refined version of the input code",
@@ -992,7 +989,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the output code is a refined version of the input code.",
                 "No, the output code is not a refined version of the input code.",
-            ]
+            ],
         ),
         TaskType.secure_code_retrieval: (
             "judge whether the output code is the version with enhanced security measures or vulnerability fixes compared to the input code",
@@ -1001,7 +998,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the output code is the version with enhanced security measures or vulnerability fixes compared to the input code.",
                 "No, the output code neither introduces security enhancements nor fixes vulnerabilities compared to the input code.",
-            ]
+            ],
         ),
         TaskType.code_version_update_retrieval: (
             "judge whether the output code is the version updated to comply with the syntax or features of a newer language version compared to the input code",
@@ -1010,7 +1007,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the output code is the version updated to comply with the syntax or features of a newer code language version compared to the input code.",
                 "No, the output code neither adopts syntax updates nor introduces newer code language features compared to the input code.",
-            ]
+            ],
         ),
         TaskType.code_example_retrieval: (
             "judge whether the output code is the example code snippets that demonstrate how to use the library or API in the input code",
@@ -1019,7 +1016,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the output code is the example code snippets that demonstrate how to use the library or API in the input code.",
                 "No, the output code is not the example code snippets that demonstrate how to use the library or API in the input code.",
-            ]
+            ],
         ),
         TaskType.code_dependency_retrieval: (
             "judge whether the output code is the code segments that the input code depends on, including libraries, functions, and variables.",
@@ -1028,7 +1025,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the output code is the code segments that the input code depends on, including libraries, functions, and variables.",
                 "No, the output code is not the code segments that the input code depends on, including libraries, functions, and variables.",
-            ]
+            ],
         ),
         TaskType.code_pattern_retrieval: (
             "judge whether the output code follows the same design pattern or structure as the input code",
@@ -1037,7 +1034,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the output code follows the same design pattern or structure as the input code.",
                 "No, the output code neither follows the same design pattern nor retains the same structure as the input code.",
-            ]
+            ],
         ),
         TaskType.code_history_retrieval: (
             "judge whether the output code is the historical version or iteration of the input code, and can help understand its development history.",
@@ -1046,7 +1043,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the output code is the historical version or iteration of the input code, and can help understand its development history.",
                 "No, the output code is not the historical version or iteration of the input code, and cannot help understand its development history.",
-            ]
+            ],
         ),
         TaskType.code_integration_retrieval: (
             "judge whether the output code demonstrates how to integrate the input code with other systems or components.",
@@ -1055,7 +1052,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the output code demonstrates how to integrate the input code with other systems or components.",
                 "No, the output code does not demonstrate how to integrate the input code with other systems or components.",
-            ]
+            ],
         ),
         TaskType.optimized_code_retrieval: (
             "judge whether the output code is an optimized version of the input code",
@@ -1064,7 +1061,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the output code is an optimized version of the input code.",
                 "No, the output code is not an optimized version of the input code.",
-            ]
+            ],
         ),
         TaskType.code_simplification_retrieval: (
             "judge whether the output code is a simplified version of the input code",
@@ -1073,7 +1070,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the output code is a simplified version of the input code.",
                 "No, the output code is not a simplified version of the input code.",
-            ]
+            ],
         ),
         TaskType.code_modularization_retrieval: (
             "judge whether the output code is a modularized version of the input code",
@@ -1082,7 +1079,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the output code is a modularized version of the input code.",
                 "No, the output code is not a modularized version of the input code.",
-            ]
+            ],
         ),
         TaskType.code_augmentation_retrieval: (
             "judge whether the output code implements additional functionality while preserving the original behavior of the input code",
@@ -1091,7 +1088,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the output code implements additional functionality while preserving the original behavior of the input code.",
                 "No, the output code does not implement additional functionality while preserving the original behavior of the input code.",
-            ]
+            ],
         ),
         TaskType.error_handling_code_retrieval: (
             "judge whether the output code incorporates error-checking or exception-handling mechanisms relevant to the input code",
@@ -1100,7 +1097,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the output code incorporates error-checking or exception-handling mechanisms relevant to the input code.",
                 "No, the output code does not incorporate error-checking or exception-handling mechanisms relevant to the input code.",
-            ]
+            ],
         ),
         TaskType.code_documentation_retrieval: (
             "judge whether the output code contains inline comments or documentation explaining the functionality of the input code",
@@ -1109,7 +1106,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the output code contains inline comments or documentation explaining the functionality of the input code.",
                 "No, the output code does not contain inline comments or documentation explaining the functionality of the input code.",
-            ]
+            ],
         ),
         TaskType.library_adaptation_retrieval: (
             "judge whether the output code achieves the same functionality using a different library or framework as the input code",
@@ -1118,9 +1115,8 @@ def get_quality_control_prompt(
             [
                 "Yes, the output code achieves the same functionality using a different library or framework as the input code.",
                 "No, the output code does not achieve the same functionality using a different library or framework as the input code.",
-            ]
+            ],
         ),
-        
         # hybrid
         TaskType.code_modification_retrieval: (
             "judge whether the output code implements the requested modification described in the query",
@@ -1129,7 +1125,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the output code implements the requested modification described in the query.",
                 "No, the output code does not implement the requested modification described in the query.",
-            ]
+            ],
         ),
         # TaskType.single_turn_code_qa: "judge whether the output code can answer the question",
         # TaskType.multi_turn_code_qa: "judge whether the output code can answer the question",
@@ -1140,7 +1136,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the output code fixes the bug or error described in the query.",
                 "No, the output code does not fix the bug or error described in the query.",
-            ]
+            ],
         ),
         TaskType.code_refactoring_pattern_retrieval: (
             "judge whether the output code exemplifies similar refactoring techniques or patterns described in the query",
@@ -1149,7 +1145,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the output code exemplifies similar refactoring techniques or patterns described in the query.",
                 "No, the output code does not exemplify similar refactoring techniques or patterns described in the query.",
-            ]
+            ],
         ),
         TaskType.code_style_guideline_example_retrieval: (
             "judge whether the output code adheres to the specified style guidelines or best practices described in the query",
@@ -1158,7 +1154,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the output code adheres to the specified style guidelines or best practices described in the query.",
                 "No, the output code does not adhere to the specified style guidelines or best practices described in the query.",
-            ]
+            ],
         ),
         TaskType.code_migration_retrieval: (
             "judge whether the output code meets the migration requirement described in the query",
@@ -1167,7 +1163,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the output code meets the migration requirement described in the query.",
                 "No, the output code does not meet the migration requirement described in the query.",
-            ]
+            ],
         ),
         TaskType.code_optimization_hybrid_retrieval: (
             "judge whether the output code implements the requested optimization described in the query",
@@ -1176,7 +1172,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the output code implements the requested optimization described in the query.",
                 "No, the output code does not implement the requested optimization described in the query.",
-            ]
+            ],
         ),
         TaskType.code_comparison_retrieval: (
             "judge whether the response can answer the question described in the query",
@@ -1185,7 +1181,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the response can answer the question described in the query.",
                 "No, the response cannot answer the question described in the query.",
-            ]
+            ],
         ),
         TaskType.code_best_practices_retrieval: (
             "judge whether the response can answer the question described in the query",
@@ -1194,7 +1190,7 @@ def get_quality_control_prompt(
             [
                 "Yes, the response can answer the question described in the query.",
                 "No, the response cannot answer the question described in the query.",
-            ]
+            ],
         ),
         TaskType.security_vulnerability_fix_retrieval: (
             "judge whether the output code addresses the security vulnerability described in the query",
@@ -1203,24 +1199,26 @@ def get_quality_control_prompt(
             [
                 "Yes, the output code addresses the security vulnerability described in the query.",
                 "No, the output code does not address the security vulnerability described in the query.",
-            ]
+            ],
         ),
     }
-    
+
     if task.main_task_type == "text2code":
         type_check_option = "the query contains code snippets or the document contains non-code content (plain text)."
     elif task.main_task_type == "code2text":
         type_check_option = "the query contains non-code content (plain text) or the document contains code snippets."
     elif task.main_task_type == "code2code":
-        type_check_option = "either the query or the document contains non-code content (plain text)."
+        type_check_option = (
+            "either the query or the document contains non-code content (plain text)."
+        )
     else:
         type_check_option = "neither the query nor the document contains the mixed content of code and text content."
-    
+
     qc_mission, query_type, doc_type, qc_options = task_to_qc_mission[task.task_type]
-    
+
     pos_option = qc_options[0]
     neg_option = qc_options[1]
-    
+
     # Init prompt
     # 0 代表 query / document 不符合 main task type
     # 1 代表 query / document 符合 main task type，且 judgment 是 positive
@@ -1249,7 +1247,7 @@ Your output must be one of the following options:
 Do not explain your answer in the output. Your output must be a single number (0 or 1 or 2).
 
 Your output:"""
-    
+
     return qc_prompt
 
 
@@ -1267,7 +1265,7 @@ class DocLength(Enum):
 def get_gen_hard_neg_prompt(task: Task, query: str, pos: str) -> str:
     """
     Given a task, return the generation hard negative prompt for the task.
-    
+
     Args:
     - task: Task: the task object
 

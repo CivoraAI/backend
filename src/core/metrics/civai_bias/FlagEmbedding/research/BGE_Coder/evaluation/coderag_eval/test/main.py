@@ -68,7 +68,7 @@ def get_model(model_args: CodeRAGEvalModelArgs):
                 queries = [queries]
 
             if isinstance(queries[0], dict):
-                queries = [(e.get('title') + ' ' + e['text']).strip() for e in queries]
+                queries = [(e.get("title") + " " + e["text"]).strip() for e in queries]
 
             return self.model.encode_queries(queries, **kwargs)
 
@@ -77,7 +77,7 @@ def get_model(model_args: CodeRAGEvalModelArgs):
                 corpus = [corpus]
 
             if isinstance(corpus[0], dict):
-                corpus = [(e.get('title') + ' ' + e['text']).strip() for e in corpus]
+                corpus = [(e.get("title") + " " + e["text"]).strip() for e in corpus]
 
             return self.model.encode_corpus(corpus, **kwargs)
 
@@ -86,21 +86,25 @@ def get_model(model_args: CodeRAGEvalModelArgs):
                 corpus = [corpus]
 
             if isinstance(corpus[0], dict):
-                corpus = [(e.get('title') + ' ' + e['text']).strip() for e in corpus]
+                corpus = [(e.get("title") + " " + e["text"]).strip() for e in corpus]
 
             return self.model.encode(corpus, **kwargs)
 
     return CustomFlagModel(embedder)
 
+
 #### Just some code to print debug information to stdout
-logging.basicConfig(format='%(asctime)s - %(message)s',
-                    datefmt='%Y-%m-%d %H:%M:%S',
-                    level=logging.INFO,
-                    handlers=[LoggingHandler()])
+logging.basicConfig(
+    format="%(asctime)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    level=logging.INFO,
+    handlers=[LoggingHandler()],
+)
 
 
 def get_top_docs(results: dict, corpus: dict, task_id: str, topk: int = 10) -> list[str]:
-    if task_id not in results: return []
+    if task_id not in results:
+        return []
     doc_scores = results[task_id]
     doc_scores_sorted = sorted(doc_scores.items(), key=lambda item: item[1], reverse=True)
     doc_scores_sorted = doc_scores_sorted[:topk]
@@ -108,18 +112,11 @@ def get_top_docs(results: dict, corpus: dict, task_id: str, topk: int = 10) -> l
     return doc_code_snippets
 
 
-def main(
-    eval_args: CodeRAGEvalArgs,
-    model_args: CodeRAGEvalModelArgs
-):
+def main(eval_args: CodeRAGEvalArgs, model_args: CodeRAGEvalModelArgs):
     args = eval_args
 
     embedder = get_model(model_args)
-    model = DRES(
-        embedder,
-        batch_size=args.batch_size,
-        corpus_chunk_size=512 * 9999
-    )
+    model = DRES(embedder, batch_size=args.batch_size, corpus_chunk_size=512 * 9999)
     retriever = EvaluateRetrieval(model, score_function="dot")
 
     if args.dataset.startswith("swe-bench") or args.dataset.startswith("repoeval"):
@@ -158,15 +155,20 @@ def main(
                     all_top_docs[index] = get_top_docs(results, corpus, instance_id)
             elif args.dataset.startswith("repoeval"):
                 args.dataset_path = "output/repoeval/datasets/function_level_completion_2k_context_codex.test.clean.jsonl"
-                tasks = [json.loads(line.strip()) for line in open(args.dataset_path, 'r')]
+                tasks = [json.loads(line.strip()) for line in open(args.dataset_path, "r")]
                 prompts, references, docs, metadatas = [], [], [], []
                 for task in tasks:
-                    if task["metadata"]["task_id"] not in queries: continue
+                    if task["metadata"]["task_id"] not in queries:
+                        continue
                     prompts.append(task["prompt"])  # save full prompt
                     references.append(task["metadata"]["ground_truth"])
-                    docs.append(get_top_docs(
-                        results=results, corpus=corpus, task_id=task["metadata"]["task_id"],
-                    ))
+                    docs.append(
+                        get_top_docs(
+                            results=results,
+                            corpus=corpus,
+                            task_id=task["metadata"]["task_id"],
+                        )
+                    )
                     metadatas.append(task["metadata"])
                 assert len(prompts) == len(references) == len(docs)
                 dataset = [
@@ -187,9 +189,11 @@ def main(
             ndcg, _map, recall, precision = retriever.evaluate(qrels, results, retriever.k_values)
             mrr = retriever.evaluate_custom(qrels, results, retriever.k_values, metric="mrr")
             eval_results = {
-                "ndcg": ndcg, "mrr": mrr,
-                "recall": recall, "precision": precision,
-                "time": end_time - start_time
+                "ndcg": ndcg,
+                "mrr": mrr,
+                "recall": recall,
+                "precision": precision,
+                "time": end_time - start_time,
             }
             logging.info(f"Instance #{ins_dir}: {eval_results}")
             all_eval_results.append(eval_results)
@@ -219,8 +223,9 @@ def main(
             json.dump(avg_eval_results, f)
     else:
         dataset = args.dataset
-        corpus, queries, qrels = GenericDataLoader(data_folder=os.path.join("datasets", args.dataset)).load(
-            split="test")
+        corpus, queries, qrels = GenericDataLoader(
+            data_folder=os.path.join("datasets", args.dataset)
+        ).load(split="test")
         #### Retrieve dense results (format of results is identical to qrels)
         start_time = time()
         results = retriever.retrieve(corpus, queries)
@@ -255,6 +260,7 @@ def main(
             key = key.capitalize()
             mode = mode.capitalize()
             from create.ds1000 import get_dataset
+
             source_dir = pathlib.Path(__file__).parent / "ds"
             data = get_dataset(source_dir, mode=mode, key=key)
             all_docs = []
@@ -265,13 +271,13 @@ def main(
                 all_docs.append(get_top_docs(results, corpus, example_id))
                 example_ids.append(example_id)
             assert len(all_docs) == len(
-                example_ids), f"length of all_docs should be {len(example_ids)}, now is {len(all_docs)}"
+                example_ids
+            ), f"length of all_docs should be {len(example_ids)}, now is {len(all_docs)}"
             with open(args.results_file, "w+") as fout:
                 for idx, all_doc in enumerate(all_docs):
-                    fout.write(json.dumps({"example_id": example_id,
-                                           "docs": all_doc}) + "\n")
+                    fout.write(json.dumps({"example_id": example_id, "docs": all_doc}) + "\n")
         else:
-            with open(args.results_file, 'w+') as fw:
+            with open(args.results_file, "w+") as fw:
                 for curr in results:
                     fw.write(json.dumps({curr: results[curr]}) + "\n")
 
@@ -286,8 +292,13 @@ def main(
         recall_cap = retriever.evaluate_custom(qrels, results, retriever.k_values, metric="r_cap")
         hole = retriever.evaluate_custom(qrels, results, retriever.k_values, metric="hole")
 
-        all_results = {"ndcg": ndcg, "mrr": mrr, "recall": recall, "precision": precision,
-                       "time": end_time - start_time}
+        all_results = {
+            "ndcg": ndcg,
+            "mrr": mrr,
+            "recall": recall,
+            "precision": precision,
+            "time": end_time - start_time,
+        }
         with open(args.output_file, "w") as f:
             json.dump(all_results, f)
         #### Print top-k documents retrieved ####
@@ -301,13 +312,12 @@ def main(
             doc_id = scores_sorted[rank][0]
             # Format: Rank x: ID [Title] Body
             logging.info(
-                "Rank %d: %s [%s] - %s\n" % (rank + 1, doc_id, corpus[doc_id].get("title"), corpus[doc_id].get("text")))
+                "Rank %d: %s [%s] - %s\n"
+                % (rank + 1, doc_id, corpus[doc_id].get("title"), corpus[doc_id].get("text"))
+            )
 
 
 if __name__ == "__main__":
-    parser = HfArgumentParser((
-        CodeRAGEvalArgs,
-        CodeRAGEvalModelArgs
-    ))
+    parser = HfArgumentParser((CodeRAGEvalArgs, CodeRAGEvalModelArgs))
     eval_args, model_args = parser.parse_args_into_dataclasses()
     main(eval_args, model_args)

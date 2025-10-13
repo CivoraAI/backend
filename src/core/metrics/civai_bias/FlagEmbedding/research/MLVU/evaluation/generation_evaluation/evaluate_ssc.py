@@ -6,11 +6,24 @@ import ast
 from multiprocessing.pool import Pool
 from tqdm import tqdm
 
+
 def parse_args():
     parser = argparse.ArgumentParser(description="ssc-evaluation-gpt-4")
-    parser.add_argument("--pred_path", default="output_dir/qwen/pred_subPlot_all.json", help="The path to file containing prediction.")
-    parser.add_argument("--output_dir", default="output_dir/qwen_subplot_all", help="The path to save annotation json files.")
-    parser.add_argument("--output_json", default="output_dir/qwen_subplot_all_results.json", help="The path to save annotation final combined json file.")
+    parser.add_argument(
+        "--pred_path",
+        default="output_dir/qwen/pred_subPlot_all.json",
+        help="The path to file containing prediction.",
+    )
+    parser.add_argument(
+        "--output_dir",
+        default="output_dir/qwen_subplot_all",
+        help="The path to save annotation json files.",
+    )
+    parser.add_argument(
+        "--output_json",
+        default="output_dir/qwen_subplot_all_results.json",
+        help="The path to save annotation final combined json file.",
+    )
     parser.add_argument("--api_key", default="", help="OpenAI API key.")
     parser.add_argument("--num_tasks", default=1, type=int, help="Number of splits.")
     args = parser.parse_args()
@@ -34,24 +47,23 @@ def annotate(prediction_set, caption_files, output_dir):
     """
     q_s_dict = get_scoring_points()
     for file in tqdm(caption_files):
-        print("#############",file)
-        key = file[:-5] # Strip file extension
+        print("#############", file)
+        key = file[:-5]  # Strip file extension
         qa_set = prediction_set[key]
-        question = qa_set['q']
-        question = question.replace('\n','')
-        answer = qa_set['a']
-        pred = qa_set['pred']
+        question = qa_set["q"]
+        question = question.replace("\n", "")
+        answer = qa_set["a"]
+        pred = qa_set["pred"]
         scoring_points = q_s_dict[question]
         try:
             # Compute the correctness score
             completion = openai.ChatCompletion.create(
                 temperature=0,
                 model="gpt-4-turbo",
-                messages = [
+                messages=[
                     {
                         "role": "system",
-                        "content": 
-                        """
+                        "content": """
                             ##TASK DESCRIPTION: 
                             You are required to evaluate a respondent's answer based on a provided question, some scoring points, and the respondent's answer. You should provide two scores. The first is the accuracy score, which should range from 1 to 5. The second is the relevance score, which should also range from 1 to 5. Below are the criteria for each scoring category.
                             ##ACCURACY Scoring Criteria: 
@@ -73,7 +85,7 @@ def annotate(prediction_set, caption_files, output_dir):
                             2. Evaluate RELEVANCE: Assess the relevance of the respondent’s answer to the question. Note that when evaluating relevance, the correctness of the answer is not considered; focus solely on how relevant the answer is to the question. Provide a comprehensive rationale before assigning your score.
                             3. Output Scores in JSON Format: Present the scores in JSON format as follows:
                             {'score_accuracy': score_acc, 'score_relevance': score_rele, 'total_score': score_acc + score_rele}
-                        """
+                        """,
                     },
                     {
                         "role": "user",
@@ -82,18 +94,16 @@ def annotate(prediction_set, caption_files, output_dir):
                             Question: {question}
                             Scoring Points: {scoring_points}
                             Respondent's Answer: {pred}
-                        """
-                    }
-                ]
-
+                        """,
+                    },
+                ],
             )
             # Convert response to a Python dictionary.
             response_message = completion["choices"][0]["message"]["content"]
             # print("#############",response_message)
-         
-          
-            save_dict={}
-         
+
+            save_dict = {}
+
             # response_dict = ast.literal_eval(response_message)
             qa_set["scoring_points"] = scoring_points
             save_dict["explain"] = response_message
@@ -102,8 +112,6 @@ def annotate(prediction_set, caption_files, output_dir):
             # Save the question-answer pairs to a json file.
             with open(f"{output_dir}/{key}.json", "w") as f:
                 json.dump(result_qa_pair, f)
-            
-    
 
         except Exception as e:
             print(f"Error processing file '{key}': {e}")
@@ -125,7 +133,7 @@ def main():
 
     # Iterate through each sample in pred_contents
     for sample in pred_contents:
-        video_id = sample['video_name']
+        video_id = sample["video_name"]
         if video_id in video_id_counts:
             video_id_counts[video_id] += 1
         else:
@@ -133,11 +141,11 @@ def main():
 
         # Create a new sample with the modified key
         new_sample = sample
-        new_sample['video_name'] = f"{video_id}_{video_id_counts[video_id]}"
+        new_sample["video_name"] = f"{video_id}_{video_id_counts[video_id]}"
         new_pred_contents.append(new_sample)
 
     # Generating list of id's and corresponding files
-    id_list = [x['video_name'] for x in new_pred_contents]
+    id_list = [x["video_name"] for x in new_pred_contents]
     caption_files = [f"{id}.json" for id in id_list]
 
     output_dir = args.output_dir
@@ -145,16 +153,14 @@ def main():
     # Generate output directory if not exists.
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-    
-
 
     # Preparing dictionary of question-answer sets
     prediction_set = {}
     for sample in new_pred_contents:
-        id = sample['video_name']
-        question = sample['Q']
-        answer = sample['A']
-        pred = sample['pred']
+        id = sample["video_name"]
+        question = sample["Q"]
+        answer = sample["A"]
+        pred = sample["pred"]
         qa_set = {"q": question, "a": answer, "pred": pred}
         prediction_set[id] = qa_set
 
@@ -181,7 +187,10 @@ def main():
 
             # Split tasks into parts.
             part_len = len(incomplete_files) // num_tasks
-            all_parts = [incomplete_files[i:i + part_len] for i in range(0, len(incomplete_files), part_len)]
+            all_parts = [
+                incomplete_files[i : i + part_len]
+                for i in range(0, len(incomplete_files), part_len)
+            ]
             task_args = [(prediction_set, part, args.output_dir) for part in all_parts]
 
             # Use a pool of workers to process the files in parallel.
@@ -190,7 +199,6 @@ def main():
 
         except Exception as e:
             print(f"Error: {e}")
-
 
     # Combine all the processed files into one
     combined_contents = {}
@@ -209,11 +217,10 @@ def main():
         json.dump(combined_contents, json_file)
     print("All evaluation completed!")
 
- 
     # # Calculate average score and accuracy
     # score_sum = 0
     # count = 0
-  
+
     # for key, result in combined_contents.items():
     #     # Computing score
     #     if "explain" in key:
@@ -227,11 +234,9 @@ def main():
     #         print("Score not found for", key)
     #         continue
 
-
     # average_score = score_sum / count
     # print("Average score:", average_score)
 
 
 if __name__ == "__main__":
     main()
-

@@ -12,13 +12,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" Mistral model configuration"""
+"""Mistral model configuration"""
 
 from transformers.configuration_utils import PretrainedConfig
 from transformers.utils import logging
 from transformers.models.mistral.configuration_mistral import MistralConfig
 
 logger = logging.get_logger(__name__)
+
 
 class CostWiseMistralConfig(MistralConfig):
     r"""

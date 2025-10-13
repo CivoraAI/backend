@@ -12,7 +12,16 @@ from functools import partial
 
 from src.data import Data
 from src.metrics import Metric
-from src import ModelArgs, DefaultDataCollator, FileLogger, get_model_and_tokenizer, makedirs, evaluate_perplexity, split_file_dir_name_ext, apply_chat_template
+from src import (
+    ModelArgs,
+    DefaultDataCollator,
+    FileLogger,
+    get_model_and_tokenizer,
+    makedirs,
+    evaluate_perplexity,
+    split_file_dir_name_ext,
+    apply_chat_template,
+)
 
 logger = logging.get_logger(__name__)
 
@@ -20,39 +29,35 @@ logger = logging.get_logger(__name__)
 @dataclass
 class Args(ModelArgs):
     eval_data: Optional[str] = field(
-        default="long-llm:sharegpt/3-turn.json",
-        metadata={'help': 'Evaluation json data.'}
+        default="long-llm:sharegpt/3-turn.json", metadata={"help": "Evaluation json data."}
     )
     output_dir: str = field(
         default="data/results/multiturn/",
-        metadata={'help': 'The base directory for saving results and logs.'}
+        metadata={"help": "The base directory for saving results and logs."},
     )
 
     min_length: int = field(
-        default=0,
-        metadata={'help': 'How many tokens at minimum for evaluation?'}
+        default=0, metadata={"help": "How many tokens at minimum for evaluation?"}
     )
     # no more than 1536 tokens because gist cannot process more
     max_length: int = field(
-        default=100000,
-        metadata={'help': 'How many tokens at maximum for evaluation?'}
+        default=100000, metadata={"help": "How many tokens at maximum for evaluation?"}
     )
 
-    num_turn: int = field(
-        default=3,
-        metadata={'help': 'How many turns?'}
-    )
+    num_turn: int = field(default=3, metadata={"help": "How many turns?"})
     breakdown: bool = field(
         default=False,
     )
 
 
-def process_multiturn(data, indices, tokenizer, chat_template, min_length, max_length, num_turn=None, breakdown=False):
-    outputs = {'input_ids': [], 'attention_mask': [], "labels": [], "length": [], "index": []}
+def process_multiturn(
+    data, indices, tokenizer, chat_template, min_length, max_length, num_turn=None, breakdown=False
+):
+    outputs = {"input_ids": [], "attention_mask": [], "labels": [], "length": [], "index": []}
 
     # accumulative
     if breakdown:
-        for i, source in enumerate(data['accum_conversations']):
+        for i, source in enumerate(data["accum_conversations"]):
             # break the multi-turn conversation
             if num_turn is None:
                 num_turn = len(source) // 2
@@ -62,11 +67,11 @@ def process_multiturn(data, indices, tokenizer, chat_template, min_length, max_l
                 continue
 
             for j in range(0, 2 * num_turn, 2):
-                turn_source = source[j: j + 2]
+                turn_source = source[j : j + 2]
                 encoded = apply_chat_template(
-                    chat_template, 
-                    turn_source, 
-                    tokenizer=tokenizer, 
+                    chat_template,
+                    turn_source,
+                    tokenizer=tokenizer,
                     return_labels=True,
                 ).encoded
 
@@ -78,21 +83,21 @@ def process_multiturn(data, indices, tokenizer, chat_template, min_length, max_l
 
                 for k, v in encoded.items():
                     outputs[k].append(v)
-                outputs['length'].append(len(encoded['input_ids']))
+                outputs["length"].append(len(encoded["input_ids"]))
                 # NOTE: the breakdown conversations belong to the same root
-                outputs['index'].append(indices[i])
+                outputs["index"].append(indices[i])
 
         return outputs
-    
+
     else:
-        for i, source in enumerate(data['conversations']):
+        for i, source in enumerate(data["conversations"]):
             if num_turn is not None:
-                source = source[:2 * num_turn]
+                source = source[: 2 * num_turn]
 
             encoded = apply_chat_template(
-                chat_template, 
-                source, 
-                tokenizer=tokenizer, 
+                chat_template,
+                source,
+                tokenizer=tokenizer,
                 return_labels=True,
             ).encoded
 
@@ -104,8 +109,8 @@ def process_multiturn(data, indices, tokenizer, chat_template, min_length, max_l
 
             for k, v in encoded.items():
                 outputs[k].append(v)
-            outputs['length'].append(len(encoded['input_ids']))
-            outputs['index'].append(indices[i])
+            outputs["length"].append(len(encoded["input_ids"]))
+            outputs["index"].append(indices[i])
 
         return outputs
 
@@ -119,7 +124,9 @@ def main():
     model, tokenizer = get_model_and_tokenizer(args, device=accelerator.device)
 
     with accelerator.main_process_first():
-        raw_dataset = datasets.load_dataset("json", data_files=args.eval_data, split="train", cache_dir=args.dataset_cache_dir)
+        raw_dataset = datasets.load_dataset(
+            "json", data_files=args.eval_data, split="train", cache_dir=args.dataset_cache_dir
+        )
 
         process_fn = partial(
             process_multiturn,
@@ -130,13 +137,20 @@ def main():
             num_turn=args.num_turn,
             breakdown=args.breakdown,
         )
-        dataset = raw_dataset.map(process_fn, batched=True, num_proc=32, batch_size=10, with_indices=True, remove_columns=raw_dataset.column_names)
+        dataset = raw_dataset.map(
+            process_fn,
+            batched=True,
+            num_proc=32,
+            batch_size=10,
+            with_indices=True,
+            remove_columns=raw_dataset.column_names,
+        )
 
     # get labels (the target generation result)
     data_collator = DefaultDataCollator(tokenizer=tokenizer)
     dataloader = DataLoader(
-        dataset, 
-        batch_size=args.batch_size, 
+        dataset,
+        batch_size=args.batch_size,
         collate_fn=data_collator,
         # only pin memory when no gpu
         pin_memory=not args.cpu,
@@ -152,7 +166,7 @@ def main():
 
     accelerator.wait_for_everyone()
 
-    accelerator.print(dataset['index'])
+    accelerator.print(dataset["index"])
 
     t1 = time.time()
     perplexity = evaluate_perplexity(model, dataloader, accelerator)
@@ -168,7 +182,6 @@ def main():
         log_path = os.path.join(args.output_dir, f"metrics.log")
         file_logger = FileLogger(makedirs(log_path))
         file_logger.log(metrics, Args=asdict(args))
-
 
 
 if __name__ == "__main__":

@@ -13,7 +13,7 @@ D2C_FUNC_DICT = {
     "mbpp": d2c_mbpp,
 }
 SPLIT_DICT = {
-    "humaneval": ["test"], 
+    "humaneval": ["test"],
     "mbpp": ["train", "test", "validation", "prompt"],
 }
 HF_NAME_DICT = {
@@ -23,14 +23,14 @@ HF_NAME_DICT = {
 
 
 def save_file_jsonl(data, path):
-    with open(path,'w') as fw:
+    with open(path, "w") as fw:
         for item in data:
-            fw.write(json.dumps(item) + '\n')
+            fw.write(json.dumps(item) + "\n")
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset_names", type=str, nargs='+', default=["humaneval", "mbpp"])
+    parser.add_argument("--dataset_names", type=str, nargs="+", default=["humaneval", "mbpp"])
     parser.add_argument("--output_dir", type=str, default="datasets")
     parser.add_argument("--output_name", type=str, default="general-programming")
     args = parser.parse_args()
@@ -45,7 +45,7 @@ def main():
             if split not in split_dict:
                 split_dict[split] = []
             split_dict[split].append(dataset_name)
-    
+
     dataset_dict = {
         dataset_name: datasets.load_dataset(HF_NAME_DICT[dataset_name])
         for dataset_name in args.dataset_names
@@ -61,7 +61,7 @@ def main():
 
         qrels_path = os.path.join(path, "qrels", f"{split}.tsv")
         save_tsv_dict(qrels_split, qrels_path, ["query-id", "corpus-id", "score"])
-    
+
     save_file_jsonl(queries, os.path.join(path, "queries.jsonl"))
     save_file_jsonl(docs, os.path.join(path, "corpus.jsonl"))
 

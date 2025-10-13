@@ -9,13 +9,15 @@ from transformers import set_seed, PreTrainedTokenizer
 from .AbsArguments import (
     AbsEmbedderModelArguments,
     AbsEmbedderDataArguments,
-    AbsEmbedderTrainingArguments
+    AbsEmbedderTrainingArguments,
 )
 from .AbsTrainer import AbsEmbedderTrainer
 from .AbsModeling import AbsEmbedderModel
 from .AbsDataset import (
-    AbsEmbedderTrainDataset, AbsEmbedderCollator,
-    AbsEmbedderSameDatasetTrainDataset, AbsEmbedderSameDatasetCollator
+    AbsEmbedderTrainDataset,
+    AbsEmbedderCollator,
+    AbsEmbedderSameDatasetTrainDataset,
+    AbsEmbedderSameDatasetCollator,
 )
 
 logger = logging.getLogger(__name__)
@@ -29,11 +31,12 @@ class AbsEmbedderRunner(ABC):
         data_args (AbsEmbedderDataArguments): Data arguments.
         training_args (AbsEmbedderTrainingArguments): Training arguments.
     """
+
     def __init__(
         self,
         model_args: AbsEmbedderModelArguments,
         data_args: AbsEmbedderDataArguments,
-        training_args: AbsEmbedderTrainingArguments
+        training_args: AbsEmbedderTrainingArguments,
     ):
         self.model_args = model_args
         self.data_args = data_args
@@ -106,15 +109,12 @@ class AbsEmbedderRunner(ABC):
                 seed=self.training_args.seed,
                 tokenizer=self.tokenizer,
                 process_index=self.training_args.process_index,
-                num_processes=self.training_args.world_size
+                num_processes=self.training_args.world_size,
             )
             self.training_args.per_device_train_batch_size = 1
-            self.training_args.dataloader_num_workers = 0   # avoid multi-processing
+            self.training_args.dataloader_num_workers = 0  # avoid multi-processing
         else:
-            train_dataset = AbsEmbedderTrainDataset(
-                args=self.data_args,
-                tokenizer=self.tokenizer
-            )
+            train_dataset = AbsEmbedderTrainDataset(args=self.data_args, tokenizer=self.tokenizer)
         return train_dataset
 
     def load_data_collator(self) -> AbsEmbedderCollator:
@@ -135,7 +135,7 @@ class AbsEmbedderRunner(ABC):
             sub_batch_size=self.training_args.sub_batch_size,
             pad_to_multiple_of=self.data_args.pad_to_multiple_of,
             padding=True,
-            return_tensors="pt"
+            return_tensors="pt",
         )
         return data_collator
 

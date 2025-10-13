@@ -18,7 +18,7 @@ def find_largest_checkpoint(checkpoint_dir):
     Returns:
         str: Directory to the checkpoint, None no matching found.
     """
-    checkpoint_pattern = re.compile(r'checkpoint-(\d+)')
+    checkpoint_pattern = re.compile(r"checkpoint-(\d+)")
     max_number = -1
     max_checkpoint_file = None
     for file in os.listdir(checkpoint_dir):
@@ -48,14 +48,14 @@ def get_model(model_args: RerankerModelArguments):
             model_args.config_name,
             trust_remote_code=model_args.trust_remote_code,
             token=model_args.token,
-            cache_dir=model_args.cache_dir
+            cache_dir=model_args.cache_dir,
         )
     elif model_args.model_name_or_path:
         config = AutoConfig.from_pretrained(
             model_args.model_name_or_path,
             trust_remote_code=model_args.trust_remote_code,
             token=model_args.token,
-            cache_dir=model_args.cache_dir
+            cache_dir=model_args.cache_dir,
         )
     else:
         raise ValueError(
@@ -95,7 +95,7 @@ def get_model(model_args: RerankerModelArguments):
                 target_modules=model_args.target_modules,
                 modules_to_save=model_args.modules_to_save,
                 lora_alpha=model_args.lora_alpha,
-                lora_dropout=model_args.lora_dropout
+                lora_dropout=model_args.lora_dropout,
             )
             model = get_peft_model(model, peft_config)
             model.print_trainable_parameters()
@@ -116,14 +116,14 @@ def save_merged_model(model_args: RerankerModelArguments, output_dir: str):
             model_args.config_name,
             token=model_args.token,
             trust_remote_code=model_args.trust_remote_code,
-            cache_dir=model_args.cache_dir
+            cache_dir=model_args.cache_dir,
         )
     elif model_args.model_name_or_path:
         config = AutoConfig.from_pretrained(
             model_args.model_name_or_path,
             token=model_args.token,
             trust_remote_code=model_args.trust_remote_code,
-            cache_dir=model_args.cache_dir
+            cache_dir=model_args.cache_dir,
         )
     else:
         raise ValueError(
@@ -158,11 +158,11 @@ def save_merged_model(model_args: RerankerModelArguments, output_dir: str):
         model = PeftModel.from_pretrained(model, find_largest_checkpoint(output_dir))
         model = model.merge_and_unload()
 
-    model.save_pretrained(os.path.join(output_dir, 'merged_model'))
+    model.save_pretrained(os.path.join(output_dir, "merged_model"))
 
     try:
         tokenizer = AutoTokenizer.from_pretrained(output_dir)
     except:
         tokenizer = AutoTokenizer.from_pretrained(find_largest_checkpoint(output_dir))
 
-    tokenizer.save_pretrained(os.path.join(output_dir, 'merged_model'))
+    tokenizer.save_pretrained(os.path.join(output_dir, "merged_model"))

@@ -11,9 +11,9 @@ import sys
 sys.path.insert(0, os.path.abspath(".."))
 sys.path.insert(0, os.path.abspath("../.."))
 
-project = 'BGE'
-copyright = '2024, BAAI'
-author = 'BAAI'
+project = "BGE"
+copyright = "2024, BAAI"
+author = "BAAI"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -29,7 +29,7 @@ extensions = [
     "sphinxcontrib.googleanalytics",
 ]
 
-templates_path = ['_templates']
+templates_path = ["_templates"]
 exclude_patterns = []
 
 # -- Options for HTML output -------------------------------------------------
@@ -38,7 +38,7 @@ exclude_patterns = []
 # html_theme = 'furo'
 html_theme = "pydata_sphinx_theme"
 html_logo = "_static/img/bge_logo.jpeg"
-html_static_path = ['_static']
+html_static_path = ["_static"]
 html_css_files = ["css/custom.css"]
 
 # MyST-NB conf
@@ -54,7 +54,7 @@ html_theme_options = {
             "name": "HF Models",
         },
     ],
-    "icon_links":[
+    "icon_links": [
         {
             "name": "GitHub",
             "url": "https://github.com/FlagOpen/FlagEmbedding",
@@ -69,14 +69,12 @@ html_theme_options = {
             "name": "HF Models",
             "url": "https://huggingface.co/collections/BAAI/bge-66797a74476eb1f085c7446d",
             "icon": "fa-solid fa-cube",
-        }
+        },
     ],
     "navigation_depth": 5,
     "header_links_before_dropdown": 5,
 }
 
-html_context = {
-   "default_mode": "light"
-}
+html_context = {"default_mode": "light"}
 
-googleanalytics_id = 'G-X4B1E1Q35K'
+googleanalytics_id = "G-X4B1E1Q35K"

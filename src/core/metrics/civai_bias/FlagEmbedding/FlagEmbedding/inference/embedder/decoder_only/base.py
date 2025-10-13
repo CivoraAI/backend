@@ -9,8 +9,7 @@ from FlagEmbedding.abc.inference import AbsEmbedder
 
 
 # Pooling function for LLM-based embedding models
-def last_token_pool(last_hidden_states: torch.Tensor,
-                    attention_mask: torch.Tensor) -> torch.Tensor:
+def last_token_pool(last_hidden_states: torch.Tensor, attention_mask: torch.Tensor) -> torch.Tensor:
     """Last token pooling method.
 
     Args:
@@ -20,13 +19,15 @@ def last_token_pool(last_hidden_states: torch.Tensor,
     Returns:
         torch.Tensor: The embedding vectors after pooling.
     """
-    left_padding = (attention_mask[:, -1].sum() == attention_mask.shape[0])
+    left_padding = attention_mask[:, -1].sum() == attention_mask.shape[0]
     if left_padding:
         return last_hidden_states[:, -1]
     else:
         sequence_lengths = attention_mask.sum(dim=1) - 1
         batch_size = last_hidden_states.shape[0]
-        return last_hidden_states[torch.arange(batch_size, device=last_hidden_states.device), sequence_lengths]
+        return last_hidden_states[
+            torch.arange(batch_size, device=last_hidden_states.device), sequence_lengths
+        ]
 
 
 class BaseLLMEmbedder(AbsEmbedder):
@@ -36,7 +37,7 @@ class BaseLLMEmbedder(AbsEmbedder):
         model_name_or_path (str): If it's a path to a local model, it loads the model from the path. Otherwise tries to download and
             load a model from HuggingFace Hub with the name.
         normalize_embeddings (bool, optional): If True, normalize the embedding vector. Defaults to :data:`True`.
-        use_fp16 (bool, optional): If true, use half-precision floating-point to speed up computation with a slight performance 
+        use_fp16 (bool, optional): If true, use half-precision floating-point to speed up computation with a slight performance
             degradation. Defaults to :data:`True`.
         query_instruction_for_retrieval (Optional[str], optional): Query instruction for retrieval tasks, which will be used with
             with :attr:`query_instruction_format`. Defaults to :data:`None`.
@@ -47,12 +48,13 @@ class BaseLLMEmbedder(AbsEmbedder):
         batch_size (int, optional): Batch size for inference. Defaults to :data:`256`.
         query_max_length (int, optional): Maximum length for query. Defaults to :data:`512`.
         passage_max_length (int, optional): Maximum length for passage. Defaults to :data:`512`.
-        convert_to_numpy (bool, optional): If True, the output embedding will be a Numpy array. Otherwise, it will be a Torch Tensor. 
+        convert_to_numpy (bool, optional): If True, the output embedding will be a Numpy array. Otherwise, it will be a Torch Tensor.
             Defaults to :data:`True`.
-    
+
     Attributes:
         DEFAULT_POOLING_METHOD: The default pooling method when running the model.
     """
+
     DEFAULT_POOLING_METHOD = "last_token"
 
     def __init__(
@@ -61,8 +63,10 @@ class BaseLLMEmbedder(AbsEmbedder):
         normalize_embeddings: bool = True,
         use_fp16: bool = True,
         query_instruction_for_retrieval: Optional[str] = None,
-        query_instruction_format: str = "Instruct: {}\nQuery: {}", # specify the format of query_instruction_for_retrieval
-        devices: Optional[Union[str, List[str]]] = None, # specify devices, such as "cuda:0" or ["cuda:0", "cuda:1"]
+        query_instruction_format: str = "Instruct: {}\nQuery: {}",  # specify the format of query_instruction_for_retrieval
+        devices: Optional[
+            Union[str, List[str]]
+        ] = None,  # specify devices, such as "cuda:0" or ["cuda:0", "cuda:1"]
         # Additional parameters for BaseLLMEmbedder
         trust_remote_code: bool = False,
         cache_dir: Optional[str] = None,
@@ -84,18 +88,14 @@ class BaseLLMEmbedder(AbsEmbedder):
             query_max_length=query_max_length,
             passage_max_length=passage_max_length,
             convert_to_numpy=convert_to_numpy,
-            **kwargs
+            **kwargs,
         )
 
         self.tokenizer = AutoTokenizer.from_pretrained(
-            model_name_or_path,
-            trust_remote_code=trust_remote_code,
-            cache_dir=cache_dir
+            model_name_or_path, trust_remote_code=trust_remote_code, cache_dir=cache_dir
         )
         self.model = AutoModel.from_pretrained(
-            model_name_or_path,
-            trust_remote_code=trust_remote_code,
-            cache_dir=cache_dir
+            model_name_or_path, trust_remote_code=trust_remote_code, cache_dir=cache_dir
         )
 
         if self.kwargs.get("pooling_method", "last_token") != "last_token":
@@ -107,7 +107,7 @@ class BaseLLMEmbedder(AbsEmbedder):
         batch_size: Optional[int] = None,
         max_length: Optional[int] = None,
         convert_to_numpy: Optional[bool] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> Union[np.ndarray, torch.Tensor]:
         """Encode the queries.
 
@@ -115,7 +115,7 @@ class BaseLLMEmbedder(AbsEmbedder):
             queries (Union[List[str], str]): Input queries to encode.
             batch_size (Optional[int], optional): Number of sentences for each iter. Defaults to :data:`None`.
             max_length (Optional[int], optional): Maximum length of tokens. Defaults to :data:`None`.
-            convert_to_numpy (Optional[bool], optional): If True, the output embedding will be a Numpy array. Otherwise, it will 
+            convert_to_numpy (Optional[bool], optional): If True, the output embedding will be a Numpy array. Otherwise, it will
                 be a Torch Tensor. Defaults to :data:`None`.
 
         Returns:
@@ -126,7 +126,7 @@ class BaseLLMEmbedder(AbsEmbedder):
             batch_size=batch_size,
             max_length=max_length,
             convert_to_numpy=convert_to_numpy,
-            **kwargs
+            **kwargs,
         )
 
     def encode_corpus(
@@ -135,7 +135,7 @@ class BaseLLMEmbedder(AbsEmbedder):
         batch_size: Optional[int] = None,
         max_length: Optional[int] = None,
         convert_to_numpy: Optional[bool] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> Union[np.ndarray, torch.Tensor]:
         """Encode the corpus.
 
@@ -143,7 +143,7 @@ class BaseLLMEmbedder(AbsEmbedder):
             corpus (Union[List[str], str]): Input corpus to encode.
             batch_size (Optional[int], optional): Number of sentences for each iter. Defaults to :data:`None`.
             max_length (Optional[int], optional): Maximum length of tokens. Defaults to :data:`None`.
-            convert_to_numpy (Optional[bool], optional): If True, the output embedding will be a Numpy array. Otherwise, it will 
+            convert_to_numpy (Optional[bool], optional): If True, the output embedding will be a Numpy array. Otherwise, it will
                 be a Torch Tensor. Defaults to :data:`None`.
 
         Returns:
@@ -154,7 +154,7 @@ class BaseLLMEmbedder(AbsEmbedder):
             batch_size=batch_size,
             max_length=max_length,
             convert_to_numpy=convert_to_numpy,
-            **kwargs
+            **kwargs,
         )
 
     def encode(
@@ -163,7 +163,7 @@ class BaseLLMEmbedder(AbsEmbedder):
         batch_size: Optional[int] = None,
         max_length: Optional[int] = None,
         convert_to_numpy: Optional[bool] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> Union[np.ndarray, torch.Tensor]:
         """Encode the input sentences with the embedding model.
 
@@ -171,7 +171,7 @@ class BaseLLMEmbedder(AbsEmbedder):
             sentences (Union[List[str], str]): Input sentences to encode.
             batch_size (Optional[int], optional): Number of sentences for each iter. Defaults to :data:`None`.
             max_length (Optional[int], optional): Maximum length of tokens. Defaults to :data:`None`.
-            convert_to_numpy (Optional[bool], optional): If True, the output embedding will be a Numpy array. Otherwise, it will 
+            convert_to_numpy (Optional[bool], optional): If True, the output embedding will be a Numpy array. Otherwise, it will
                 be a Torch Tensor. Defaults to :data:`None`.
 
         Returns:
@@ -182,7 +182,7 @@ class BaseLLMEmbedder(AbsEmbedder):
             batch_size=batch_size,
             max_length=max_length,
             convert_to_numpy=convert_to_numpy,
-            **kwargs
+            **kwargs,
         )
 
     @torch.no_grad()
@@ -193,7 +193,7 @@ class BaseLLMEmbedder(AbsEmbedder):
         max_length: int = 512,
         convert_to_numpy: bool = True,
         device: Optional[str] = None,
-        **kwargs: Any   # add `pad_to_multiple_of=8` for bge-multilingual-gemmma2
+        **kwargs: Any,  # add `pad_to_multiple_of=8` for bge-multilingual-gemmma2
     ):
         """Encode input sentences by a single device.
 
@@ -201,7 +201,7 @@ class BaseLLMEmbedder(AbsEmbedder):
             sentences (Union[List[str], str]): Input sentences to encode.
             batch_size (int, optional): Number of sentences for each iter. Defaults to :data:`256`.
             max_length (int, optional): Maximum length of tokens. Defaults to :data:`512`.
-            convert_to_numpy (bool, optional): If True, the output embedding will be a Numpy array. Otherwise, it will 
+            convert_to_numpy (bool, optional): If True, the output embedding will be a Numpy array. Otherwise, it will
                 be a Torch Tensor. Defaults to :data:`True`.
             device (Optional[str], optional): Device to use for encoding. Defaults to None.
 
@@ -211,8 +211,10 @@ class BaseLLMEmbedder(AbsEmbedder):
         if device is None:
             device = self.target_devices[0]
 
-        if device == "cpu": self.use_fp16 = False
-        if self.use_fp16: self.model.half()
+        if device == "cpu":
+            self.use_fp16 = False
+        if self.use_fp16:
+            self.model.half()
 
         self.model.to(device)
         self.model.eval()
@@ -224,22 +226,21 @@ class BaseLLMEmbedder(AbsEmbedder):
 
         # tokenize without padding to get the correct length
         all_inputs = []
-        for start_index in trange(0, len(sentences), batch_size, desc='pre tokenize',
-                                  disable=len(sentences) < batch_size):
-            sentences_batch = sentences[start_index:start_index + batch_size]
+        for start_index in trange(
+            0, len(sentences), batch_size, desc="pre tokenize", disable=len(sentences) < batch_size
+        ):
+            sentences_batch = sentences[start_index : start_index + batch_size]
             inputs_batch = self.tokenizer(
-                sentences_batch,
-                truncation=True,
-                max_length=max_length,
-                **kwargs
+                sentences_batch, truncation=True, max_length=max_length, **kwargs
             )
-            inputs_batch = [{
-                k: inputs_batch[k][i] for k in inputs_batch.keys()
-            } for i in range(len(sentences_batch))]
+            inputs_batch = [
+                {k: inputs_batch[k][i] for k in inputs_batch.keys()}
+                for i in range(len(sentences_batch))
+            ]
             all_inputs.extend(inputs_batch)
 
         # sort by length for less padding
-        length_sorted_idx = np.argsort([-len(x['input_ids']) for x in all_inputs])
+        length_sorted_idx = np.argsort([-len(x["input_ids"]) for x in all_inputs])
         all_inputs_sorted = [all_inputs[i] for i in length_sorted_idx]
 
         # adjust batch size
@@ -247,13 +248,10 @@ class BaseLLMEmbedder(AbsEmbedder):
         while flag is False:
             try:
                 inputs_batch = self.tokenizer.pad(
-                    all_inputs_sorted[: batch_size],
-                    padding=True,
-                    return_tensors='pt',
-                    **kwargs
+                    all_inputs_sorted[:batch_size], padding=True, return_tensors="pt", **kwargs
                 ).to(device)
                 last_hidden_state = self.model(**inputs_batch, return_dict=True).last_hidden_state
-                embeddings = last_token_pool(last_hidden_state, inputs_batch['attention_mask'])
+                embeddings = last_token_pool(last_hidden_state, inputs_batch["attention_mask"])
                 flag = True
             except RuntimeError as e:
                 batch_size = batch_size * 3 // 4
@@ -262,17 +260,17 @@ class BaseLLMEmbedder(AbsEmbedder):
 
         # encode
         all_embeddings = []
-        for start_index in tqdm(range(0, len(sentences), batch_size), desc="Inference Embeddings",
-                                disable=len(sentences) < batch_size):
-            inputs_batch = all_inputs_sorted[start_index:start_index + batch_size]
+        for start_index in tqdm(
+            range(0, len(sentences), batch_size),
+            desc="Inference Embeddings",
+            disable=len(sentences) < batch_size,
+        ):
+            inputs_batch = all_inputs_sorted[start_index : start_index + batch_size]
             inputs_batch = self.tokenizer.pad(
-                inputs_batch,
-                padding=True,
-                return_tensors='pt',
-                **kwargs
+                inputs_batch, padding=True, return_tensors="pt", **kwargs
             ).to(device)
             last_hidden_state = self.model(**inputs_batch, return_dict=True).last_hidden_state
-            embeddings = last_token_pool(last_hidden_state, inputs_batch['attention_mask'])
+            embeddings = last_token_pool(last_hidden_state, inputs_batch["attention_mask"])
             if self.normalize_embeddings:
                 embeddings = torch.nn.functional.normalize(embeddings, dim=-1)
             embeddings = cast(torch.Tensor, embeddings)

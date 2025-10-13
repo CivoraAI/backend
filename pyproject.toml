@@ -1,11 +1,30 @@
+[tool.black]
+line-length = 100
+target-version = ["py310", "py311", "py312", "py313"]
+# Ignore vendored/research and non-source directories
+extend-exclude = """
+(
+  ^src/core/metrics/civai_bias/FlagEmbedding
+| ^src/core/metrics/civai_bias/CivoraAI
+| ^src/core/metrics/civai_bias/data
+| ^src/core/metrics/civai_bias/notebooks
+| ^src/core/metrics/civai_bias/outputs
+| ^src/core/metrics/civai_bias/tests
+| ^src/core/metrics/civai_bias/.vscode
+| ^scripts
+| ^docs
+)
+"""
+
 [tool.ruff]
 line-length = 100
 target-version = "py310"
 
 [tool.ruff.lint]
-extend-select = ["I"]  # sort imports
+# Sort imports, basic hygiene
+extend-select = ["I"]
 
-# Only lint our code. Exclude vendored libs, research dirs, and non-source stuff.
+# Exclude vendored/research and non-source directories
 extend-exclude = [
   "src/core/metrics/civai_bias/FlagEmbedding",
   "src/core/metrics/civai_bias/CivoraAI",

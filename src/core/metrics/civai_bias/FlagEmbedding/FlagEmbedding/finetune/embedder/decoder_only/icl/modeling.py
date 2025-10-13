@@ -22,6 +22,7 @@ class BiDecoderOnlyEmbedderICLModel(AbsEmbedderModel):
         sentence_pooling_method (str, optional): Pooling method to get sentence embedding. Defaults to ``'last_token'``.
         normalize_embeddings (bool, optional): If True, normalize the embedding vector. Defaults to ``False``.
     """
+
     TRANSFORMER_CLS = AutoModel
 
     def __init__(
@@ -31,8 +32,8 @@ class BiDecoderOnlyEmbedderICLModel(AbsEmbedderModel):
         negatives_cross_device: bool = False,
         temperature: float = 1.0,
         sub_batch_size: int = -1,
-        kd_loss_type: str = 'kl_div',
-        sentence_pooling_method: str = 'last_token',
+        kd_loss_type: str = "kl_div",
+        sentence_pooling_method: str = "last_token",
         normalize_embeddings: bool = False,
     ):
         super().__init__(
@@ -45,7 +46,7 @@ class BiDecoderOnlyEmbedderICLModel(AbsEmbedderModel):
         )
         self.sentence_pooling_method = sentence_pooling_method
         self.normalize_embeddings = normalize_embeddings
-        self.cross_entropy = torch.nn.CrossEntropyLoss(reduction='mean')
+        self.cross_entropy = torch.nn.CrossEntropyLoss(reduction="mean")
 
     def encode(self, features):
         """
@@ -62,13 +63,17 @@ class BiDecoderOnlyEmbedderICLModel(AbsEmbedderModel):
         if not isinstance(features, list):
             if self.sub_batch_size is not None and self.sub_batch_size > 0:
                 all_p_reps = []
-                for i in range(0, len(features['attention_mask']), self.sub_batch_size):
-                    end_inx = min(i + self.sub_batch_size, len(features['attention_mask']))
+                for i in range(0, len(features["attention_mask"]), self.sub_batch_size):
+                    end_inx = min(i + self.sub_batch_size, len(features["attention_mask"]))
                     sub_features = {}
                     for k, v in features.items():
                         sub_features[k] = v[i:end_inx]
-                    last_hidden_state = self.model(**sub_features, return_dict=True).last_hidden_state
-                    p_reps = self._sentence_embedding(last_hidden_state, sub_features['attention_mask'])
+                    last_hidden_state = self.model(
+                        **sub_features, return_dict=True
+                    ).last_hidden_state
+                    p_reps = self._sentence_embedding(
+                        last_hidden_state, sub_features["attention_mask"]
+                    )
                     all_p_reps.append(p_reps)
                 all_p_reps = torch.cat(all_p_reps, 0).contiguous()
                 if self.normalize_embeddings:
@@ -76,7 +81,7 @@ class BiDecoderOnlyEmbedderICLModel(AbsEmbedderModel):
                 return all_p_reps.contiguous()
             else:
                 last_hidden_state = self.model(**features, return_dict=True).last_hidden_state
-                all_p_reps = self._sentence_embedding(last_hidden_state, features['attention_mask'])
+                all_p_reps = self._sentence_embedding(last_hidden_state, features["attention_mask"])
                 if self.normalize_embeddings:
                     all_p_reps = torch.nn.functional.normalize(all_p_reps, dim=-1)
                 return all_p_reps.contiguous()
@@ -84,7 +89,7 @@ class BiDecoderOnlyEmbedderICLModel(AbsEmbedderModel):
             all_p_reps = []
             for sub_features in features:
                 last_hidden_state = self.model(**sub_features, return_dict=True).last_hidden_state
-                p_reps = self._sentence_embedding(last_hidden_state, sub_features['attention_mask'])
+                p_reps = self._sentence_embedding(last_hidden_state, sub_features["attention_mask"])
                 all_p_reps.append(p_reps)
             all_p_reps = torch.cat(all_p_reps, 0).contiguous()
             if self.normalize_embeddings:
@@ -107,9 +112,7 @@ class BiDecoderOnlyEmbedderICLModel(AbsEmbedderModel):
         if self.sentence_pooling_method == "cls":
             return last_hidden_state[:, 0]
         elif self.sentence_pooling_method == "mean":
-            s = torch.sum(
-                last_hidden_state * attention_mask.unsqueeze(-1).float(), dim=1
-            )
+            s = torch.sum(last_hidden_state * attention_mask.unsqueeze(-1).float(), dim=1)
             d = attention_mask.sum(dim=1, keepdim=True).float()
             return s / d
         elif self.sentence_pooling_method == "last_token":
@@ -124,7 +127,9 @@ class BiDecoderOnlyEmbedderICLModel(AbsEmbedderModel):
                     sequence_lengths,
                 ]
         else:
-            raise NotImplementedError(f"pooling method {self.sentence_pooling_method} not implemented")
+            raise NotImplementedError(
+                f"pooling method {self.sentence_pooling_method} not implemented"
+            )
 
     def compute_score(self, q_reps, p_reps):
         """Computes the scores between query and passage representations.
@@ -185,8 +190,5 @@ class BiDecoderOnlyEmbedderICLModel(AbsEmbedderModel):
             output_dir (str): Directory for saving the model.
         """
         state_dict = self.model.state_dict()
-        state_dict = type(state_dict)(
-            {k: v.clone().cpu()
-             for k,
-             v in state_dict.items()})
+        state_dict = type(state_dict)({k: v.clone().cpu() for k, v in state_dict.items()})
         self.model.save_pretrained(output_dir, state_dict=state_dict)

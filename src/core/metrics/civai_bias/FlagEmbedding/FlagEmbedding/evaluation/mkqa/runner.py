@@ -8,6 +8,7 @@ class MKQAEvalRunner(AbsEvalRunner):
     """
     Evaluation runner of MKQA.
     """
+
     def load_data_loader(self) -> MKQAEvalDataLoader:
         """Load the data loader instance by args.
 

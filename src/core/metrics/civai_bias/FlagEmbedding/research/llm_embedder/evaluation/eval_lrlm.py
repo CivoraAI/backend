@@ -14,6 +14,7 @@ from src.utils.util import makedirs, remove_eos, DefaultDataCollator, DatasetPro
 
 logger = logging.getLogger(__name__)
 import transformers
+
 # disable too long input warning
 transformers.logging.set_verbosity_error()
 
@@ -23,41 +24,31 @@ transformers.logging.set_verbosity_error()
 class LRLMArgs(RetrievalArgs, SRLMArgs):
     eval_data: str = field(
         default="llm-embedder:lrlm/books3/test.json",
-        metadata={'help': 'Evaluation json file.'},
+        metadata={"help": "Evaluation json file."},
     )
     lm_batch_size: int = field(
         default=1,
-        metadata={'help': 'Evaluation json file.'},
+        metadata={"help": "Evaluation json file."},
     )
 
     context_max_length: int = field(
         default=32768,
-        metadata={'help': 'Evaluation json file.'},
+        metadata={"help": "Evaluation json file."},
     )
     anchor_length: int = field(
-        default=160000,
-        metadata={'help': 'Evaluation file containing long texts.'}
+        default=160000, metadata={"help": "Evaluation file containing long texts."}
     )
-    chunk_size: int = field(
-        default=128,
-        metadata={'help': 'How many tokens in a chunk?'}
-    )
-    key_num: int = field(
-        default=8,
-        metadata={'help': 'How many chunks to retrieve at a time?'}
-    )
+    chunk_size: int = field(default=128, metadata={"help": "How many tokens in a chunk?"})
+    key_num: int = field(default=8, metadata={"help": "How many chunks to retrieve at a time?"})
     chunk_batch_size: int = field(
-        default=1,
-        metadata={'help': 'How many retrieval & generation to execute in parallel?'}  
+        default=1, metadata={"help": "How many retrieval & generation to execute in parallel?"}
     )
 
     log_path: str = field(
-        default="data/results/lrlm",
-        metadata={'help': 'Path to the file for logging.'}
+        default="data/results/lrlm", metadata={"help": "Path to the file for logging."}
     )
     debug_retrieval: bool = field(
-        default=False,
-        metadata={'help': 'Check retrieval queries and values?'}
+        default=False, metadata={"help": "Check retrieval queries and values?"}
     )
 
     def __post_init__(self):
@@ -81,7 +72,13 @@ def process_lrlm(tokenizer, context_max_length=4096, target_length=1024, anchor_
         output = {}
         text = text[:anchor_length]
 
-        inputs = left_truncation_tokenizer(text, max_length=context_max_length, truncation=True, return_token_type_ids=False, add_special_tokens=False)
+        inputs = left_truncation_tokenizer(
+            text,
+            max_length=context_max_length,
+            truncation=True,
+            return_token_type_ids=False,
+            add_special_tokens=False,
+        )
 
         if len(inputs.input_ids) < target_length:
             return None
@@ -94,13 +91,14 @@ def process_lrlm(tokenizer, context_max_length=4096, target_length=1024, anchor_
         for k, v in inputs.items():
             output[k] = v
         return output
+
     return _process
 
 
 def main():
     parser = HfArgumentParser([LRLMArgs])
-    args, = parser.parse_args_into_dataclasses()
-    
+    (args,) = parser.parse_args_into_dataclasses()
+
     accelerator = Accelerator(cpu=args.cpu)
 
     retriever = Retriever(
@@ -114,15 +112,15 @@ def main():
         key_max_length=args.key_max_length,
         tie_encoders=args.tie_encoders,
         truncation_side=args.truncation_side,
-        cache_dir=args.model_cache_dir, 
+        cache_dir=args.model_cache_dir,
         dtype=args.dtype,
         accelerator=accelerator,
         # for bm25 retriever
         anserini_dir=args.anserini_dir,
         k1=args.k1,
-        b=args.b
+        b=args.b,
     )
-    
+
     if args.add_instruction:
         instruction = TASK_CONFIG[args.version]["instruction"]["lrlm"]
     else:
@@ -154,22 +152,32 @@ def main():
     logging.info(f"Loading data from {args.eval_data}...")
 
     if args.retrieval_method == "no" and args.context_max_length != args.context_window_size:
-        logger.warning(f"Found retrieval_method is 'no', setting context_max_length to the same as context_window_size ({args.context_window_size})!")
+        logger.warning(
+            f"Found retrieval_method is 'no', setting context_max_length to the same as context_window_size ({args.context_window_size})!"
+        )
         args.context_max_length = args.context_window_size
 
     with accelerator.main_process_first():
-        dataset = datasets.load_dataset("json", data_files=args.eval_data, split="train", cache_dir=args.dataset_cache_dir)
-        dataset = dataset.map(process_lrlm(
-            tokenizer, 
-            context_max_length=args.context_max_length,
-            target_length=args.target_length,
-            anchor_length=args.anchor_length,
-        ), remove_columns=dataset.column_names, batched=True, batch_size=50, num_proc=64)
-        
+        dataset = datasets.load_dataset(
+            "json", data_files=args.eval_data, split="train", cache_dir=args.dataset_cache_dir
+        )
+        dataset = dataset.map(
+            process_lrlm(
+                tokenizer,
+                context_max_length=args.context_max_length,
+                target_length=args.target_length,
+                anchor_length=args.anchor_length,
+            ),
+            remove_columns=dataset.column_names,
+            batched=True,
+            batch_size=50,
+            num_proc=64,
+        )
+
     data_collator = DefaultDataCollator(tokenizer=tokenizer, add_position_ids=args.add_position_ids)
     dataloader = DataLoader(
-        dataset, 
-        batch_size=args.lm_batch_size, 
+        dataset,
+        batch_size=args.lm_batch_size,
         collate_fn=data_collator,
         pin_memory=True,
     )

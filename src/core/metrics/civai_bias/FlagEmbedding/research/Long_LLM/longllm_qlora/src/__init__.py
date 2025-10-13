@@ -1,10 +1,29 @@
-from .utils import FileLogger, DefaultDataCollator, makedirs, split_file_dir_name_ext, clear_dir, get_max_length_in_nested_lists, pad_nested_lists, mask_nested_lists, normalize_text, wrap_text, load_json, save_json, load_pickle, save_pickle, add_eos, remove_eos, format_numel_str
+from .utils import (
+    FileLogger,
+    DefaultDataCollator,
+    makedirs,
+    split_file_dir_name_ext,
+    clear_dir,
+    get_max_length_in_nested_lists,
+    pad_nested_lists,
+    mask_nested_lists,
+    normalize_text,
+    wrap_text,
+    load_json,
+    save_json,
+    load_pickle,
+    save_pickle,
+    add_eos,
+    remove_eos,
+    format_numel_str,
+)
 from .chat import apply_chat_template
 from .args import ModelArgs
 from .data import Data
 from .modeling_utils import evaluate_perplexity, evaluate_generation, evaluate_nll, move_to_device
 
 import logging
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
@@ -12,7 +31,9 @@ logging.basicConfig(
 )
 
 
-def get_model_and_tokenizer(model_args, device="cpu", evaluation_mode=True, return_tokenizer_only=False, **kwargs):
+def get_model_and_tokenizer(
+    model_args, device="cpu", evaluation_mode=True, return_tokenizer_only=False, **kwargs
+):
     """Load model and tokenizer."""
     import torch
     import transformers
@@ -30,7 +51,7 @@ def get_model_and_tokenizer(model_args, device="cpu", evaluation_mode=True, retu
 
     model_args_dict = asdict(model_args)
     model_args_dict.update(**kwargs)
-    
+
     model_name_or_path = model_args_dict["model_name_or_path"]
     cache_dir = model_args_dict["model_cache_dir"]
     access_token = model_args_dict["access_token"]
@@ -42,16 +63,16 @@ def get_model_and_tokenizer(model_args, device="cpu", evaluation_mode=True, retu
         tokenizer_kwargs = {"use_fast": False}
 
     tokenizer = AutoTokenizer.from_pretrained(
-        model_name_or_path, 
-        cache_dir=cache_dir, 
-        padding_side=model_args_dict["padding_side"], 
-        token=access_token, 
+        model_name_or_path,
+        cache_dir=cache_dir,
+        padding_side=model_args_dict["padding_side"],
+        token=access_token,
         trust_remote_code=True,
-        **tokenizer_kwargs
+        **tokenizer_kwargs,
     )
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token_id = tokenizer.eos_token_id
-    
+
     if return_tokenizer_only:
         return tokenizer
 
@@ -62,11 +83,11 @@ def get_model_and_tokenizer(model_args, device="cpu", evaluation_mode=True, retu
         dtype = torch.float16
     else:
         dtype = torch.float32
-        
+
     device_map = model_args_dict["device_map"]
     if device_map is None and not is_deepspeed_zero3_enabled():
         device_map = {"": device}
-    
+
     rope_kwargs = {}
     rope_theta = model_args_dict["rope_theta"]
     if rope_theta is not None:
@@ -74,10 +95,7 @@ def get_model_and_tokenizer(model_args, device="cpu", evaluation_mode=True, retu
     rope_method = model_args_dict["rope_method"]
     if rope_method is not None:
         rope_factor = model_args_dict["rope_factor"]
-        rope_scaling = {
-            "type": rope_method,
-            "factor": rope_factor
-        }
+        rope_scaling = {"type": rope_method, "factor": rope_factor}
         # NOTE: do not destroy the default rope_scaling of the model
         rope_kwargs["rope_scaling"] = rope_scaling
 
@@ -99,17 +117,17 @@ def get_model_and_tokenizer(model_args, device="cpu", evaluation_mode=True, retu
 
     # use architecture attribute to distinguish different models
     probe_config = AutoConfig.from_pretrained(
-        model_name_or_path, 
-        cache_dir=cache_dir, 
-        token=access_token, 
-        trust_remote_code=True
+        model_name_or_path, cache_dir=cache_dir, token=access_token, trust_remote_code=True
     )
     architecture = probe_config.architectures[0]
 
     extra_kwargs = {}
     if model_args_dict["max_position_embeddings"] is not None:
         extra_kwargs["max_position_embeddings"] = model_args_dict["max_position_embeddings"]
-    if architecture == "MistralForCausalLM" and model_args_dict["mistral_sliding_window"] is not None:
+    if (
+        architecture == "MistralForCausalLM"
+        and model_args_dict["mistral_sliding_window"] is not None
+    ):
         extra_kwargs["sliding_window"] = model_args_dict["mistral_sliding_window"]
     if model_args_dict["load_in_4_bit"]:
         extra_kwargs["quantization_config"] = BitsAndBytesConfig(
@@ -121,13 +139,12 @@ def get_model_and_tokenizer(model_args, device="cpu", evaluation_mode=True, retu
         device_map = None
 
     model = AutoModelForCausalLM.from_pretrained(
-        model_name_or_path, 
-        cache_dir=cache_dir, 
+        model_name_or_path,
+        cache_dir=cache_dir,
         torch_dtype=dtype,
         device_map=device_map,
         token=access_token,
         trust_remote_code=True,
-
         # NOTE: do not destroy the default rope_scaling of the model
         **rope_kwargs,
         **attn_kwargs,
@@ -139,8 +156,9 @@ def get_model_and_tokenizer(model_args, device="cpu", evaluation_mode=True, retu
         logger.info(f"loading lora from {model_args_dict['lora']}...")
 
         from peft import PeftModel
+
         model = PeftModel.from_pretrained(
-            model, 
+            model,
             model_args_dict["lora"],
             torch_dtype=dtype,
             device_map=device_map,
@@ -152,8 +170,9 @@ def get_model_and_tokenizer(model_args, device="cpu", evaluation_mode=True, retu
 
     if model_args_dict["enable_tp"]:
         import tensor_parallel as tp
+
         logger.info("enabling tensor parallelism...")
-        
+
         model = tp.tensor_parallel(model, sharded=True)
 
         # NOTE: tensor_parallel overrides the eos_token_id, don't know why, must include 128009 in eos
@@ -172,8 +191,9 @@ def get_model_and_tokenizer(model_args, device="cpu", evaluation_mode=True, retu
     if len(generation_config):
         unused_config = model.generation_config.update(**generation_config)
         if len(unused_config):
-            logger.warning(f"The following attributes are not used when overriding the generation configurations: {unused_config}")
+            logger.warning(
+                f"The following attributes are not used when overriding the generation configurations: {unused_config}"
+            )
     logger.info(f"Generation config: {generation_config}")
 
     return model, tokenizer
-

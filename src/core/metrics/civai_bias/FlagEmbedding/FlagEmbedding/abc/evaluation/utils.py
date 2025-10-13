@@ -31,14 +31,12 @@ def evaluate_mrr(
     k_max, top_hits = max(k_values), {}
 
     for query_id, doc_scores in results.items():
-        top_hits[query_id] = sorted(
-            doc_scores.items(), key=lambda item: item[1], reverse=True
-        )[0:k_max]
+        top_hits[query_id] = sorted(doc_scores.items(), key=lambda item: item[1], reverse=True)[
+            0:k_max
+        ]
 
     for query_id in top_hits:
-        query_relevant_docs = {
-            doc_id for doc_id in qrels[query_id] if qrels[query_id][doc_id] > 0
-        }
+        query_relevant_docs = {doc_id for doc_id in qrels[query_id] if qrels[query_id][doc_id] > 0}
         for k in k_values:
             rr = 0
             for rank, hit in enumerate(top_hits[query_id][0:k], 1):
@@ -71,10 +69,15 @@ def evaluate_metrics(
         k_values (List[int]): Cutoffs.
 
     Returns:
-        Tuple[ Dict[str, float], Dict[str, float], Dict[str, float], Dict[str, float], ]: Results of different metrics at 
+        Tuple[ Dict[str, float], Dict[str, float], Dict[str, float], Dict[str, float], ]: Results of different metrics at
             different provided k values.
     """
-    all_ndcgs, all_aps, all_recalls, all_precisions = defaultdict(list), defaultdict(list), defaultdict(list), defaultdict(list)
+    all_ndcgs, all_aps, all_recalls, all_precisions = (
+        defaultdict(list),
+        defaultdict(list),
+        defaultdict(list),
+        defaultdict(list),
+    )
 
     map_string = "map_cut." + ",".join([str(k) for k in k_values])
     ndcg_string = "ndcg_cut." + ",".join([str(k) for k in k_values])
@@ -109,10 +112,10 @@ def evaluate_metrics(
 
 
 def index(
-    index_factory: str = "Flat", 
-    corpus_embeddings: Optional[np.ndarray] = None, 
+    index_factory: str = "Flat",
+    corpus_embeddings: Optional[np.ndarray] = None,
     load_path: Optional[str] = None,
-    device: Optional[str] = None
+    device: Optional[str] = None,
 ):
     """Create and add embeddings into a Faiss index.
 
@@ -127,12 +130,14 @@ def index(
     """
     if corpus_embeddings is None:
         corpus_embeddings = np.load(load_path)
-    
+
     logger.info(f"Shape of embeddings: {corpus_embeddings.shape}")
     # create faiss index
-    logger.info(f'Indexing {corpus_embeddings.shape[0]} documents...')
-    faiss_index = faiss.index_factory(corpus_embeddings.shape[-1], index_factory, faiss.METRIC_INNER_PRODUCT)
-    
+    logger.info(f"Indexing {corpus_embeddings.shape[0]} documents...")
+    faiss_index = faiss.index_factory(
+        corpus_embeddings.shape[-1], index_factory, faiss.METRIC_INNER_PRODUCT
+    )
+
     if device is None and torch.cuda.is_available():
         try:
             co = faiss.GpuMultipleClonerOptions()
@@ -140,21 +145,23 @@ def index(
             co.useFloat16 = True
             faiss_index = faiss.index_cpu_to_all_gpus(faiss_index, co)
         except:
-            print('faiss do not support GPU, please uninstall faiss-cpu, faiss-gpu and install faiss-gpu again.')
+            print(
+                "faiss do not support GPU, please uninstall faiss-cpu, faiss-gpu and install faiss-gpu again."
+            )
 
-    logger.info('Adding embeddings ...')
+    logger.info("Adding embeddings ...")
     corpus_embeddings = corpus_embeddings.astype(np.float32)
     faiss_index.train(corpus_embeddings)
     faiss_index.add(corpus_embeddings)
-    logger.info('Embeddings add over...')
+    logger.info("Embeddings add over...")
     return faiss_index
 
 
 def search(
-    faiss_index: faiss.Index, 
-    k: int = 100, 
+    faiss_index: faiss.Index,
+    k: int = 100,
     query_embeddings: Optional[np.ndarray] = None,
-    load_path: Optional[str] = None
+    load_path: Optional[str] = None,
 ):
     """
     1. Encode queries into dense embeddings;
@@ -179,7 +186,7 @@ def search(
 
     for i in tqdm(range(0, query_size, 32), desc="Searching"):
         j = min(i + 32, query_size)
-        query_embedding = query_embeddings[i: j]
+        query_embedding = query_embeddings[i:j]
         score, indice = faiss_index.search(query_embedding.astype(np.float32), k=k)
         all_scores.append(score)
         all_indices.append(indice)

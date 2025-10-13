@@ -8,8 +8,11 @@ from transformers import (
     set_seed,
 )
 
-from .arguments import ModelArguments, DataArguments, \
-    RetrieverTrainingArguments as TrainingArguments
+from .arguments import (
+    ModelArguments,
+    DataArguments,
+    RetrieverTrainingArguments as TrainingArguments,
+)
 from .data import TrainDatasetForReranker, RerankCollator
 from .modeling import BiEncoderModel
 from .trainer import BiTrainer
@@ -26,10 +29,10 @@ def main():
     training_args: TrainingArguments
 
     if (
-            os.path.exists(training_args.output_dir)
-            and os.listdir(training_args.output_dir)
-            and training_args.do_train
-            and not training_args.overwrite_output_dir
+        os.path.exists(training_args.output_dir)
+        and os.listdir(training_args.output_dir)
+        and training_args.do_train
+        and not training_args.overwrite_output_dir
     ):
         raise ValueError(
             f"Output directory ({training_args.output_dir}) already exists and is not empty. Use --overwrite_output_dir to overcome."
@@ -64,7 +67,7 @@ def main():
         use_fast=False,
         trust_remote_code=True,
         token=model_args.token,
-        add_eos_token=True
+        add_eos_token=True,
     )
 
     if tokenizer.pad_token_id is None:
@@ -74,8 +77,8 @@ def main():
             tokenizer.pad_token_id = tokenizer.eod_id
             tokenizer.bos_token_id = tokenizer.im_start_id
             tokenizer.eos_token_id = tokenizer.im_end_id
-    if 'mistral' in model_args.model_name_or_path.lower():
-        tokenizer.padding_side = 'left'
+    if "mistral" in model_args.model_name_or_path.lower():
+        tokenizer.padding_side = "left"
 
     config = AutoConfig.from_pretrained(
         model_args.config_name if model_args.config_name else model_args.model_name_or_path,
@@ -83,11 +86,13 @@ def main():
         cache_dir=model_args.cache_dir,
         trust_remote_code=True,
     )
-    logger.info('Config: %s', config)
+    logger.info("Config: %s", config)
 
-    model = BiEncoderModel(model=base_model,
-                           tokenizer=tokenizer,
-                           train_batch_size=training_args.per_device_train_batch_size)
+    model = BiEncoderModel(
+        model=base_model,
+        tokenizer=tokenizer,
+        train_batch_size=training_args.per_device_train_batch_size,
+    )
 
     # model = base_model
 
@@ -106,7 +111,7 @@ def main():
             passage_max_len=data_args.passage_max_len,
             pad_to_multiple_of=8,
             return_tensors="pt",
-            padding=True
+            padding=True,
         ),
         tokenizer=tokenizer,
     )

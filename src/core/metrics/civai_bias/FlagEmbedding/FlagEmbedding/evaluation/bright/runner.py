@@ -1,7 +1,10 @@
 import logging
 from typing import Union, Tuple
-from FlagEmbedding.abc.evaluation import AbsEvalRunner, EvalReranker, \
-    AbsEvalModelArgs as BrightEvalModelArgs
+from FlagEmbedding.abc.evaluation import (
+    AbsEvalRunner,
+    EvalReranker,
+    AbsEvalModelArgs as BrightEvalModelArgs,
+)
 
 from .prompts import BrightShortInstructions, BrightLongInstructions
 from .arguments import BrightEvalArgs
@@ -15,6 +18,7 @@ class BrightEvalRunner(AbsEvalRunner):
     """
     Evaluation runner of Bright.
     """
+
     def __init__(self, eval_args: BrightEvalArgs, model_args: BrightEvalModelArgs):
         super().__init__(eval_args, model_args)
         self.eval_args: BrightEvalArgs
@@ -42,7 +46,9 @@ class BrightEvalRunner(AbsEvalRunner):
         )
         return data_loader
 
-    def load_retriever_and_reranker(self) -> Tuple[BrightEvalDenseRetriever, Union[EvalReranker, None]]:
+    def load_retriever_and_reranker(
+        self,
+    ) -> Tuple[BrightEvalDenseRetriever, Union[EvalReranker, None]]:
         """Load retriever and reranker for evaluation
 
         Returns:
@@ -51,9 +57,7 @@ class BrightEvalRunner(AbsEvalRunner):
         """
         embedder, reranker = self.get_models(self.model_args)
         retriever = BrightEvalDenseRetriever(
-            embedder,
-            search_top_k=self.eval_args.search_top_k,
-            overwrite=self.eval_args.overwrite
+            embedder, search_top_k=self.eval_args.search_top_k, overwrite=self.eval_args.overwrite
         )
         if reranker is not None:
             reranker = EvalReranker(reranker, rerank_top_k=self.eval_args.rerank_top_k)
@@ -77,24 +81,32 @@ class BrightEvalRunner(AbsEvalRunner):
                 reranker=self.reranker,
                 corpus_embd_save_dir=self.eval_args.corpus_embd_save_dir,
                 ignore_identical_ids=self.eval_args.ignore_identical_ids,
-                k_values=self.eval_args.k_values
+                k_values=self.eval_args.k_values,
             )
             logger.info(f"{self.eval_args.eval_name} evaluation completed.")
         else:
-            logger.info(f"Running {self.eval_args.eval_name} evaluation on the following dataset names: {dataset_names}")
+            logger.info(
+                f"Running {self.eval_args.eval_name} evaluation on the following dataset names: {dataset_names}"
+            )
             for dataset_name in dataset_names:
                 if self.eval_args.use_special_instructions:
                     self.retriever.stop_multi_process_pool()
                     if self.eval_args.task_type == "short":
-                        self.retriever.embedder.query_instruction_for_retrieval = BrightShortInstructions[dataset_name]
+                        self.retriever.embedder.query_instruction_for_retrieval = (
+                            BrightShortInstructions[dataset_name]
+                        )
                     elif self.eval_args.task_type == "long":
-                        self.retriever.embedder.query_instruction_for_retrieval = BrightLongInstructions[dataset_name]
+                        self.retriever.embedder.query_instruction_for_retrieval = (
+                            BrightLongInstructions[dataset_name]
+                        )
                     else:
                         raise ValueError(f"Invalid task type: {self.eval_args.task_type}")
 
                 # NOTE: pass qrels to searcher to exclude documents from raw search results
                 evaluator_kwargs = {}
-                evaluator_kwargs["retriever_qrels"] = self.data_loader.load_qrels(dataset_name=dataset_name, split=self.eval_args.splits)
+                evaluator_kwargs["retriever_qrels"] = self.data_loader.load_qrels(
+                    dataset_name=dataset_name, split=self.eval_args.splits
+                )
 
                 logger.info(f"Running {self.eval_args.eval_name} evaluation on: {dataset_name}")
                 self.evaluator(
@@ -115,5 +127,5 @@ class BrightEvalRunner(AbsEvalRunner):
             search_results_save_dir=self.eval_args.output_dir,
             output_method=self.eval_args.eval_output_method,
             output_path=self.eval_args.eval_output_path,
-            metrics=self.eval_args.eval_metrics
+            metrics=self.eval_args.eval_metrics,
         )

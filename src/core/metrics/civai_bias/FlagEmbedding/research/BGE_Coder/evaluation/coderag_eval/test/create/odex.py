@@ -16,17 +16,19 @@ def document2code(data, split="test"):
     # build doc corpus
     code_docs = load_dataset("neulab/docprompting-conala", "docs")["train"]
     for i in range(len(code_docs)):
-        docs.append({
-            "_id": str(i),
-            "title": code_docs[i]["doc_id"],
-            "text": code_docs[i]["doc_content"],
-            "metadata": {}
-        })
-    
+        docs.append(
+            {
+                "_id": str(i),
+                "title": code_docs[i]["doc_id"],
+                "text": code_docs[i]["doc_content"],
+                "metadata": {},
+            }
+        )
+
     # load canonical docs
     odex = load_dataset("json", data_files={"test": args.canonical_file})["test"]
     # collect queries and query-doc matching
-    for idx,item in enumerate(tqdm(data)):
+    for idx, item in enumerate(tqdm(data)):
         query = item["intent"]
         query_id = f"{idx}_{item['task_id']}"
         queries.append({"_id": query_id, "text": query, "metadata": {}})
@@ -36,20 +38,20 @@ def document2code(data, split="test"):
             corpus_id = code_docs["doc_id"].index(doc_id)
             corpus_id = str(corpus_id)
             qrels.append({"query-id": query_id, "corpus-id": corpus_id, "score": 1})
-    
+
     return queries, docs, qrels
 
 
 def main():
-    if '_' in args.dataset_name:
-        dataset_name = args.dataset_name.split('_')[0]
-        language = args.dataset_name.split('_')[1]
+    if "_" in args.dataset_name:
+        dataset_name = args.dataset_name.split("_")[0]
+        language = args.dataset_name.split("_")[1]
     else:
         dataset_name = args.dataset_name
-        language = 'en'
-    dataset = datasets.load_dataset(dataset_name, language) # english version by default
+        language = "en"
+    dataset = datasets.load_dataset(dataset_name, language)  # english version by default
 
-    path = os.path.join(args.output_dir, args.output_name.replace('en', language))
+    path = os.path.join(args.output_dir, args.output_name.replace("en", language))
     os.makedirs(path, exist_ok=True)
     os.makedirs(os.path.join(path, "qrels"), exist_ok=True)
 
@@ -59,8 +61,12 @@ def main():
         docs += docs_split
         queries += queries_split
 
-        save_tsv_dict(qrels_split, os.path.join(path, "qrels", "{}.tsv".format(split)), ["query-id", "corpus-id", "score"])
-    
+        save_tsv_dict(
+            qrels_split,
+            os.path.join(path, "qrels", "{}.tsv".format(split)),
+            ["query-id", "corpus-id", "score"],
+        )
+
     save_file_jsonl(queries, os.path.join(path, "queries.jsonl"))
     save_file_jsonl(docs, os.path.join(path, "corpus.jsonl"))
 

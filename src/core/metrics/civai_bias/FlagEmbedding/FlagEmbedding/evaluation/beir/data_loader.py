@@ -16,6 +16,7 @@ class BEIREvalDataLoader(AbsEvalDataLoader):
     """
     Data loader class for BEIR.
     """
+
     def available_dataset_names(self) -> List[str]:
         """
         Get the available dataset names.
@@ -23,7 +24,23 @@ class BEIREvalDataLoader(AbsEvalDataLoader):
         Returns:
             List[str]: All the available dataset names.
         """
-        return ['arguana', 'climate-fever', 'cqadupstack', 'dbpedia-entity', 'fever', 'fiqa', 'hotpotqa', 'msmarco', 'nfcorpus', 'nq', 'quora', 'scidocs', 'scifact', 'trec-covid', 'webis-touche2020']
+        return [
+            "arguana",
+            "climate-fever",
+            "cqadupstack",
+            "dbpedia-entity",
+            "fever",
+            "fiqa",
+            "hotpotqa",
+            "msmarco",
+            "nfcorpus",
+            "nq",
+            "quora",
+            "scidocs",
+            "scifact",
+            "trec-covid",
+            "webis-touche2020",
+        ]
 
     def available_sub_dataset_names(self, dataset_name: Optional[str] = None) -> List[str]:
         """
@@ -35,8 +52,21 @@ class BEIREvalDataLoader(AbsEvalDataLoader):
         Returns:
             List[str]: All the available sub-dataset names.
         """
-        if dataset_name == 'cqadupstack':
-            return ['android', 'english', 'gaming', 'gis', 'mathematica', 'physics', 'programmers', 'stats', 'tex', 'unix', 'webmasters', 'wordpress']
+        if dataset_name == "cqadupstack":
+            return [
+                "android",
+                "english",
+                "gaming",
+                "gis",
+                "mathematica",
+                "physics",
+                "programmers",
+                "stats",
+                "tex",
+                "unix",
+                "webmasters",
+                "wordpress",
+            ]
         return None
 
     def available_splits(self, dataset_name: Optional[str] = None) -> List[str]:
@@ -49,15 +79,15 @@ class BEIREvalDataLoader(AbsEvalDataLoader):
         Returns:
             List[str]: All the available splits for the dataset.
         """
-        if dataset_name == 'msmarco':
-            return ['dev']
-        return ['test']
+        if dataset_name == "msmarco":
+            return ["dev"]
+        return ["test"]
 
     def _load_remote_corpus(
         self,
         dataset_name: str,
         sub_dataset_name: Optional[str] = None,
-        save_dir: Optional[str] = None
+        save_dir: Optional[str] = None,
     ) -> datasets.DatasetDict:
         """Load the corpus dataset from HF.
 
@@ -69,14 +99,14 @@ class BEIREvalDataLoader(AbsEvalDataLoader):
         Returns:
             datasets.DatasetDict: Loaded datasets instance of corpus.
         """
-        if dataset_name != 'cqadupstack':
+        if dataset_name != "cqadupstack":
             corpus = datasets.load_dataset(
-                'BeIR/{d}'.format(d=dataset_name),
-                'corpus',
+                "BeIR/{d}".format(d=dataset_name),
+                "corpus",
                 trust_remote_code=True,
                 cache_dir=self.cache_dir,
-                download_mode=self.hf_download_mode
-            )['corpus']
+                download_mode=self.hf_download_mode,
+            )["corpus"]
 
             if save_dir is not None:
                 os.makedirs(save_dir, exist_ok=True)
@@ -84,21 +114,21 @@ class BEIREvalDataLoader(AbsEvalDataLoader):
                 corpus_dict = {}
                 with open(save_path, "w", encoding="utf-8") as f:
                     for data in tqdm(corpus, desc="Loading and Saving corpus"):
-                        _data = {
-                            "id": data["_id"],
-                            "title": data["title"],
-                            "text": data["text"]
-                        }
-                        corpus_dict[data["_id"]] = {
-                            "title": data["title"],
-                            "text": data["text"]
-                        }
+                        _data = {"id": data["_id"], "title": data["title"], "text": data["text"]}
+                        corpus_dict[data["_id"]] = {"title": data["title"], "text": data["text"]}
                         f.write(json.dumps(_data, ensure_ascii=False) + "\n")
                 logging.info(f"{self.eval_name} {dataset_name} corpus saved to {save_path}")
             else:
-                corpus_dict = {data["docid"]: {"title": data["title"], "text": data["text"]} for data in tqdm(corpus, desc="Loading corpus")}
+                corpus_dict = {
+                    data["docid"]: {"title": data["title"], "text": data["text"]}
+                    for data in tqdm(corpus, desc="Loading corpus")
+                }
         else:
-            url = "https://public.ukp.informatik.tu-darmstadt.de/thakur/BEIR/datasets/{}.zip".format(dataset_name)
+            url = (
+                "https://public.ukp.informatik.tu-darmstadt.de/thakur/BEIR/datasets/{}.zip".format(
+                    dataset_name
+                )
+            )
             data_path = util.download_and_unzip(url, self.cache_dir)
             full_path = os.path.join(data_path, sub_dataset_name)
             corpus, _, _ = GenericDataLoader(data_folder=full_path).load(split="test")
@@ -112,24 +142,27 @@ class BEIREvalDataLoader(AbsEvalDataLoader):
                         _data = {
                             "id": _id,
                             "title": corpus[_id]["title"],
-                            "text": corpus[_id]["text"]
+                            "text": corpus[_id]["text"],
                         }
                         corpus_dict[_id] = {
                             "title": corpus[_id]["title"],
-                            "text": corpus[_id]["text"]
+                            "text": corpus[_id]["text"],
                         }
                         f.write(json.dumps(_data, ensure_ascii=False) + "\n")
                 logging.info(f"{self.eval_name} {dataset_name} corpus saved to {save_path}")
             else:
-                corpus_dict = {_id: {"title": corpus[_id]["title"], "text": corpus[_id]["text"]} for _id in tqdm(corpus.keys(), desc="Loading corpus")}
+                corpus_dict = {
+                    _id: {"title": corpus[_id]["title"], "text": corpus[_id]["text"]}
+                    for _id in tqdm(corpus.keys(), desc="Loading corpus")
+                }
         return datasets.DatasetDict(corpus_dict)
 
     def _load_remote_qrels(
         self,
         dataset_name: Optional[str] = None,
         sub_dataset_name: Optional[str] = None,
-        split: str = 'dev',
-        save_dir: Optional[str] = None
+        split: str = "dev",
+        save_dir: Optional[str] = None,
     ) -> datasets.DatasetDict:
         """Load the qrels from HF.
 
@@ -142,13 +175,13 @@ class BEIREvalDataLoader(AbsEvalDataLoader):
         Returns:
             datasets.DatasetDict: Loaded datasets instance of qrel.
         """
-        if dataset_name != 'cqadupstack':
+        if dataset_name != "cqadupstack":
             qrels = datasets.load_dataset(
-                'BeIR/{d}-qrels'.format(d=dataset_name),
-                split=split if split != 'dev' else 'validation', 
+                "BeIR/{d}-qrels".format(d=dataset_name),
+                split=split if split != "dev" else "validation",
                 trust_remote_code=True,
                 cache_dir=self.cache_dir,
-                download_mode=self.hf_download_mode
+                download_mode=self.hf_download_mode,
             )
 
             if save_dir is not None:
@@ -157,12 +190,12 @@ class BEIREvalDataLoader(AbsEvalDataLoader):
                 qrels_dict = {}
                 with open(save_path, "w", encoding="utf-8") as f:
                     for data in tqdm(qrels, desc="Loading and Saving qrels"):
-                        qid, docid, rel = str(data['query-id']), str(data['corpus-id']), int(data['score'])
-                        _data = {
-                            "qid": qid,
-                            "docid": docid,
-                            "relevance": rel
-                        }
+                        qid, docid, rel = (
+                            str(data["query-id"]),
+                            str(data["corpus-id"]),
+                            int(data["score"]),
+                        )
+                        _data = {"qid": qid, "docid": docid, "relevance": rel}
                         if qid not in qrels_dict:
                             qrels_dict[qid] = {}
                         qrels_dict[qid][docid] = rel
@@ -171,12 +204,20 @@ class BEIREvalDataLoader(AbsEvalDataLoader):
             else:
                 qrels_dict = {}
                 for data in tqdm(qrels, desc="Loading queries"):
-                    qid, docid, rel = str(data['query-id']), str(data['corpus-id']), int(data['score'])
+                    qid, docid, rel = (
+                        str(data["query-id"]),
+                        str(data["corpus-id"]),
+                        int(data["score"]),
+                    )
                     if qid not in qrels_dict:
                         qrels_dict[qid] = {}
                     qrels_dict[qid][docid] = rel
         else:
-            url = "https://public.ukp.informatik.tu-darmstadt.de/thakur/BEIR/datasets/{}.zip".format(dataset_name)
+            url = (
+                "https://public.ukp.informatik.tu-darmstadt.de/thakur/BEIR/datasets/{}.zip".format(
+                    dataset_name
+                )
+            )
             data_path = util.download_and_unzip(url, self.cache_dir)
             full_path = os.path.join(data_path, sub_dataset_name)
             _, _, qrels = GenericDataLoader(data_folder=full_path).load(split="test")
@@ -189,11 +230,7 @@ class BEIREvalDataLoader(AbsEvalDataLoader):
                     for qid in tqdm(qrels.keys(), desc="Loading and Saving qrels"):
                         for docid in tqdm(qrels[qid].keys()):
                             rel = int(qrels[qid][docid])
-                            _data = {
-                                "qid": qid,
-                                "docid": docid,
-                                "relevance": rel
-                            }
+                            _data = {"qid": qid, "docid": docid, "relevance": rel}
                             if qid not in qrels_dict:
                                 qrels_dict[qid] = {}
                             qrels_dict[qid][docid] = rel
@@ -213,8 +250,8 @@ class BEIREvalDataLoader(AbsEvalDataLoader):
         self,
         dataset_name: Optional[str] = None,
         sub_dataset_name: Optional[str] = None,
-        split: str = 'test',
-        save_dir: Optional[str] = None
+        split: str = "test",
+        save_dir: Optional[str] = None,
     ) -> datasets.DatasetDict:
         """Load the queries from HF.
 
@@ -227,16 +264,18 @@ class BEIREvalDataLoader(AbsEvalDataLoader):
         Returns:
             datasets.DatasetDict: Loaded datasets instance of queries.
         """
-        qrels = self.load_qrels(dataset_name=dataset_name, sub_dataset_name=sub_dataset_name, split=split)
+        qrels = self.load_qrels(
+            dataset_name=dataset_name, sub_dataset_name=sub_dataset_name, split=split
+        )
 
-        if dataset_name != 'cqadupstack':
+        if dataset_name != "cqadupstack":
             queries = datasets.load_dataset(
-                'BeIR/{d}'.format(d=dataset_name), 
-                'queries', 
+                "BeIR/{d}".format(d=dataset_name),
+                "queries",
                 trust_remote_code=True,
                 cache_dir=self.cache_dir,
-                download_mode=self.hf_download_mode
-            )['queries']
+                download_mode=self.hf_download_mode,
+            )["queries"]
 
             if save_dir is not None:
                 os.makedirs(save_dir, exist_ok=True)
@@ -244,23 +283,26 @@ class BEIREvalDataLoader(AbsEvalDataLoader):
                 queries_dict = {}
                 with open(save_path, "w", encoding="utf-8") as f:
                     for data in tqdm(queries, desc="Loading and Saving queries"):
-                        qid, query = data['_id'], data['text']
-                        if qid not in qrels.keys(): continue
-                        _data = {
-                            "id": qid,
-                            "text": query
-                        }
+                        qid, query = data["_id"], data["text"]
+                        if qid not in qrels.keys():
+                            continue
+                        _data = {"id": qid, "text": query}
                         queries_dict[qid] = query
                         f.write(json.dumps(_data, ensure_ascii=False) + "\n")
                 logging.info(f"{self.eval_name} {dataset_name} queries saved to {save_path}")
             else:
                 queries_dict = {}
                 for data in tqdm(queries, desc="Loading queries"):
-                    qid, query = data['_id'], data['text']
-                    if qid not in qrels.keys(): continue
+                    qid, query = data["_id"], data["text"]
+                    if qid not in qrels.keys():
+                        continue
                     queries_dict[qid] = query
         else:
-            url = "https://public.ukp.informatik.tu-darmstadt.de/thakur/BEIR/datasets/{}.zip".format(dataset_name)
+            url = (
+                "https://public.ukp.informatik.tu-darmstadt.de/thakur/BEIR/datasets/{}.zip".format(
+                    dataset_name
+                )
+            )
             data_path = util.download_and_unzip(url, self.cache_dir)
             full_path = os.path.join(data_path, sub_dataset_name)
             _, queries, _ = GenericDataLoader(data_folder=full_path).load(split="test")
@@ -272,11 +314,9 @@ class BEIREvalDataLoader(AbsEvalDataLoader):
                 with open(save_path, "w", encoding="utf-8") as f:
                     for qid in tqdm(queries.keys(), desc="Loading and Saving queries"):
                         query = queries[qid]
-                        if qid not in qrels.keys(): continue
-                        _data = {
-                            "id": qid,
-                            "text": query
-                        }
+                        if qid not in qrels.keys():
+                            continue
+                        _data = {"id": qid, "text": query}
                         queries_dict[qid] = query
                         f.write(json.dumps(_data, ensure_ascii=False) + "\n")
                 logging.info(f"{self.eval_name} {dataset_name} queries saved to {save_path}")
@@ -284,11 +324,14 @@ class BEIREvalDataLoader(AbsEvalDataLoader):
                 queries_dict = {}
                 for qid in tqdm(queries.keys(), desc="Loading queries"):
                     query = queries[qid]
-                    if qid not in qrels.keys(): continue
+                    if qid not in qrels.keys():
+                        continue
                     queries_dict[qid] = query
         return datasets.DatasetDict(queries_dict)
 
-    def load_corpus(self, dataset_name: Optional[str] = None, sub_dataset_name: Optional[str] = None) -> datasets.DatasetDict:
+    def load_corpus(
+        self, dataset_name: Optional[str] = None, sub_dataset_name: Optional[str] = None
+    ) -> datasets.DatasetDict:
         """Load the corpus from the dataset.
 
         Args:
@@ -303,11 +346,20 @@ class BEIREvalDataLoader(AbsEvalDataLoader):
                 save_dir = self.dataset_dir
             else:
                 save_dir = os.path.join(self.dataset_dir, dataset_name)
-            return self._load_local_corpus(save_dir, dataset_name=dataset_name, sub_dataset_name=sub_dataset_name)
+            return self._load_local_corpus(
+                save_dir, dataset_name=dataset_name, sub_dataset_name=sub_dataset_name
+            )
         else:
-            return self._load_remote_corpus(dataset_name=dataset_name, sub_dataset_name=sub_dataset_name)
+            return self._load_remote_corpus(
+                dataset_name=dataset_name, sub_dataset_name=sub_dataset_name
+            )
 
-    def load_qrels(self, dataset_name: Optional[str] = None, sub_dataset_name: Optional[str] = None, split: str = 'test') -> datasets.DatasetDict:
+    def load_qrels(
+        self,
+        dataset_name: Optional[str] = None,
+        sub_dataset_name: Optional[str] = None,
+        split: str = "test",
+    ) -> datasets.DatasetDict:
         """Load the qrels from the dataset.
 
         Args:
@@ -332,11 +384,20 @@ class BEIREvalDataLoader(AbsEvalDataLoader):
 
                 save_dir = os.path.join(self.dataset_dir, dataset_name)
 
-            return self._load_local_qrels(save_dir, dataset_name=dataset_name, sub_dataset_name=sub_dataset_name, split=split)
+            return self._load_local_qrels(
+                save_dir, dataset_name=dataset_name, sub_dataset_name=sub_dataset_name, split=split
+            )
         else:
-            return self._load_remote_qrels(dataset_name=dataset_name, sub_dataset_name=sub_dataset_name, split=split)
+            return self._load_remote_qrels(
+                dataset_name=dataset_name, sub_dataset_name=sub_dataset_name, split=split
+            )
 
-    def load_queries(self, dataset_name: Optional[str] = None, sub_dataset_name: Optional[str] = None, split: str = 'test') -> datasets.DatasetDict:
+    def load_queries(
+        self,
+        dataset_name: Optional[str] = None,
+        sub_dataset_name: Optional[str] = None,
+        split: str = "test",
+    ) -> datasets.DatasetDict:
         """Load the queries from the dataset.
 
         Args:
@@ -361,11 +422,20 @@ class BEIREvalDataLoader(AbsEvalDataLoader):
 
                 save_dir = os.path.join(self.dataset_dir, dataset_name)
 
-            return self._load_local_queries(save_dir, dataset_name=dataset_name, sub_dataset_name=sub_dataset_name, split=split)
+            return self._load_local_queries(
+                save_dir, dataset_name=dataset_name, sub_dataset_name=sub_dataset_name, split=split
+            )
         else:
-            return self._load_remote_queries(dataset_name=dataset_name, sub_dataset_name=sub_dataset_name, split=split)
+            return self._load_remote_queries(
+                dataset_name=dataset_name, sub_dataset_name=sub_dataset_name, split=split
+            )
 
-    def _load_local_corpus(self, save_dir: str, dataset_name: Optional[str] = None, sub_dataset_name: Optional[str] = None) -> datasets.DatasetDict:
+    def _load_local_corpus(
+        self,
+        save_dir: str,
+        dataset_name: Optional[str] = None,
+        sub_dataset_name: Optional[str] = None,
+    ) -> datasets.DatasetDict:
         """Load corpus from local dataset.
 
         Args:
@@ -377,24 +447,36 @@ class BEIREvalDataLoader(AbsEvalDataLoader):
             datasets.DatasetDict: A dict of corpus with id as key, title and text as value.
         """
         if sub_dataset_name is None:
-            corpus_path = os.path.join(save_dir, 'corpus.jsonl')
+            corpus_path = os.path.join(save_dir, "corpus.jsonl")
         else:
-            corpus_path = os.path.join(save_dir, sub_dataset_name, 'corpus.jsonl')
+            corpus_path = os.path.join(save_dir, sub_dataset_name, "corpus.jsonl")
         if self.force_redownload or not os.path.exists(corpus_path):
-            logger.warning(f"Corpus not found in {corpus_path}. Trying to download the corpus from the remote and save it to {save_dir}.")
-            return self._load_remote_corpus(dataset_name=dataset_name, save_dir=save_dir, sub_dataset_name=sub_dataset_name)
+            logger.warning(
+                f"Corpus not found in {corpus_path}. Trying to download the corpus from the remote and save it to {save_dir}."
+            )
+            return self._load_remote_corpus(
+                dataset_name=dataset_name, save_dir=save_dir, sub_dataset_name=sub_dataset_name
+            )
         else:
             if sub_dataset_name is not None:
                 save_dir = os.path.join(save_dir, sub_dataset_name)
-            corpus_data = datasets.load_dataset('json', data_files=corpus_path, cache_dir=self.cache_dir)['train']
+            corpus_data = datasets.load_dataset(
+                "json", data_files=corpus_path, cache_dir=self.cache_dir
+            )["train"]
 
             corpus = {}
             for e in corpus_data:
-                corpus[e['id']] = {'title': e.get('title', ""), 'text': e['text']}
+                corpus[e["id"]] = {"title": e.get("title", ""), "text": e["text"]}
 
             return datasets.DatasetDict(corpus)
 
-    def _load_local_qrels(self, save_dir: str, dataset_name: Optional[str] = None, sub_dataset_name: Optional[str] = None, split: str = 'test') -> datasets.DatasetDict:
+    def _load_local_qrels(
+        self,
+        save_dir: str,
+        dataset_name: Optional[str] = None,
+        sub_dataset_name: Optional[str] = None,
+        split: str = "test",
+    ) -> datasets.DatasetDict:
         """Load relevance from local dataset.
 
         Args:
@@ -419,23 +501,38 @@ class BEIREvalDataLoader(AbsEvalDataLoader):
         else:
             qrels_path = os.path.join(save_dir, sub_dataset_name, f"{split}_qrels.jsonl")
         if self.force_redownload or not os.path.exists(qrels_path):
-            logger.warning(f"Qrels not found in {qrels_path}. Trying to download the qrels from the remote and save it to {save_dir}.")
-            return self._load_remote_qrels(dataset_name=dataset_name, split=split, sub_dataset_name=sub_dataset_name, save_dir=save_dir)
+            logger.warning(
+                f"Qrels not found in {qrels_path}. Trying to download the qrels from the remote and save it to {save_dir}."
+            )
+            return self._load_remote_qrels(
+                dataset_name=dataset_name,
+                split=split,
+                sub_dataset_name=sub_dataset_name,
+                save_dir=save_dir,
+            )
         else:
             if sub_dataset_name is not None:
                 save_dir = os.path.join(save_dir, sub_dataset_name)
-            qrels_data = datasets.load_dataset('json', data_files=qrels_path, cache_dir=self.cache_dir)['train']
+            qrels_data = datasets.load_dataset(
+                "json", data_files=qrels_path, cache_dir=self.cache_dir
+            )["train"]
 
             qrels = {}
             for data in qrels_data:
-                qid = data['qid']
+                qid = data["qid"]
                 if qid not in qrels:
                     qrels[qid] = {}
-                qrels[qid][data['docid']] = data['relevance']
+                qrels[qid][data["docid"]] = data["relevance"]
 
             return datasets.DatasetDict(qrels)
 
-    def _load_local_queries(self, save_dir: str, dataset_name: Optional[str] = None, sub_dataset_name: Optional[str] = None, split: str = 'test') -> datasets.DatasetDict:
+    def _load_local_queries(
+        self,
+        save_dir: str,
+        dataset_name: Optional[str] = None,
+        sub_dataset_name: Optional[str] = None,
+        split: str = "test",
+    ) -> datasets.DatasetDict:
         """Load queries from local dataset.
 
         Args:
@@ -460,12 +557,21 @@ class BEIREvalDataLoader(AbsEvalDataLoader):
         else:
             queries_path = os.path.join(save_dir, sub_dataset_name, f"{split}_queries.jsonl")
         if self.force_redownload or not os.path.exists(queries_path):
-            logger.warning(f"Queries not found in {queries_path}. Trying to download the queries from the remote and save it to {save_dir}.")
-            return self._load_remote_queries(dataset_name=dataset_name, split=split, sub_dataset_name=sub_dataset_name, save_dir=save_dir)
+            logger.warning(
+                f"Queries not found in {queries_path}. Trying to download the queries from the remote and save it to {save_dir}."
+            )
+            return self._load_remote_queries(
+                dataset_name=dataset_name,
+                split=split,
+                sub_dataset_name=sub_dataset_name,
+                save_dir=save_dir,
+            )
         else:
             if sub_dataset_name is not None:
                 save_dir = os.path.join(save_dir, sub_dataset_name)
-            queries_data = datasets.load_dataset('json', data_files=queries_path, cache_dir=self.cache_dir)['train']
+            queries_data = datasets.load_dataset(
+                "json", data_files=queries_path, cache_dir=self.cache_dir
+            )["train"]
 
-            queries = {e['id']: e['text'] for e in queries_data}
+            queries = {e["id"]: e["text"] for e in queries_data}
             return datasets.DatasetDict(queries)

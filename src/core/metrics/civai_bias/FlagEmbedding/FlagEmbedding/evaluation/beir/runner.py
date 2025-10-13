@@ -12,6 +12,7 @@ class BEIREvalRunner(AbsEvalRunner):
     """
     Runner class of BEIR evaluation.
     """
+
     def run(self):
         """
         Run the whole evaluation.
@@ -30,15 +31,19 @@ class BEIREvalRunner(AbsEvalRunner):
                 reranker=self.reranker,
                 corpus_embd_save_dir=self.eval_args.corpus_embd_save_dir,
                 ignore_identical_ids=self.eval_args.ignore_identical_ids,
-                k_values=self.eval_args.k_values
+                k_values=self.eval_args.k_values,
             )
             logger.info(f"{self.eval_args.eval_name} evaluation completed.")
         else:
-            logger.info(f"Running {self.eval_args.eval_name} evaluation on the following dataset names: {dataset_names}")
+            logger.info(
+                f"Running {self.eval_args.eval_name} evaluation on the following dataset names: {dataset_names}"
+            )
             for dataset_name in dataset_names:
                 if self.eval_args.use_special_instructions:
                     self.retriever.stop_multi_process_pool()
-                    self.retriever.embedder.query_instruction_for_retrieval = BEIRInstructions[dataset_name]
+                    self.retriever.embedder.query_instruction_for_retrieval = BEIRInstructions[
+                        dataset_name
+                    ]
                 logger.info(f"Running {self.eval_args.eval_name} evaluation on: {dataset_name}")
                 self.evaluator(
                     splits=self.eval_args.splits,
@@ -57,9 +62,9 @@ class BEIREvalRunner(AbsEvalRunner):
             search_results_save_dir=self.eval_args.output_dir,
             output_method=self.eval_args.eval_output_method,
             output_path=self.eval_args.eval_output_path,
-            metrics=self.eval_args.eval_metrics
+            metrics=self.eval_args.eval_metrics,
         )
-        
+
     def load_data_loader(self) -> BEIREvalDataLoader:
         """Load the data loader
 

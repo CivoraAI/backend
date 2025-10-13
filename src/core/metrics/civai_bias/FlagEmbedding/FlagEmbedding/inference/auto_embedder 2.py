@@ -4,7 +4,8 @@ from typing import List, Union, Optional
 
 from FlagEmbedding.inference.embedder.model_mapping import (
     EmbedderModelClass,
-    AUTO_EMBEDDER_MAPPING, EMBEDDER_CLASS_MAPPING
+    AUTO_EMBEDDER_MAPPING,
+    EMBEDDER_CLASS_MAPPING,
 )
 
 logger = logging.getLogger(__name__)
@@ -14,6 +15,7 @@ class FlagAutoModel:
     """
     Automatically choose the appropriate class to load the embedding model.
     """
+
     def __init__(self):
         raise EnvironmentError(
             "FlagAutoModel is designed to be instantiated using the `FlagAutoModel.from_finetuned(model_name_or_path)` method."
@@ -40,9 +42,9 @@ class FlagAutoModel:
             model_name_or_path (str): If it's a path to a local model, it loads the model from the path. Otherwise tries to download and
                 load a model from HuggingFace Hub with the name.
             model_class (Optional[Union[str, EmbedderModelClass]], optional): The embedder class to use. Defaults to :data:`None`.
-            normalize_embeddings (bool, optional): If True, the output embedding will be a Numpy array. Otherwise, it will be a Torch Tensor. 
+            normalize_embeddings (bool, optional): If True, the output embedding will be a Numpy array. Otherwise, it will be a Torch Tensor.
                 Defaults to :data:`True`.
-            use_fp16 (bool, optional): If true, use half-precision floating-point to speed up computation with a slight performance 
+            use_fp16 (bool, optional): If true, use half-precision floating-point to speed up computation with a slight performance
                 degradation. Defaults to :data:`True`.
             query_instruction_for_retrieval (Optional[str], optional): Query instruction for retrieval tasks, which will be used with
                 :attr:`query_instruction_format`. Defaults to :data:`None`.
@@ -82,7 +84,7 @@ class FlagAutoModel:
             if model_name not in AUTO_EMBEDDER_MAPPING:
                 raise ValueError(
                     f"Model name '{model_name}' not found in the model mapping. You can pull request to add the model to "
-                    "`https://github.com/FlagOpen/FlagEmbedding/tree/master/FlagEmbedding/inference/embedder/model_mapping.py`. " 
+                    "`https://github.com/FlagOpen/FlagEmbedding/tree/master/FlagEmbedding/inference/embedder/model_mapping.py`. "
                     "If need, you can create a new `<model>.py` file in `https://github.com/FlagOpen/FlagEmbedding/tree/master/FlagEmbedding/inference/embedder/encoder_only` "
                     "or `https://github.com/FlagOpen/FlagEmbedding/tree/master/FlagEmbedding/inference/embedder/decoder_only`. "
                     "Welcome to contribute! You can also directly specify the corresponding `model_class` to instantiate the model."

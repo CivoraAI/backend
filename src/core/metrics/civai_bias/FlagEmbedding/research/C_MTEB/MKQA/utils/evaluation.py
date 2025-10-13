@@ -6,8 +6,8 @@ from typing import List
 
 
 class SimpleTokenizer:
-    ALPHA_NUM = r'[\p{L}\p{N}\p{M}]+'
-    NON_WS = r'[^\p{Z}\p{C}]'
+    ALPHA_NUM = r"[\p{L}\p{N}\p{M}]+"
+    NON_WS = r"[^\p{Z}\p{C}]"
 
     def __init__(self):
         """
@@ -15,8 +15,8 @@ class SimpleTokenizer:
             annotators: None or empty set (only tokenizes).
         """
         self._regexp = regex.compile(
-            '(%s)|(%s)' % (self.ALPHA_NUM, self.NON_WS),
-            flags=regex.IGNORECASE + regex.UNICODE + regex.MULTILINE
+            "(%s)|(%s)" % (self.ALPHA_NUM, self.NON_WS),
+            flags=regex.IGNORECASE + regex.UNICODE + regex.MULTILINE,
         )
 
     def tokenize(self, text, uncased=False):
@@ -29,7 +29,7 @@ class SimpleTokenizer:
 
 
 def _normalize(text):
-    return unicodedata.normalize('NFD', text)
+    return unicodedata.normalize("NFD", text)
 
 
 def has_answer(answers, text, tokenizer) -> bool:
@@ -41,15 +41,15 @@ def has_answer(answers, text, tokenizer) -> bool:
         answer = _normalize(answer)
         answer = tokenizer.tokenize(answer, uncased=True)
         for i in range(0, len(text) - len(answer) + 1):
-            if answer == text[i: i + len(answer)]:
+            if answer == text[i : i + len(answer)]:
                 return True
     return False
 
 
 def check_answer(example, tokenizer) -> List[bool]:
     """Search through all the top docs to see if they have any of the answers."""
-    answers = example['answers']
-    ctxs = example['ctxs']
+    answers = example["answers"]
+    ctxs = example["ctxs"]
 
     hits = []
     for i, text in enumerate(ctxs):
@@ -66,16 +66,18 @@ def evaluate_recall_qa(ctxs, answers, k=100):
     assert len(ctxs) == len(answers)
     for i in range(len(ctxs)):
         _ctxs, _answers = ctxs[i], answers[i]
-        data.append({
-            'answers': _answers,
-            'ctxs': _ctxs,
-        })
+        data.append(
+            {
+                "answers": _answers,
+                "ctxs": _ctxs,
+            }
+        )
     tokenizer = SimpleTokenizer()
     get_score_partial = partial(check_answer, tokenizer=tokenizer)
-    
+
     scores = map(get_score_partial, data)
-    
-    n_docs = len(data[0]['ctxs'])
+
+    n_docs = len(data[0]["ctxs"])
     top_k_hits = [0] * n_docs
     for question_hits in scores:
         best_hit = next((i for i, x in enumerate(question_hits) if x), None)

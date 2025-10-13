@@ -14,13 +14,11 @@ class LocalDatasetLoader:
     data_path: str = ""
     doc_emb: np.ndarray = None
 
-    def __init__(self,
-                 data_path,
-                 embedding_path):
+    def __init__(self, data_path, embedding_path):
         dataset = load_from_disk(data_path)
-        title = dataset['title']
-        text = dataset['text']
-        self.data = [title[i] + ' -- ' + text[i] for i in range(len(title))]
+        title = dataset["title"]
+        text = dataset["text"]
+        self.data = [title[i] + " -- " + text[i] for i in range(len(title))]
         self.doc_emb = np.load(embedding_path)
 
 
@@ -51,23 +49,22 @@ class AnswerGenerator:
         self.llm_chain = LLMChain(llm=llm, prompt=prompt)
 
     def run(self, history, question, references):
-        return self.llm_chain.predict(history=history, question=question, references=references).strip()
+        return self.llm_chain.predict(
+            history=history, question=question, references=references
+        ).strip()
 
 
 class BMVectorIndex:
-    def __init__(self,
-                 model_path,
-                 bm_index_path,
-                 data_loader):
+    def __init__(self, model_path, bm_index_path, data_loader):
         self.tokenizer = AutoTokenizer.from_pretrained(model_path)
         self.model = AutoModel.from_pretrained(model_path)
         self.bm_searcher = LuceneSearcher(bm_index_path)
         self.loader = data_loader
 
-        if '-en' in model_path:
+        if "-en" in model_path:
             raise NotImplementedError("only support chinese currently")
 
-        if 'noinstruct' in model_path:
+        if "noinstruct" in model_path:
             self.instruction = None
         else:
             self.instruction = "为这个句子生成表示以用于检索相关文章："
@@ -79,7 +76,9 @@ class BMVectorIndex:
 
         if self.instruction is not None:
             query = self.instruction + query
-        encoded_input = self.tokenizer(query, max_length=512, padding=True, truncation=True, return_tensors='pt')
+        encoded_input = self.tokenizer(
+            query, max_length=512, padding=True, truncation=True, return_tensors="pt"
+        )
         with torch.no_grad():
             model_output = self.model(**encoded_input)
             query_emb = model_output.last_hidden_state[:, 0]
@@ -125,6 +124,6 @@ class Agent:
         answer = self.generate_answer(question, references)
         self.update_memory(question, answer)
         if verbose:
-            print('\033[96m' + "查：" + query + '\033[0m')
-            print('\033[96m' + "参：" + references + '\033[0m')
+            print("\033[96m" + "查：" + query + "\033[0m")
+            print("\033[96m" + "参：" + references + "\033[0m")
         print("答：" + answer)

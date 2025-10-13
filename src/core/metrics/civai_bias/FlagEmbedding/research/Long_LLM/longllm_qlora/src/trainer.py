@@ -17,7 +17,9 @@ class LLMTrainer(Trainer):
         self.model_args = model_args
         self.file_logger = file_logger
 
-    def _prepare_inputs(self, inputs: Dict[str, Union[torch.Tensor, Any]]) -> Dict[str, Union[torch.Tensor, Any]]:
+    def _prepare_inputs(
+        self, inputs: Dict[str, Union[torch.Tensor, Any]]
+    ) -> Dict[str, Union[torch.Tensor, Any]]:
         """
         Prepare `inputs` before feeding them to the model, converting them to tensors if they are not already and
         handling potential state.
@@ -30,7 +32,7 @@ class LLMTrainer(Trainer):
         if hasattr(self.model, "memory"):
             self.model.memory.reset()
         return inputs
-    
+
     def _save(self, output_dir: Optional[str] = None, state_dict=None):
         outputs = super()._save(output_dir, state_dict)
         # NOTE: also save model_args
@@ -38,7 +40,12 @@ class LLMTrainer(Trainer):
         return outputs
 
     @torch.no_grad()
-    def evaluate(self, eval_dataset: Dataset | None = None, ignore_keys: List[str] | None = None, metric_key_prefix: str = "eval") -> Dict[str, float]:        
+    def evaluate(
+        self,
+        eval_dataset: Dataset | None = None,
+        ignore_keys: List[str] | None = None,
+        metric_key_prefix: str = "eval",
+    ) -> Dict[str, float]:
         # memory metrics - must set up as early as possible
         self._memory_tracker.start()
 
@@ -66,9 +73,9 @@ class LLMTrainer(Trainer):
             metrics = {"perplexity": perplexity}
         elif self.args.eval_method == "generation":
             indices, outputs = evaluate_generation(
-                model, 
-                dataloader, 
-                accelerator=self.accelerator, 
+                model,
+                dataloader,
+                accelerator=self.accelerator,
                 tokenizer=self.tokenizer,
             )
             metrics = self.compute_metrics(outputs, labels, indices=indices)
@@ -87,7 +94,9 @@ class LLMTrainer(Trainer):
                 metrics[f"{metric_key_prefix}_{key}"] = metrics.pop(key)
 
         self.log(metrics)
-        self.control = self.callback_handler.on_evaluate(self.args, self.state, self.control, metrics)
+        self.control = self.callback_handler.on_evaluate(
+            self.args, self.state, self.control, metrics
+        )
         self._memory_tracker.stop_and_update_metrics(metrics)
 
         # log to file
@@ -96,7 +105,7 @@ class LLMTrainer(Trainer):
                 metrics=metrics,
                 Model_Args=asdict(self.model_args),
                 Training_Args=asdict(self.args),
-                Global_Steps=self.state.global_step
+                Global_Steps=self.state.global_step,
             )
 
         return metrics

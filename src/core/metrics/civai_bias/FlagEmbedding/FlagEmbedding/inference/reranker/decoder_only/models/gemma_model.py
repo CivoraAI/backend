@@ -52,15 +52,28 @@ from transformers.utils import (
     ModelOutput,
 )
 from .gemma_config import CostWiseGemmaConfig
-from transformers.models.gemma2.modeling_gemma2 import Gemma2RMSNorm, Gemma2RotaryEmbedding, rotate_half, apply_rotary_pos_emb
-from transformers.models.gemma2.modeling_gemma2 import Gemma2MLP, repeat_kv, Gemma2Attention, Gemma2DecoderLayer, GEMMA2_START_DOCSTRING
+from transformers.models.gemma2.modeling_gemma2 import (
+    Gemma2RMSNorm,
+    Gemma2RotaryEmbedding,
+    rotate_half,
+    apply_rotary_pos_emb,
+)
+from transformers.models.gemma2.modeling_gemma2 import (
+    Gemma2MLP,
+    repeat_kv,
+    Gemma2Attention,
+    Gemma2DecoderLayer,
+    GEMMA2_START_DOCSTRING,
+)
 from transformers.models.gemma2.modeling_gemma2 import GEMMA2_INPUTS_DOCSTRING
 
 if is_flash_attn_2_available():
     from flash_attn import flash_attn_func, flash_attn_varlen_func
     from flash_attn.bert_padding import index_first_axis, pad_input, unpad_input  # noqa
 
-    _flash_supports_window_size = "window_size" in list(inspect.signature(flash_attn_func).parameters)
+    _flash_supports_window_size = "window_size" in list(
+        inspect.signature(flash_attn_func).parameters
+    )
 
 
 logger = logging.get_logger(__name__)
@@ -76,6 +89,7 @@ def _get_unpad_data(attention_mask):
         cu_seqlens,
         max_seqlen_in_batch,
     )
+
 
 @add_start_docstrings(
     "The bare Gemma2 Model outputting raw hidden-states without any specific head on top.",
@@ -108,6 +122,7 @@ class CostWiseGemma2PreTrainedModel(PreTrainedModel):
 
 _CONFIG_FOR_DOC = "CostWiseGemmaConfig"
 
+
 @dataclass
 class CostWiseModelOutputWithPast(ModelOutput):
     last_hidden_state: torch.FloatTensor = None
@@ -115,6 +130,7 @@ class CostWiseModelOutputWithPast(ModelOutput):
     hidden_states: Optional[Tuple[torch.FloatTensor]] = None
     attentions: Optional[Tuple[torch.FloatTensor]] = None
     attention_masks: Optional[Tuple[torch.FloatTensor]] = None
+
 
 @dataclass
 class CostWiseCausalLMOutputWithPast(ModelOutput):
@@ -125,36 +141,50 @@ class CostWiseCausalLMOutputWithPast(ModelOutput):
     attentions: Optional[Tuple[torch.FloatTensor]] = None
     attention_masks: Optional[Tuple[torch.FloatTensor]] = None
 
-def token_compress(compress_ratio,
-                   hidden_states,
-                   attention_mask,
-                   query_lengths,
-                   prompt_lengths):
+
+def token_compress(compress_ratio, hidden_states, attention_mask, query_lengths, prompt_lengths):
     """
-        compress_ratio: int
-        hidden_states: (b, s, h)
-        attention_mask: (b, s)
-        query_lengths: (b)
-        prompt_lengths: (b)
+    compress_ratio: int
+    hidden_states: (b, s, h)
+    attention_mask: (b, s)
+    query_lengths: (b)
+    prompt_lengths: (b)
     """
     # get some specific parameters
-    passage_lengths = torch.sum(attention_mask, dim=1, dtype=torch.int) - query_lengths - prompt_lengths # the raw passage lengths (b)
-    retain_passage_lengths = (passage_lengths + compress_ratio - 1) // compress_ratio # the passage lengths need to be retained (b)
-    final_useful_lengths = query_lengths + prompt_lengths + retain_passage_lengths # the final useful length after compress (b)
-    max_passage_length = torch.max(passage_lengths) # the max passage lengths (1)
-    max_final_lengths = torch.max(final_useful_lengths) # the max useful lengths after compress (1)
+    passage_lengths = (
+        torch.sum(attention_mask, dim=1, dtype=torch.int) - query_lengths - prompt_lengths
+    )  # the raw passage lengths (b)
+    retain_passage_lengths = (
+        passage_lengths + compress_ratio - 1
+    ) // compress_ratio  # the passage lengths need to be retained (b)
+    final_useful_lengths = (
+        query_lengths + prompt_lengths + retain_passage_lengths
+    )  # the final useful length after compress (b)
+    max_passage_length = torch.max(passage_lengths)  # the max passage lengths (1)
+    max_final_lengths = torch.max(final_useful_lengths)  # the max useful lengths after compress (1)
     # make new hidden states and new attention masks
-    new_hidden_states = torch.zeros((hidden_states.shape[0], max_final_lengths,
-                                     hidden_states.shape[-1]), dtype=hidden_states.dtype).to(hidden_states.device) # (b, s', h)
-    new_attention_mask = torch.ones((hidden_states.shape[0], max_final_lengths), dtype=attention_mask.dtype).to(attention_mask.device) # (b, s')
+    new_hidden_states = torch.zeros(
+        (hidden_states.shape[0], max_final_lengths, hidden_states.shape[-1]),
+        dtype=hidden_states.dtype,
+    ).to(
+        hidden_states.device
+    )  # (b, s', h)
+    new_attention_mask = torch.ones(
+        (hidden_states.shape[0], max_final_lengths), dtype=attention_mask.dtype
+    ).to(
+        attention_mask.device
+    )  # (b, s')
     # get new attention mask
-    mask_attention_index = torch.arange(max_final_lengths, device=hidden_states.device).unsqueeze(0) >= final_useful_lengths[:, None]
+    mask_attention_index = (
+        torch.arange(max_final_lengths, device=hidden_states.device).unsqueeze(0)
+        >= final_useful_lengths[:, None]
+    )
     new_attention_mask[mask_attention_index] = 0
     # get new hidden states
     # add query into new hidden states
     query_index = torch.arange(max_final_lengths, device=hidden_states.device).unsqueeze(0)
     mask_query_index = query_index < query_lengths[:, None]
-    new_hidden_states[mask_query_index] = hidden_states[:, : max_final_lengths, :][mask_query_index]
+    new_hidden_states[mask_query_index] = hidden_states[:, :max_final_lengths, :][mask_query_index]
     # add prompt into new hidden states
     # get the index of the prompt in new hidden states
     new_prompt_start_length = query_lengths + retain_passage_lengths
@@ -166,7 +196,9 @@ def token_compress(compress_ratio,
     # get the index of the prompt in hidden states
     raw_prompt_start_length = query_lengths + passage_lengths
     raw_prompt_end_length = raw_prompt_start_length + prompt_lengths
-    raw_prompt_index = torch.arange(hidden_states.shape[1], device=hidden_states.device).unsqueeze(0)
+    raw_prompt_index = torch.arange(hidden_states.shape[1], device=hidden_states.device).unsqueeze(
+        0
+    )
     raw_mask_prompt_index_start = raw_prompt_index >= raw_prompt_start_length[:, None]
     raw_mask_prompt_index_end = raw_prompt_index < raw_prompt_end_length[:, None]
     raw_mask_prompt_index = raw_mask_prompt_index_start & raw_mask_prompt_index_end
@@ -195,40 +227,60 @@ def token_compress(compress_ratio,
     mask_psg_index = mask_psg_index_start & mask_psg_index_end
 
     hidden_states = hidden_states * mask_psg_index.unsqueeze(-1)
-    passage_hidden_states = torch.zeros((hidden_states.shape[0],
-                                         (max_passage_length + compress_ratio - 1) // compress_ratio * compress_ratio,
-                                         hidden_states.shape[-1]), dtype=hidden_states.dtype).to(hidden_states.device)
+    passage_hidden_states = torch.zeros(
+        (
+            hidden_states.shape[0],
+            (max_passage_length + compress_ratio - 1) // compress_ratio * compress_ratio,
+            hidden_states.shape[-1],
+        ),
+        dtype=hidden_states.dtype,
+    ).to(hidden_states.device)
     passage_end_length = passage_lengths
-    passage_index = torch.arange(passage_hidden_states.shape[1], device=hidden_states.device).unsqueeze(0) # maybe exceed the max passage length
+    passage_index = torch.arange(
+        passage_hidden_states.shape[1], device=hidden_states.device
+    ).unsqueeze(
+        0
+    )  # maybe exceed the max passage length
     mask_passage_index = passage_index < passage_end_length[:, None]
 
     raw_passage_end_length = query_lengths + passage_lengths
     raw_passage_start_length = query_lengths
-    raw_passage_index = torch.arange(hidden_states.shape[1], device=hidden_states.device).unsqueeze(0)
+    raw_passage_index = torch.arange(hidden_states.shape[1], device=hidden_states.device).unsqueeze(
+        0
+    )
     raw_mask_passage_index_start = raw_passage_index >= raw_passage_start_length[:, None]
     raw_mask_passage_index_end = raw_passage_index < raw_passage_end_length[:, None]
     raw_mask_passage_index = raw_mask_passage_index_start & raw_mask_passage_index_end
     passage_hidden_states[mask_passage_index] = hidden_states[raw_mask_passage_index]
 
-    passage_weights = torch.zeros((hidden_states.shape[0],
-                                   (max_passage_length + compress_ratio - 1) // compress_ratio * compress_ratio)
-                                  , dtype=hidden_states.dtype).to(hidden_states.device)
+    passage_weights = torch.zeros(
+        (
+            hidden_states.shape[0],
+            (max_passage_length + compress_ratio - 1) // compress_ratio * compress_ratio,
+        ),
+        dtype=hidden_states.dtype,
+    ).to(hidden_states.device)
     passage_weights[mask_passage_index] = 1
     passage_weights = passage_weights.view(passage_weights.shape[0], -1, compress_ratio)
-    passage_weights = passage_weights / torch.sum(passage_weights, dim=-1
-                                                  ).view(passage_weights.shape[0], -1, 1)
+    passage_weights = passage_weights / torch.sum(passage_weights, dim=-1).view(
+        passage_weights.shape[0], -1, 1
+    )
     passage_weights = passage_weights.view(passage_weights.shape[0], -1)
     # passage_weights = torch.where(passage_weights == torch.nan, 0, passage_weights)
     passage_hidden_states = passage_hidden_states * passage_weights.unsqueeze(-1)
-    passage_hidden_states = passage_hidden_states.view(passage_hidden_states.shape[0], -1, compress_ratio,
-                                                       passage_hidden_states.shape[-1])
+    passage_hidden_states = passage_hidden_states.view(
+        passage_hidden_states.shape[0], -1, compress_ratio, passage_hidden_states.shape[-1]
+    )
     passage_hidden_states = torch.sum(passage_hidden_states, dim=2)
     passage_end_length = retain_passage_lengths
-    passage_index = torch.arange(passage_hidden_states.shape[1], device=hidden_states.device).unsqueeze(0)
+    passage_index = torch.arange(
+        passage_hidden_states.shape[1], device=hidden_states.device
+    ).unsqueeze(0)
     mask_passage_index = passage_index < passage_end_length[:, None]
     new_hidden_states[new_mask_passage_index] = passage_hidden_states[mask_passage_index]
 
     return new_hidden_states, new_attention_mask
+
 
 @add_start_docstrings(
     "The bare Gemma2 Model outputting raw hidden-states without any specific head on top.",
@@ -282,12 +334,16 @@ class CostWiseGemmaModel(CostWiseGemma2PreTrainedModel):
         query_lengths: Optional[int] = None,
         prompt_lengths: Optional[int] = None,
     ) -> Union[Tuple, CostWiseModelOutputWithPast]:
-        output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
+        output_attentions = (
+            output_attentions if output_attentions is not None else self.config.output_attentions
+        )
 
         compress_ratio = None if compress_ratio == 1 else compress_ratio
 
         output_hidden_states = (
-            output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
+            output_hidden_states
+            if output_hidden_states is not None
+            else self.config.output_hidden_states
         )
         if self.config.layer_wise:
             output_hidden_states = True
@@ -341,7 +397,8 @@ class CostWiseGemmaModel(CostWiseGemma2PreTrainedModel):
         next_decoder_cache = None
 
         is_padding_left = (attention_mask[:, -1].sum() == attention_mask.shape[0]) and (
-                torch.sum(attention_mask) != attention_mask.shape[0] * attention_mask.shape[1])
+            torch.sum(attention_mask) != attention_mask.shape[0] * attention_mask.shape[1]
+        )
         query_lengths = [0] * hidden_states.shape[0] if query_lengths is None else query_lengths
         prompt_lengths = [0] * hidden_states.shape[0] if prompt_lengths is None else prompt_lengths
         if not isinstance(query_lengths, torch.Tensor):
@@ -368,16 +425,26 @@ class CostWiseGemmaModel(CostWiseGemma2PreTrainedModel):
             elif output_hidden_states:
                 all_hidden_states += (hidden_states,)
 
-            if compress_layer is not None and compress_ratio is not None and idx in compress_layer and idx != 0:
+            if (
+                compress_layer is not None
+                and compress_ratio is not None
+                and idx in compress_layer
+                and idx != 0
+            ):
                 if is_padding_left:
-                    raise ValueError('You must use right padding...')
-                hidden_states, attention_mask = token_compress(compress_ratio, hidden_states, attention_mask,
-                                                               query_lengths, prompt_lengths)
+                    raise ValueError("You must use right padding...")
+                hidden_states, attention_mask = token_compress(
+                    compress_ratio, hidden_states, attention_mask, query_lengths, prompt_lengths
+                )
                 seq_length = hidden_states.shape[1]
                 cache_position = torch.arange(0, seq_length, device=hidden_states.device)
                 position_ids = cache_position.unsqueeze(0)
                 causal_mask = self._update_causal_mask(
-                    attention_mask, hidden_states, cache_position, past_key_values, output_attentions
+                    attention_mask,
+                    hidden_states,
+                    cache_position,
+                    past_key_values,
+                    output_attentions,
                 )
 
             if self.gradient_checkpointing and self.training:
@@ -422,13 +489,17 @@ class CostWiseGemmaModel(CostWiseGemma2PreTrainedModel):
         next_cache = next_decoder_cache if use_cache else None
 
         if not return_dict:
-            return tuple(v for v in [hidden_states, next_cache, all_hidden_states, all_self_attns] if v is not None)
+            return tuple(
+                v
+                for v in [hidden_states, next_cache, all_hidden_states, all_self_attns]
+                if v is not None
+            )
         return CostWiseModelOutputWithPast(
             last_hidden_state=hidden_states,
             past_key_values=next_cache,
             hidden_states=all_hidden_states,
             attentions=all_self_attns,
-            attention_masks=all_attention_masks
+            attention_masks=all_attention_masks,
         )
 
     def _update_causal_mask(
@@ -450,12 +521,16 @@ class CostWiseGemmaModel(CostWiseGemma2PreTrainedModel):
         if past_key_values is not None:
             target_length = past_key_values.get_max_length()
         else:
-            target_length = attention_mask.shape[-1] if attention_mask is not None else input_tensor.shape[1]
+            target_length = (
+                attention_mask.shape[-1] if attention_mask is not None else input_tensor.shape[1]
+            )
 
         if attention_mask is not None and attention_mask.dim() == 4:
             # in this case we assume that the mask comes already in inverted form and requires no inversion or slicing
             if attention_mask.max() != 0:
-                raise ValueError("Custom 4D attention mask should be passed in inverted form with max==0`")
+                raise ValueError(
+                    "Custom 4D attention mask should be passed in inverted form with max==0`"
+                )
             causal_mask = attention_mask
         else:
             causal_mask = torch.full(
@@ -463,7 +538,9 @@ class CostWiseGemmaModel(CostWiseGemma2PreTrainedModel):
             )
             if sequence_length != 1:
                 causal_mask = torch.triu(causal_mask, diagonal=1)
-            causal_mask *= torch.arange(target_length, device=device) > cache_position.reshape(-1, 1)
+            causal_mask *= torch.arange(target_length, device=device) > cache_position.reshape(
+                -1, 1
+            )
             causal_mask = causal_mask[None, None, :, :].expand(input_tensor.shape[0], 1, -1, -1)
             if attention_mask is not None:
                 causal_mask = causal_mask.clone()  # copy to contiguous memory for in-place edit
@@ -499,9 +576,12 @@ class CostWiseGemmaForCausalLM(CostWiseGemma2PreTrainedModel):
             self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
         else:
             self.lm_head = nn.ModuleList(
-                [CostWiseHead(config.hidden_size, 1) for _ in range(
-                    config.start_layer, config.num_hidden_layers + 1, config.layer_sep
-                )]
+                [
+                    CostWiseHead(config.hidden_size, 1)
+                    for _ in range(
+                        config.start_layer, config.num_hidden_layers + 1, config.layer_sep
+                    )
+                ]
             )
 
         # Initialize weights and apply final processing
@@ -571,9 +651,13 @@ class CostWiseGemmaForCausalLM(CostWiseGemma2PreTrainedModel):
         >>> tokenizer.batch_decode(generate_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0]
         "What is your favorite condiment?"
         ```"""
-        output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
+        output_attentions = (
+            output_attentions if output_attentions is not None else self.config.output_attentions
+        )
         output_hidden_states = (
-            output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
+            output_hidden_states
+            if output_hidden_states is not None
+            else self.config.output_hidden_states
         )
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
@@ -585,7 +669,13 @@ class CostWiseGemmaForCausalLM(CostWiseGemma2PreTrainedModel):
                 cutoff_layers = [self.config.num_hidden_layers]
             elif isinstance(cutoff_layers, int):
                 cutoff_layers = [cutoff_layers]
-            can_use_layers = list(range(self.config.start_layer, self.config.num_hidden_layers + 1, self.config.layer_sep))
+            can_use_layers = list(
+                range(
+                    self.config.start_layer,
+                    self.config.num_hidden_layers + 1,
+                    self.config.layer_sep,
+                )
+            )
             remove_layers = [i for i in cutoff_layers if i not in can_use_layers]
             if len(remove_layers) > 0:
                 logger.warning_once(
@@ -593,7 +683,9 @@ class CostWiseGemmaForCausalLM(CostWiseGemma2PreTrainedModel):
                 )
             cutoff_layers = [i for i in cutoff_layers if i not in remove_layers]
             if len(cutoff_layers) == 0:
-                raise ValueError(f"Your cutoff layers must in [{self.config.start_layer}, {self.config.num_hidden_layers}]")
+                raise ValueError(
+                    f"Your cutoff layers must in [{self.config.start_layer}, {self.config.num_hidden_layers}]"
+                )
 
         # decoder outputs consists of (dec_features, layer_state, dec_hidden, dec_attn)
         outputs = self.model(
@@ -658,7 +750,7 @@ class CostWiseGemmaForCausalLM(CostWiseGemma2PreTrainedModel):
             past_key_values=outputs.past_key_values,
             hidden_states=outputs.hidden_states,
             attentions=outputs.attentions,
-            attention_masks=outputs[-1] if self.model.config.layer_wise else outputs[-1][-1]
+            attention_masks=outputs[-1] if self.model.config.layer_wise else outputs[-1][-1],
         )
 
     def prepare_inputs_for_generation(
@@ -674,13 +766,21 @@ class CostWiseGemmaForCausalLM(CostWiseGemma2PreTrainedModel):
         past_length = 0
         if past_key_values is not None:
             # Past key values are always initialized with a `Cache` object -> no need for if-else anymore
-            past_length = cache_position[0] if cache_position is not None else torch.tensor(0, device=input_ids.device)
+            past_length = (
+                cache_position[0]
+                if cache_position is not None
+                else torch.tensor(0, device=input_ids.device)
+            )
             max_cache_length = (
                 torch.tensor(past_key_values.get_max_length(), device=input_ids.device)
                 if past_key_values.get_max_length() is not None
                 else None
             )
-            cache_length = past_length if max_cache_length is None else torch.min(max_cache_length, past_length)
+            cache_length = (
+                past_length
+                if max_cache_length is None
+                else torch.min(max_cache_length, past_length)
+            )
 
             # Keep only the unprocessed tokens:
             # 1 - If the length of the attention_mask exceeds the length of input_ids, then we are in a setting where
@@ -720,7 +820,9 @@ class CostWiseGemmaForCausalLM(CostWiseGemma2PreTrainedModel):
 
         input_length = position_ids.shape[-1] if position_ids is not None else input_ids.shape[-1]
         if cache_position is None:
-            cache_position = torch.arange(past_length, past_length + input_length, device=input_ids.device)
+            cache_position = torch.arange(
+                past_length, past_length + input_length, device=input_ids.device
+            )
         elif use_cache:
             cache_position = cache_position[-input_length:]
 
@@ -740,6 +842,9 @@ class CostWiseGemmaForCausalLM(CostWiseGemma2PreTrainedModel):
         reordered_past = ()
         for layer_past in past_key_values:
             reordered_past += (
-                tuple(past_state.index_select(0, beam_idx.to(past_state.device)) for past_state in layer_past),
+                tuple(
+                    past_state.index_select(0, beam_idx.to(past_state.device))
+                    for past_state in layer_past
+                ),
             )
         return reordered_past

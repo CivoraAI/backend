@@ -9,13 +9,15 @@ from transformers import set_seed, PreTrainedTokenizer
 from .AbsArguments import (
     AbsRerankerModelArguments,
     AbsRerankerDataArguments,
-    AbsRerankerTrainingArguments
+    AbsRerankerTrainingArguments,
 )
 from .AbsTrainer import AbsRerankerTrainer
 from .AbsModeling import AbsRerankerModel
 from .AbsDataset import (
-    AbsRerankerTrainDataset, AbsRerankerCollator,
-    AbsLLMRerankerTrainDataset, AbsLLMRerankerCollator
+    AbsRerankerTrainDataset,
+    AbsRerankerCollator,
+    AbsLLMRerankerTrainDataset,
+    AbsLLMRerankerCollator,
 )
 
 logger = logging.getLogger(__name__)
@@ -29,11 +31,12 @@ class AbsRerankerRunner(ABC):
         data_args (AbsRerankerDataArguments): Data arguments.
         training_args (AbsRerankerTrainingArguments): Training arguments.
     """
+
     def __init__(
         self,
         model_args: AbsRerankerModelArguments,
         data_args: AbsRerankerDataArguments,
-        training_args: AbsRerankerTrainingArguments
+        training_args: AbsRerankerTrainingArguments,
     ):
         self.model_args = model_args
         self.data_args = data_args
@@ -99,15 +102,11 @@ class AbsRerankerRunner(ABC):
         Returns:
             AbsRerankerTrainDataset: The loaded dataset instance.
         """
-        if self.model_args.model_type == 'encoder':
-            train_dataset = AbsRerankerTrainDataset(
-                args=self.data_args,
-                tokenizer=self.tokenizer
-            )
+        if self.model_args.model_type == "encoder":
+            train_dataset = AbsRerankerTrainDataset(args=self.data_args, tokenizer=self.tokenizer)
         else:
             train_dataset = AbsLLMRerankerTrainDataset(
-                args=self.data_args,
-                tokenizer=self.tokenizer
+                args=self.data_args, tokenizer=self.tokenizer
             )
         return train_dataset
 
@@ -117,7 +116,7 @@ class AbsRerankerRunner(ABC):
         Returns:
             AbsRerankerCollator: Loaded data collator.
         """
-        if self.model_args.model_type == 'encoder':
+        if self.model_args.model_type == "encoder":
             RerankerCollator = AbsRerankerCollator
         else:
             RerankerCollator = AbsLLMRerankerCollator
@@ -128,7 +127,7 @@ class AbsRerankerRunner(ABC):
             passage_max_len=self.data_args.passage_max_len,
             pad_to_multiple_of=self.data_args.pad_to_multiple_of,
             padding=True,
-            return_tensors="pt"
+            return_tensors="pt",
         )
         return data_collator
 

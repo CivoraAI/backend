@@ -8,8 +8,7 @@ from transformers import (
     set_seed,
 )
 
-from arguments import ModelArguments, DataArguments, \
-    RetrieverTrainingArguments as TrainingArguments
+from arguments import ModelArguments, DataArguments, RetrieverTrainingArguments as TrainingArguments
 from data import TrainDatasetForEmbedding, EmbedCollator
 from modeling import BiEncoderModel
 from trainer import BiTrainer
@@ -26,10 +25,10 @@ def main():
     training_args: TrainingArguments
 
     if (
-            os.path.exists(training_args.output_dir)
-            and os.listdir(training_args.output_dir)
-            and training_args.do_train
-            and not training_args.overwrite_output_dir
+        os.path.exists(training_args.output_dir)
+        and os.listdir(training_args.output_dir)
+        and training_args.do_train
+        and not training_args.overwrite_output_dir
     ):
         raise ValueError(
             f"Output directory ({training_args.output_dir}) already exists and is not empty. Use --overwrite_output_dir to overcome."
@@ -68,7 +67,7 @@ def main():
 
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.unk_token
-    tokenizer.padding_side = 'left'
+    tokenizer.padding_side = "left"
 
     config = AutoConfig.from_pretrained(
         model_args.config_name if model_args.config_name else model_args.model_name_or_path,
@@ -76,14 +75,16 @@ def main():
         cache_dir=model_args.cache_dir,
         token=model_args.token,
     )
-    logger.info('Config: %s', config)
+    logger.info("Config: %s", config)
 
-    model = BiEncoderModel(model=base_model,
-                           tokenizer=tokenizer,
-                           normlized=training_args.normlized,
-                           negatives_cross_device=training_args.negatives_cross_device,
-                           temperature=training_args.temperature,
-                           sub_batch_size=training_args.sub_batch_size)
+    model = BiEncoderModel(
+        model=base_model,
+        tokenizer=tokenizer,
+        normlized=training_args.normlized,
+        negatives_cross_device=training_args.negatives_cross_device,
+        temperature=training_args.temperature,
+        sub_batch_size=training_args.sub_batch_size,
+    )
     # model.gradient_checkpointing_enable()
     # print(tokenizer('slalala', return_tensors='pt').to('cuda'))
     # print(base_model(**(tokenizer('slalala', return_tensors='pt'))))
@@ -105,9 +106,9 @@ def main():
             pad_to_multiple_of=8,
             return_tensors="pt",
             padding=True,
-            sub_batch_size=training_args.sub_batch_size
+            sub_batch_size=training_args.sub_batch_size,
         ),
-        tokenizer=tokenizer
+        tokenizer=tokenizer,
     )
 
     Path(training_args.output_dir).mkdir(parents=True, exist_ok=True)

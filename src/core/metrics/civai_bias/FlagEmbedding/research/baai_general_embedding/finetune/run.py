@@ -8,8 +8,11 @@ from transformers import (
     set_seed,
 )
 
-from .arguments import ModelArguments, DataArguments, \
-    RetrieverTrainingArguments as TrainingArguments
+from .arguments import (
+    ModelArguments,
+    DataArguments,
+    RetrieverTrainingArguments as TrainingArguments,
+)
 from .data import TrainDatasetForEmbedding, EmbedCollator
 from .modeling import BiEncoderModel
 from .trainer import BiTrainer
@@ -25,10 +28,10 @@ def main():
     training_args: TrainingArguments
 
     if (
-            os.path.exists(training_args.output_dir)
-            and os.listdir(training_args.output_dir)
-            and training_args.do_train
-            and not training_args.overwrite_output_dir
+        os.path.exists(training_args.output_dir)
+        and os.listdir(training_args.output_dir)
+        and training_args.do_train
+        and not training_args.overwrite_output_dir
     ):
         raise ValueError(
             f"Output directory ({training_args.output_dir}) already exists and is not empty. Use --overwrite_output_dir to overcome."
@@ -66,15 +69,16 @@ def main():
         num_labels=num_labels,
         cache_dir=model_args.cache_dir,
     )
-    logger.info('Config: %s', config)
+    logger.info("Config: %s", config)
 
-    model = BiEncoderModel(model_name=model_args.model_name_or_path,
-                           normlized=training_args.normlized,
-                           sentence_pooling_method=training_args.sentence_pooling_method,
-                           negatives_cross_device=training_args.negatives_cross_device,
-                           temperature=training_args.temperature,
-                           use_inbatch_neg=training_args.use_inbatch_neg,
-                           )
+    model = BiEncoderModel(
+        model_name=model_args.model_name_or_path,
+        normlized=training_args.normlized,
+        sentence_pooling_method=training_args.sentence_pooling_method,
+        negatives_cross_device=training_args.negatives_cross_device,
+        temperature=training_args.temperature,
+        use_inbatch_neg=training_args.use_inbatch_neg,
+    )
 
     if training_args.fix_position_embedding:
         for k, v in model.named_parameters():
@@ -91,9 +95,9 @@ def main():
         data_collator=EmbedCollator(
             tokenizer,
             query_max_len=data_args.query_max_len,
-            passage_max_len=data_args.passage_max_len
+            passage_max_len=data_args.passage_max_len,
         ),
-        tokenizer=tokenizer
+        tokenizer=tokenizer,
     )
 
     Path(training_args.output_dir).mkdir(parents=True, exist_ok=True)

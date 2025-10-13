@@ -12,23 +12,23 @@ from .arguments import DataArguments
 
 
 class TrainDatasetForEmbedding(Dataset):
-    def __init__(
-            self,
-            args: DataArguments,
-            tokenizer: PreTrainedTokenizer
-    ):
+    def __init__(self, args: DataArguments, tokenizer: PreTrainedTokenizer):
         if os.path.isdir(args.train_data):
             train_datasets = []
             for file in os.listdir(args.train_data):
-                temp_dataset = datasets.load_dataset('json', data_files=os.path.join(args.train_data, file),
-                                                     split='train')
+                temp_dataset = datasets.load_dataset(
+                    "json", data_files=os.path.join(args.train_data, file), split="train"
+                )
                 if len(temp_dataset) > args.max_example_num_per_dataset:
                     temp_dataset = temp_dataset.select(
-                        random.sample(list(range(len(temp_dataset))), args.max_example_num_per_dataset))
+                        random.sample(
+                            list(range(len(temp_dataset))), args.max_example_num_per_dataset
+                        )
+                    )
                 train_datasets.append(temp_dataset)
             self.dataset = datasets.concatenate_datasets(train_datasets)
         else:
-            self.dataset = datasets.load_dataset('json', data_files=args.train_data, split='train')
+            self.dataset = datasets.load_dataset("json", data_files=args.train_data, split="train")
 
         self.tokenizer = tokenizer
         self.args = args
@@ -38,25 +38,25 @@ class TrainDatasetForEmbedding(Dataset):
         return self.total_len
 
     def __getitem__(self, item) -> Tuple[str, List[str]]:
-        query = self.dataset[item]['query']
+        query = self.dataset[item]["query"]
         if self.args.query_instruction_for_retrieval is not None:
             query = self.args.query_instruction_for_retrieval + query
 
         passages = []
 
-        assert isinstance(self.dataset[item]['pos'], list)
-        pos = random.choice(self.dataset[item]['pos'])
+        assert isinstance(self.dataset[item]["pos"], list)
+        pos = random.choice(self.dataset[item]["pos"])
         passages.append(pos)
 
-        if len(self.dataset[item]['neg']) < self.args.train_group_size - 1:
-            num = math.ceil((self.args.train_group_size - 1) / len(self.dataset[item]['neg']))
-            negs = random.sample(self.dataset[item]['neg'] * num, self.args.train_group_size - 1)
+        if len(self.dataset[item]["neg"]) < self.args.train_group_size - 1:
+            num = math.ceil((self.args.train_group_size - 1) / len(self.dataset[item]["neg"]))
+            negs = random.sample(self.dataset[item]["neg"] * num, self.args.train_group_size - 1)
         else:
-            negs = random.sample(self.dataset[item]['neg'], self.args.train_group_size - 1)
+            negs = random.sample(self.dataset[item]["neg"], self.args.train_group_size - 1)
         passages.extend(negs)
 
         if self.args.passage_instruction_for_retrieval is not None:
-            passages = [self.args.passage_instruction_for_retrieval+p for p in passages]
+            passages = [self.args.passage_instruction_for_retrieval + p for p in passages]
         return query, passages
 
 
@@ -67,6 +67,7 @@ class EmbedCollator(DataCollatorWithPadding):
     and pass batch separately to the actual collator.
     Abstract out data detail for the model.
     """
+
     query_max_len: int = 32
     passage_max_len: int = 128
 

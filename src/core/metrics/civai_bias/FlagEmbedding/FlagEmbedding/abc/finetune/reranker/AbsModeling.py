@@ -25,6 +25,7 @@ class AbsRerankerModel(ABC, nn.Module):
         tokenizer (PreTrainedTokenizer, optional): The tokenizer to use. Defaults to ``None``.
         train_batch_size (int, optional): Batch size used for training. Defaults to ``4``.
     """
+
     def __init__(
         self,
         base_model: None,
@@ -34,7 +35,7 @@ class AbsRerankerModel(ABC, nn.Module):
         nn.Module.__init__(self)
         self.model = base_model
         self.tokenizer = tokenizer
-        self.cross_entropy = nn.CrossEntropyLoss(reduction='mean')
+        self.cross_entropy = nn.CrossEntropyLoss(reduction="mean")
 
         if self.model.config.pad_token_id is None:
             self.model.config.pad_token_id = self.tokenizer.pad_token_id
@@ -42,7 +43,7 @@ class AbsRerankerModel(ABC, nn.Module):
 
         self.train_batch_size = train_batch_size
 
-        self.yes_loc = self.tokenizer('Yes', add_special_tokens=False)['input_ids'][-1]
+        self.yes_loc = self.tokenizer("Yes", add_special_tokens=False)["input_ids"][-1]
 
     def gradient_checkpointing_enable(self, **kwargs):
         """
@@ -65,7 +66,11 @@ class AbsRerankerModel(ABC, nn.Module):
         """
         pass
 
-    def forward(self, pair: Union[Dict[str, Tensor], List[Dict[str, Tensor]]] = None, teacher_scores: Optional[Tensor] = None):
+    def forward(
+        self,
+        pair: Union[Dict[str, Tensor], List[Dict[str, Tensor]]] = None,
+        teacher_scores: Optional[Tensor] = None,
+    ):
         """The computation performed at every call.
 
         Args:
@@ -75,7 +80,7 @@ class AbsRerankerModel(ABC, nn.Module):
         Returns:
             RerankerOutput: Output of reranker model.
         """
-        ranker_logits = self.encode(pair) # (batch_size * num, dim)
+        ranker_logits = self.encode(pair)  # (batch_size * num, dim)
         if teacher_scores is not None:
             teacher_scores = torch.Tensor(teacher_scores)
             teacher_targets = teacher_scores.view(self.train_batch_size, -1)
@@ -83,12 +88,16 @@ class AbsRerankerModel(ABC, nn.Module):
 
         if self.training:
             grouped_logits = ranker_logits.view(self.train_batch_size, -1)
-            target = torch.zeros(self.train_batch_size, device=grouped_logits.device, dtype=torch.long)
+            target = torch.zeros(
+                self.train_batch_size, device=grouped_logits.device, dtype=torch.long
+            )
             loss = self.compute_loss(grouped_logits, target)
             if teacher_scores is not None:
                 teacher_targets = teacher_targets.to(grouped_logits.device)
                 # print(teacher_targets, torch.mean(torch.sum(torch.log_softmax(grouped_logits, dim=-1) * teacher_targets, dim=-1)))
-                loss += - torch.mean(torch.sum(torch.log_softmax(grouped_logits, dim=-1) * teacher_targets, dim=-1))
+                loss += -torch.mean(
+                    torch.sum(torch.log_softmax(grouped_logits, dim=-1) * teacher_targets, dim=-1)
+                )
         else:
             loss = None
 
@@ -118,10 +127,7 @@ class AbsRerankerModel(ABC, nn.Module):
         """
         # self.model.save_pretrained(output_dir)
         state_dict = self.model.state_dict()
-        state_dict = type(state_dict)(
-            {k: v.clone().cpu()
-             for k,
-             v in state_dict.items()})
+        state_dict = type(state_dict)({k: v.clone().cpu() for k, v in state_dict.items()})
         self.model.save_pretrained(output_dir, state_dict=state_dict)
 
     def save_pretrained(self, *args, **kwargs):

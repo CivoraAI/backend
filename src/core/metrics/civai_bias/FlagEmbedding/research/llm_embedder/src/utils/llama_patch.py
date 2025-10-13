@@ -41,19 +41,13 @@ def forward(
     bsz, q_len, _ = hidden_states.size()
 
     query_states = (
-        self.q_proj(hidden_states)
-        .view(bsz, q_len, self.num_heads, self.head_dim)
-        .transpose(1, 2)
+        self.q_proj(hidden_states).view(bsz, q_len, self.num_heads, self.head_dim).transpose(1, 2)
     )
     key_states = (
-        self.k_proj(hidden_states)
-        .view(bsz, q_len, self.num_heads, self.head_dim)
-        .transpose(1, 2)
+        self.k_proj(hidden_states).view(bsz, q_len, self.num_heads, self.head_dim).transpose(1, 2)
     )
     value_states = (
-        self.v_proj(hidden_states)
-        .view(bsz, q_len, self.num_heads, self.head_dim)
-        .transpose(1, 2)
+        self.v_proj(hidden_states).view(bsz, q_len, self.num_heads, self.head_dim).transpose(1, 2)
     )
     # [bsz, q_len, nh, hd]
     # [bsz, nh, q_len, hd]
@@ -78,9 +72,7 @@ def forward(
     # https://github.com/HazyResearch/flash-attention/blob/main/flash_attn/flash_attention.py
 
     # transform the data into the format required by flash attention
-    qkv = torch.stack(
-        [query_states, key_states, value_states], dim=2
-    )  # [bsz, nh, 3, q_len, hd]
+    qkv = torch.stack([query_states, key_states, value_states], dim=2)  # [bsz, nh, 3, q_len, hd]
     qkv = qkv.transpose(1, 3)  # [bsz, q_len, 3, nh, hd]
     # We have disabled _prepare_decoder_attention_mask in LlamaModel
     # the attention_mask should be the same as the key_padding_mask
@@ -100,16 +92,12 @@ def forward(
         nheads = qkv.shape[-2]
         x = rearrange(qkv, "b s three h d -> b s (three h d)")
         x_unpad, indices, cu_q_lens, max_s = unpad_input(x, key_padding_mask)
-        x_unpad = rearrange(
-            x_unpad, "nnz (three h d) -> nnz three h d", three=3, h=nheads
-        )
+        x_unpad = rearrange(x_unpad, "nnz (three h d) -> nnz three h d", three=3, h=nheads)
         output_unpad = flash_attn_varlen_qkvpacked_func(
             x_unpad, cu_q_lens, max_s, 0.0, softmax_scale=None, causal=True
         )
         output = rearrange(
-            pad_input(
-                rearrange(output_unpad, "nnz h d -> nnz (h d)"), indices, bsz, q_len
-            ),
+            pad_input(rearrange(output_unpad, "nnz h d -> nnz (h d)"), indices, bsz, q_len),
             "b s (h d) -> b s h d",
             h=nheads,
         )
@@ -118,9 +106,12 @@ def forward(
 
 # Disable the transformation of the attention mask in LlamaModel as the flash attention
 # requires the attention mask to be the same as the key_padding_mask
-def _prepare_decoder_attention_mask(self, attention_mask, input_shape, inputs_embeds, past_key_values_length):
+def _prepare_decoder_attention_mask(
+    self, attention_mask, input_shape, inputs_embeds, past_key_values_length
+):
     # [bsz, seq_len]
     return attention_mask
+
 
 def enable_flash_attention(model=None):
     if model is not None and not isinstance(model, LlamaPreTrainedModel):
@@ -144,16 +135,18 @@ def enable_flash_attention(model=None):
         # override model, already instatiated
         if hasattr(model, "lm_head"):
             model = model.model
-        model._prepare_decoder_attention_mask = types.MethodType(_prepare_decoder_attention_mask, model)
+        model._prepare_decoder_attention_mask = types.MethodType(
+            _prepare_decoder_attention_mask, model
+        )
         for layer in model.layers:
             layer.self_attn.forward = types.MethodType(forward, layer.self_attn)
-            
+
 
 def disable_flash_attention(model=None):
     if model is not None and not isinstance(model, LlamaPreTrainedModel):
         logger.warning(f"flash attention not implemented for model {type(model)}!")
         return
-    
+
     logger.warning("reloading llama model, disabling flash attention...")
     if model is None:
         # override class, instantiate later
@@ -161,13 +154,18 @@ def disable_flash_attention(model=None):
     else:
         # override model, already instatiated
         forward = transformers.models.llama.modeling_llama.LlamaAttention.forward
-        _prepare_decoder_attention_mask = transformers.models.llama.modeling_llama.LlamaModel._prepare_decoder_attention_mask
+        _prepare_decoder_attention_mask = (
+            transformers.models.llama.modeling_llama.LlamaModel._prepare_decoder_attention_mask
+        )
 
         if hasattr(model, "lm_head"):
             model = model.model
-        model._prepare_decoder_attention_mask = types.MethodType(_prepare_decoder_attention_mask, model)
+        model._prepare_decoder_attention_mask = types.MethodType(
+            _prepare_decoder_attention_mask, model
+        )
         for layer in model.layers:
             layer.self_attn.forward = types.MethodType(forward, layer.self_attn)
+
 
 # Adapted from https://github.com/tmm1/axolotl/blob/2eda9e02a9d15a7a3f92b41f257d9844d72fc220/src/axolotl/utils/models.py#L338
 def upcast_layer_for_flash_attention(model, torch_dtype):

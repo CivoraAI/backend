@@ -5,6 +5,7 @@ import numpy as np
 from tqdm import tqdm
 from FlagEmbedding import FlagModel
 
+
 def create_index(embeddings: np.ndarray, use_gpu: bool = False):
     index = faiss.IndexFlatIP(len(embeddings[0]))
     embeddings = np.asarray(embeddings, dtype=np.float32)
@@ -18,10 +19,10 @@ def create_index(embeddings: np.ndarray, use_gpu: bool = False):
 
 
 def search(
-        faiss_index: faiss.Index,
-        k: int = 100,
-        query_embeddings: Optional[np.ndarray] = None,
-        load_path: Optional[str] = None
+    faiss_index: faiss.Index,
+    k: int = 100,
+    query_embeddings: Optional[np.ndarray] = None,
+    load_path: Optional[str] = None,
 ):
     if query_embeddings is None:
         query_embeddings = np.load(load_path)
@@ -33,7 +34,7 @@ def search(
 
     for i in tqdm(range(0, query_size, 32), desc="Searching"):
         j = min(i + 32, query_size)
-        query_embedding = query_embeddings[i: j]
+        query_embedding = query_embeddings[i:j]
         score, indice = faiss_index.search(query_embedding.astype(np.float32), k=k)
         all_scores.append(score)
         all_indices.append(indice)
@@ -42,12 +43,8 @@ def search(
     all_indices = np.concatenate(all_indices, axis=0)
     return all_scores, all_indices
 
-def get_top1(
-        small_docs,
-        encoder_name,
-        docs: List[str],
-        top: int = 1
-):
+
+def get_top1(small_docs, encoder_name, docs: List[str], top: int = 1):
     encoder = FlagModel(encoder_name, trust_remote_code=True)
     doc_emb = encoder.encode_corpus(docs, max_length=512, batch_size=256)
     small_doc_emb = encoder.encode_corpus(small_docs, max_length=512, batch_size=256)

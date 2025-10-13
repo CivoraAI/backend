@@ -48,7 +48,7 @@ jobs:
           pip install black ruff pytest httpx
 
       - name: Black (check only)
-        run: black --check .
+        run: black --check src/api src/services src/utils tests src/core/metrics/simple_score.py
 
       - name: Ruff (lint)
         run: ruff check .

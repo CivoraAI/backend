@@ -8,9 +8,10 @@ class MTEBEvalDenseRetriever(EvalDenseRetriever):
     """
     Child class of :class:EvalRetriever for MTEB dense retrieval.
     """
+
     def __init__(self, embedder, **kwargs):
         super().__init__(embedder, **kwargs)
-    
+
     def set_examples(self, examples_for_task: Optional[List[dict]] = None):
         """Set examples for the model.
 
@@ -26,7 +27,7 @@ class MTEBEvalDenseRetriever(EvalDenseRetriever):
             instruction (Optional[str], optional): _description_. Defaults to None.
         """
         self.embedder.query_instruction_for_retrieval = instruction
-    
+
     def get_instruction(self):
         """Get the instruction of embedding model.
 
@@ -42,7 +43,7 @@ class MTEBEvalDenseRetriever(EvalDenseRetriever):
             normalize_embeddings (bool, optional): Boolean to control whether or not normalize the embeddings. Defaults to ``True``.
         """
         self.embedder.normalize_embeddings = normalize_embeddings
-    
+
     def stop_pool(self):
         self.embedder.stop_self_pool()
         try:
@@ -63,7 +64,7 @@ class MTEBEvalDenseRetriever(EvalDenseRetriever):
         if isinstance(emb, dict):
             emb = emb["dense_vecs"]
         return emb.astype(np.float32)
-    
+
     def encode_corpus(self, corpus: List[Dict[str, str]], **kwargs):
         """Encode input corpus.
 
@@ -74,14 +75,16 @@ class MTEBEvalDenseRetriever(EvalDenseRetriever):
             Union[np.ndarray, torch.Tensor]: Corpus embeddings.
         """
         if isinstance(corpus[0], dict):
-            input_texts = ['{} {}'.format(doc.get('title', ''), doc['text']).strip() for doc in corpus]
+            input_texts = [
+                "{} {}".format(doc.get("title", ""), doc["text"]).strip() for doc in corpus
+            ]
         else:
             input_texts = corpus
         emb = self.embedder.encode_corpus(input_texts)
         if isinstance(emb, dict):
             emb = emb["dense_vecs"]
         return emb.astype(np.float32)
-    
+
     def encode(self, corpus: List[Dict[str, str]], **kwargs):
         """Encode the imput.
 
@@ -92,7 +95,9 @@ class MTEBEvalDenseRetriever(EvalDenseRetriever):
             Union[np.ndarray, torch.Tensor]: Corpus embeddings.
         """
         if isinstance(corpus[0], dict):
-            input_texts = ['{} {}'.format(doc.get('title', ''), doc['text']).strip() for doc in corpus]
+            input_texts = [
+                "{} {}".format(doc.get("title", ""), doc["text"]).strip() for doc in corpus
+            ]
         else:
             input_texts = corpus
         emb = self.embedder.encode_queries(input_texts)
@@ -100,9 +105,11 @@ class MTEBEvalDenseRetriever(EvalDenseRetriever):
             emb = emb["dense_vecs"]
         return emb.astype(np.float32)
 
+
 class MTEBEvalReranker(EvalReranker):
     """
     Child class of :class:EvalReranker for reranker in MTEB.
     """
+
     def __init__(self, reranker, **kwargs):
         super().__init__(reranker, **kwargs)

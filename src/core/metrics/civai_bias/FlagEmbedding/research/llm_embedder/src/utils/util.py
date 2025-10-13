@@ -25,10 +25,12 @@ logger = logging.getLogger(__name__)
 def do_nothing():
     yield
 
+
 def makedirs(path):
     p = pathlib.Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
     return path
+
 
 def clear_dir(directory):
     if not os.path.exists(directory):
@@ -41,7 +43,8 @@ def clear_dir(directory):
             elif os.path.isdir(file_path):
                 shutil.rmtree(file_path)
         except Exception as e:
-            print('Failed to delete %s. Reason: %s' % (file_path, e))
+            print("Failed to delete %s. Reason: %s" % (file_path, e))
+
 
 def split_file_dir_name_ext(path):
     """Return the directory, name, and extension of a given file."""
@@ -49,7 +52,8 @@ def split_file_dir_name_ext(path):
     assert p.is_file()
     return p.parent, p.stem, p.suffix
 
-def save_pickle(obj, path:str):
+
+def save_pickle(obj, path: str):
     """
     Save pickle file.
     """
@@ -58,15 +62,18 @@ def save_pickle(obj, path:str):
     with open(path, "wb") as f:
         return pickle.dump(obj, f)
 
+
 def load_pickle(path):
     with open(path, "rb") as f:
         return pickle.load(f)
-    
-def save_json(obj, path:str):
+
+
+def save_json(obj, path: str):
     if not os.path.exists(path):
         makedirs(path)
     with open(path, "w") as f:
         return json.dump(obj, f, ensure_ascii=False)
+
 
 def load_json(path, lines=False):
     if lines:
@@ -78,6 +85,7 @@ def load_json(path, lines=False):
     else:
         with open(path, "r") as f:
             return json.load(f)
+
 
 @contextmanager
 def filelock(path, process_index=0):
@@ -92,7 +100,10 @@ def filelock(path, process_index=0):
     if process_index == 0:
         os.remove(path)
 
-def normalize_text(text, ignore_case=True, ignore_punctuation=True, ignore_space=True, ignore_number=False):
+
+def normalize_text(
+    text, ignore_case=True, ignore_punctuation=True, ignore_space=True, ignore_number=False
+):
     if isinstance(text, str):
         text = [text]
         unpack = True
@@ -115,8 +126,10 @@ def normalize_text(text, ignore_case=True, ignore_punctuation=True, ignore_space
         text = text[0]
     return text
 
+
 def min_max_normalize(array):
-    return (array - array.min(-1)[:,None])/(array.max(-1) - array.min(-1))[:, None]
+    return (array - array.min(-1)[:, None]) / (array.max(-1) - array.min(-1))[:, None]
+
 
 def get_max_length_in_nested_lists(lst):
     if len(lst) and isinstance(lst[0], list):
@@ -128,6 +141,7 @@ def get_max_length_in_nested_lists(lst):
         return max_length
     else:
         return len(lst)
+
 
 def pad_nested_lists(lst, max_length, padding_value, padding_side="right"):
     if isinstance(lst, list) and len(lst) and isinstance(lst[0], list):
@@ -148,6 +162,7 @@ def pad_nested_lists(lst, max_length, padding_value, padding_side="right"):
     else:
         raise NotImplementedError(f"Unrecognized type {lst}")
 
+
 def mask_nested_lists(lst, mask_target, mask_value=0):
     if isinstance(lst[0], list):
         for i, elem in enumerate(lst):
@@ -156,12 +171,14 @@ def mask_nested_lists(lst, mask_target, mask_value=0):
     else:
         return [x if x != mask_target else mask_value for x in lst]
 
+
 def are_elements_of_same_length(lst: List):
     if not isinstance(lst[0], list):
         return False
 
     length = len(lst[0])
     return all(len(x) == length if isinstance(x, list) else False for x in lst)
+
 
 def add_eos(inputs: Mapping, eos_token_id: int):
     for k, v in inputs.items():
@@ -177,6 +194,7 @@ def add_eos(inputs: Mapping, eos_token_id: int):
         inputs[k] = v
     return inputs
 
+
 def remove_eos(inputs: Mapping, eos_token_id: int):
     input_ids = inputs["input_ids"]
     eos_idx = [i for i, x in enumerate(input_ids) if x == eos_token_id][0]
@@ -184,9 +202,10 @@ def remove_eos(inputs: Mapping, eos_token_id: int):
         inputs[k].pop(eos_idx)
     return inputs
 
-def mix_parameters(models: List[torch.nn.Module], weights: Optional[List[float]]=None):
+
+def mix_parameters(models: List[torch.nn.Module], weights: Optional[List[float]] = None):
     """Mix parameters of different models according to given weights.
-    
+
     Returns:
         the model with mixed parameters.
     """
@@ -194,7 +213,9 @@ def mix_parameters(models: List[torch.nn.Module], weights: Optional[List[float]]
     if weights is None:
         weights = [1 / len(models) for _ in range(len(models))]
     else:
-        assert len(weights) == len(models), f"Make sure the size of mix weights equals to the number of models!"
+        assert len(weights) == len(
+            models
+        ), f"Make sure the size of mix weights equals to the number of models!"
 
     for name_param_pairs in zip(*[model.state_dict().items() for model in models]):
         names = [name_param_pair[0] for name_param_pair in name_param_pairs]
@@ -206,7 +227,9 @@ def mix_parameters(models: List[torch.nn.Module], weights: Optional[List[float]]
 
         # there may be non-float parameters stored, which should not be mixed
         if params[0].dtype not in [torch.float16, torch.bfloat16, torch.float32]:
-            assert all((param == params[0]).all() for param in params), f"Found incompatible value in non-float tensor {params}!"
+            assert all(
+                (param == params[0]).all() for param in params
+            ), f"Found incompatible value in non-float tensor {params}!"
             new_state_dict[name] = params[0]
             continue
 
@@ -216,7 +239,7 @@ def mix_parameters(models: List[torch.nn.Module], weights: Optional[List[float]]
             else:
                 mixed_param += weight * param
             new_state_dict[name] = mixed_param
-            
+
     model = models[0]
     info = model.load_state_dict(new_state_dict)
     print(info)
@@ -226,11 +249,11 @@ def mix_parameters(models: List[torch.nn.Module], weights: Optional[List[float]]
 class FileLogger:
     def __init__(self, log_file) -> None:
         self.log_file = log_file
-    
+
     def log(self, metrics, **kwargs):
         with open(self.log_file, "a+") as f:
             # get current time
-            tz = pytz.timezone('Asia/Shanghai')
+            tz = pytz.timezone("Asia/Shanghai")
             time = f"{'Time': <10}: {json.dumps(datetime.now(tz).strftime('%Y-%m-%d, %H:%M:%S'), ensure_ascii=False)}\n"
             command = f"{'Command': <10}: {json.dumps(' '.join(sys.argv), ensure_ascii=False)}\n"
             metrics = f"{'Metrics': <10}: {json.dumps(metrics, ensure_ascii=False)}\n"
@@ -252,7 +275,8 @@ class Sequential_Sampler:
     """
     The sampler used in creating sequential dataloader.
     """
-    def __init__(self, dataset_length:int, num_replicas:int, rank:int) -> None:
+
+    def __init__(self, dataset_length: int, num_replicas: int, rank: int) -> None:
         """
         Args:
             dataset_length: length of the dataset
@@ -290,6 +314,7 @@ class DatasetProcessFn:
 
     The wrapped function should take in any needed columns and return a dict with 1 or more samples.
     """
+
     def __init__(self, augment=False):
         self.augment = augment
 
@@ -308,7 +333,7 @@ class DatasetProcessFn:
 
             keys = list(sample_or_batch_sample.keys())
             func_args = [sample_or_batch_sample[k] for k in keys]
-            
+
             # FIXME: if all values in one sample are of the same length, this would fail
             if are_elements_of_same_length(func_args):
                 outputs = defaultdict(list)
@@ -325,8 +350,11 @@ class DatasetProcessFn:
             else:
                 outputs = _process_fn(**sample_or_batch_sample)
                 if outputs is None:
-                    raise ValueError(f"Found None returned from process_fn. Make sure you set 'batched=True' when trying to augment/distract samples in the datasets!")
+                    raise ValueError(
+                        f"Found None returned from process_fn. Make sure you set 'batched=True' when trying to augment/distract samples in the datasets!"
+                    )
             return dict(outputs)
+
         return process
 
 
@@ -337,6 +365,7 @@ class DefaultDataCollator:
     1. Dynamically pad all inputs received. The inputs must be dict of lists.
     2. Add position_ids based on attention_mask if required.
     """
+
     tokenizer: PreTrainedTokenizer
     attention_padding_value: int = 0
     label_padding_value: int = -100
@@ -345,7 +374,7 @@ class DefaultDataCollator:
     def __call__(self, batch_elem: List) -> Dict[str, Any]:
         first_elem = batch_elem[0]
         return_batch = {}
-        
+
         for key, value in first_elem.items():
             # HACK: any key containing attention_mask must be attention_mask
             # important to assign different pad token for different types of inputs
@@ -360,7 +389,9 @@ class DefaultDataCollator:
             # pad all lists and nested lists
             if isinstance(value, list):
                 max_length = get_max_length_in_nested_lists(batch_value)
-                batch_value, _ = pad_nested_lists(batch_value, max_length, pad_token_id, self.tokenizer.padding_side)
+                batch_value, _ = pad_nested_lists(
+                    batch_value, max_length, pad_token_id, self.tokenizer.padding_side
+                )
 
             return_batch[key] = torch.tensor(batch_value)
 

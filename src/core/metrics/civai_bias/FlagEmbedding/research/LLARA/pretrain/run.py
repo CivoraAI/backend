@@ -8,8 +8,7 @@ import transformers
 
 from transformers import AutoTokenizer, HfArgumentParser, set_seed, AutoConfig, Trainer
 
-from arguments import ModelArguments, DataArguments, \
-    PretrainTrainingArguments as TrainingArguments
+from arguments import ModelArguments, DataArguments, PretrainTrainingArguments as TrainingArguments
 from data import TrainDatasetForEmbedding, EmbedCollator
 from load_model import get_model
 from modeling import PreModel
@@ -26,10 +25,10 @@ def main():
     training_args: TrainingArguments
 
     if (
-            os.path.exists(training_args.output_dir)
-            and os.listdir(training_args.output_dir)
-            and training_args.do_train
-            and not training_args.overwrite_output_dir
+        os.path.exists(training_args.output_dir)
+        and os.listdir(training_args.output_dir)
+        and training_args.do_train
+        and not training_args.overwrite_output_dir
     ):
         raise ValueError(
             f"Output directory ({training_args.output_dir}) already exists and is not empty. Use --overwrite_output_dir to overcome."
@@ -63,7 +62,7 @@ def main():
         num_labels=num_labels,
         cache_dir=model_args.cache_dir,
     )
-    logger.info('Config: %s', config)
+    logger.info("Config: %s", config)
 
     model = get_model(model_args, training_args.gradient_checkpointing)
 
@@ -72,7 +71,7 @@ def main():
         model_args.model_name_or_path,
         token=model_args.token,
         cache_dir=model_args.cache_dir,
-        use_fast=False
+        use_fast=False,
     )
 
     if tokenizer.pad_token is None:
@@ -85,14 +84,28 @@ def main():
     tokenizer.padding_side = "left"  # Allow batched inference
     print(tokenizer)
 
-    special_tokens = ['<s1>', '<s2>', '<s3>', '<s4>',
-                      '<s5>', '<s6>', '<s7>', '<s8>',
-                      '<s9>', '<s10>', '<s11>', '<s12>',
-                      '<s13>', '<s14>', '<s15>', '<s16>', ]
+    special_tokens = [
+        "<s1>",
+        "<s2>",
+        "<s3>",
+        "<s4>",
+        "<s5>",
+        "<s6>",
+        "<s7>",
+        "<s8>",
+        "<s9>",
+        "<s10>",
+        "<s11>",
+        "<s12>",
+        "<s13>",
+        "<s14>",
+        "<s15>",
+        "<s16>",
+    ]
     current_vocab = tokenizer.get_vocab()
     tokens_to_add = [token for token in special_tokens if token not in current_vocab]
     if tokens_to_add:
-        special_tokens_dict = {'additional_special_tokens': tokens_to_add}
+        special_tokens_dict = {"additional_special_tokens": tokens_to_add}
         tokenizer.add_special_tokens(special_tokens_dict)
         model.resize_token_embeddings(len(tokenizer))
     print(tokenizer)
@@ -111,8 +124,8 @@ def main():
             cutoff_len=data_args.cutoff_len,
             pad_to_multiple_of=8,
             return_tensors="pt",
-            padding=True
-        )
+            padding=True,
+        ),
     )
 
     Path(training_args.output_dir).mkdir(parents=True, exist_ok=True)

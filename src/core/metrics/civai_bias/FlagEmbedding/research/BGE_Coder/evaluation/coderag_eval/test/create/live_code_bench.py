@@ -7,18 +7,21 @@ from create.utils import save_tsv_dict, save_file_jsonl
 
 
 def get_queries(data, split="test") -> list[dict]:
-    queries = [{
-        "_id": item["question_id"] + '__' + item["contest_id"], 
-        "text": item["question_content"], 
-        "metadata": {}
-    } for item in data[split]]
+    queries = [
+        {
+            "_id": item["question_id"] + "__" + item["contest_id"],
+            "text": item["question_content"],
+            "metadata": {},
+        }
+        for item in data[split]
+    ]
     return queries
+
 
 def get_corpus(hf_name: str, cache_dir: str) -> list[dict]:
     dataset = load_dataset(hf_name, cache_dir=cache_dir)["train"]
     corpus = [
-        {"_id": i, "text": item["text"], "title": item["title"]}
-        for i,item in enumerate(dataset)
+        {"_id": i, "text": item["text"], "title": item["title"]} for i, item in enumerate(dataset)
     ]
     return corpus
 

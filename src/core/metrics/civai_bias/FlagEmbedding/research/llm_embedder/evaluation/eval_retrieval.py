@@ -8,9 +8,9 @@ from transformers import HfArgumentParser
 from dataclasses import dataclass, field, asdict
 
 from src.retrieval import (
-    RetrievalArgs, 
-    Retriever, 
-    RetrievalDataset, 
+    RetrievalArgs,
+    Retriever,
+    RetrievalDataset,
     RetrievalMetric,
     TASK_CONFIG,
 )
@@ -21,24 +21,17 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class Args(RetrievalArgs):
-    eval_data: str = field(
-        default=None,
-        metadata={'help': 'Query jsonl.'}
-    )
+    eval_data: str = field(default=None, metadata={"help": "Query jsonl."})
     output_dir: str = field(
         default="data/outputs/",
     )
-    corpus: str = field(
-        default=None,
-        metadata={'help': 'Corpus path for retrieval.'}
-    )
+    corpus: str = field(default=None, metadata={"help": "Corpus path for retrieval."})
     key_template: str = field(
         default="{title} {text}",
-        metadata={'help': 'How to concatenate columns in the corpus to form one key?'}
+        metadata={"help": "How to concatenate columns in the corpus to form one key?"},
     )
     log_path: str = field(
-        default="data/results/performance.log",
-        metadata={'help': 'Path to the file for logging.'}
+        default="data/results/performance.log", metadata={"help": "Path to the file for logging."}
     )
 
 
@@ -53,13 +46,15 @@ def main(args, accelerator=None, log=True):
         # we should get the evaluation task before specifying instruction
         # NOTE: only dense retrieval needs instruction
         if args.eval_data is not None and args.add_instruction and args.retrieval_method == "dense":
-            raw_eval_dataset = datasets.load_dataset('json', data_files=args.eval_data, split='train', cache_dir=args.dataset_cache_dir)
+            raw_eval_dataset = datasets.load_dataset(
+                "json", data_files=args.eval_data, split="train", cache_dir=args.dataset_cache_dir
+            )
             eval_task = raw_eval_dataset[0]["task"]
         else:
             eval_task = None
 
         eval_dataset = RetrievalDataset.prepare_eval_dataset(
-            data_file=args.eval_data, 
+            data_file=args.eval_data,
             cache_dir=args.dataset_cache_dir,
             instruction=instruction[eval_task] if eval_task is not None else None,
         )
@@ -67,14 +62,16 @@ def main(args, accelerator=None, log=True):
             data_file=args.corpus,
             key_template=args.key_template,
             cache_dir=args.dataset_cache_dir,
-            instruction=instruction[eval_task] if eval_task is not None else None 
+            instruction=instruction[eval_task] if eval_task is not None else None,
         )
-    
-    result_path = RetrievalMetric._get_save_path(args.eval_data, args.output_dir, field="result", save_name=args.save_name)
+
+    result_path = RetrievalMetric._get_save_path(
+        args.eval_data, args.output_dir, field="result", save_name=args.save_name
+    )
 
     if args.load_result:
         query_ids, preds = RetrievalMetric._load_result(result_path)
-        
+
     else:
         retriever = Retriever(
             retrieval_method=args.retrieval_method,
@@ -87,29 +84,29 @@ def main(args, accelerator=None, log=True):
             key_max_length=args.key_max_length,
             tie_encoders=args.tie_encoders,
             truncation_side=args.truncation_side,
-            cache_dir=args.model_cache_dir, 
+            cache_dir=args.model_cache_dir,
             dtype=args.dtype,
             accelerator=accelerator,
             # for bm25 retriever
             anserini_dir=args.anserini_dir,
             k1=args.k1,
-            b=args.b
+            b=args.b,
         )
 
         retriever.index(
-            corpus, 
-            output_dir=args.output_dir, 
+            corpus,
+            output_dir=args.output_dir,
             # for dense retriever
             embedding_name=args.embedding_name,
             index_factory=args.faiss_index_factory,
             load_encode=args.load_encode,
             save_encode=args.save_encode,
-            load_index=args.load_index, 
+            load_index=args.load_index,
             save_index=args.save_index,
             batch_size=args.batch_size,
             # for bm25 retriever
-            threads=args.threads, 
-            language=args.language, 
+            threads=args.threads,
+            language=args.language,
             storeDocvectors=args.storeDocvectors,
             load_collection=args.load_collection,
         )
@@ -120,10 +117,10 @@ def main(args, accelerator=None, log=True):
             # for dense retriever
             batch_size=args.batch_size,
         )
-        
+
         del retriever
         torch.cuda.empty_cache()
-        
+
         if args.save_result and accelerator.process_index == 0:
             RetrievalMetric._save_result(query_ids, preds, result_path)
 
@@ -134,10 +131,10 @@ def main(args, accelerator=None, log=True):
             key_template=args.key_template,
             cache_dir=args.dataset_cache_dir,
         )
-        
+
         metrics = RetrievalMetric.get_metric_fn(
-            args.metrics, 
-            cutoffs=args.cutoffs, 
+            args.metrics,
+            cutoffs=args.cutoffs,
             eval_data=args.eval_data,
             corpus=no_instruction_corpus,
             save_name=args.save_name,
@@ -157,7 +154,8 @@ def main(args, accelerator=None, log=True):
     accelerator.wait_for_everyone()
     return query_ids, preds, metrics
 
+
 if __name__ == "__main__":
     parser = HfArgumentParser([Args])
-    args, = parser.parse_args_into_dataclasses()
+    (args,) = parser.parse_args_into_dataclasses()
     main(args)

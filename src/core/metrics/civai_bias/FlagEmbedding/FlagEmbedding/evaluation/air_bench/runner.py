@@ -1,10 +1,7 @@
 from typing import Union, Tuple
 from air_benchmark import AIRBench
 
-from FlagEmbedding.abc.evaluation import (
-    AbsEvalRunner,
-    EvalDenseRetriever, EvalReranker
-)
+from FlagEmbedding.abc.evaluation import AbsEvalRunner, EvalDenseRetriever, EvalReranker
 
 from .arguments import AIRBenchEvalArgs, AIRBenchEvalModelArgs
 
@@ -12,11 +9,12 @@ from .arguments import AIRBenchEvalArgs, AIRBenchEvalModelArgs
 class AIRBenchEvalRunner:
     """
     Evaluation runner for AIR Bench.
-    
+
     Args:
         eval_args (AIRBenchEvalArgs): :class:AIRBenchEvalArgs object with the evaluation arguments.
         model_args (AIRBenchEvalModelArgs): :class:AIRBenchEvalModelArgs object with the model arguments.
     """
+
     def __init__(
         self,
         eval_args: AIRBenchEvalArgs,
@@ -37,9 +35,7 @@ class AIRBenchEvalRunner:
         """
         embedder, reranker = AbsEvalRunner.get_models(self.model_args)
         retriever = EvalDenseRetriever(
-            embedder,
-            search_top_k=self.eval_args.search_top_k,
-            overwrite=self.eval_args.overwrite
+            embedder, search_top_k=self.eval_args.search_top_k, overwrite=self.eval_args.overwrite
         )
         if reranker is not None:
             reranker = EvalReranker(reranker, rerank_top_k=self.eval_args.rerank_top_k)

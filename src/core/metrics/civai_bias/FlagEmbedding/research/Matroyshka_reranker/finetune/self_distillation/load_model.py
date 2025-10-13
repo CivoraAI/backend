@@ -7,10 +7,12 @@ from peft import LoraConfig, TaskType, get_peft_model, PeftModel
 
 
 def get_model(model_args, training_args, output_token_id):
-    config = CostWiseMistralConfig.from_pretrained(model_args.model_name_or_path,
-                                                 token=model_args.token,
-                                                 cache_dir=model_args.cache_dir,
-                                                 trust_remote_code=True)
+    config = CostWiseMistralConfig.from_pretrained(
+        model_args.model_name_or_path,
+        token=model_args.token,
+        cache_dir=model_args.cache_dir,
+        trust_remote_code=True,
+    )
     if model_args.use_flash_attn:
         model = CostWiseMistralForCausalLM.from_pretrained(
             model_args.model_name_or_path,
@@ -20,7 +22,7 @@ def get_model(model_args, training_args, output_token_id):
             cache_dir=model_args.cache_dir,
             from_tf=bool(".ckpt" in model_args.model_name_or_path),
             trust_remote_code=True,
-            config=config
+            config=config,
         )
     else:
         model = CostWiseMistralForCausalLM.from_pretrained(
@@ -30,17 +32,22 @@ def get_model(model_args, training_args, output_token_id):
             cache_dir=model_args.cache_dir,
             from_tf=bool(".ckpt" in model_args.model_name_or_path),
             trust_remote_code=True,
-            config=config
+            config=config,
         )
     model.config.use_cache = False
     if model_args.layer_wise:
-        lm_head = nn.ModuleList([CostWiseHead(
-            model.config.hidden_size, 1) for _ in range(
-            model_args.start_layer,
-            model.config.num_hidden_layers + 1,
-            model_args.layer_sep)])
+        lm_head = nn.ModuleList(
+            [
+                CostWiseHead(model.config.hidden_size, 1)
+                for _ in range(
+                    model_args.start_layer, model.config.num_hidden_layers + 1, model_args.layer_sep
+                )
+            ]
+        )
         state_dict_back = model.lm_head.state_dict()
-        state_dict_back['weight'] = state_dict_back['weight'][output_token_id: output_token_id + 1, :]
+        state_dict_back["weight"] = state_dict_back["weight"][
+            output_token_id : output_token_id + 1, :
+        ]
         for i in range(len(lm_head)):
             lm_head[i].linear_head.load_state_dict(state_dict_back)
         model.set_output_embeddings(lm_head)
@@ -64,7 +71,7 @@ def get_model(model_args, training_args, output_token_id):
                 target_modules=model_args.target_modules,
                 lora_alpha=model_args.lora_alpha,
                 lora_dropout=model_args.lora_dropout,
-                modules_to_save=model_args.lora_extra_parameters
+                modules_to_save=model_args.lora_extra_parameters,
             )
             model = get_peft_model(model, peft_config)
             model.print_trainable_parameters()

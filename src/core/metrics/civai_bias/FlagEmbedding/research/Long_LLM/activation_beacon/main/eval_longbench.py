@@ -12,7 +12,14 @@ from transformers import HfArgumentParser
 from transformers.utils import logging
 from torch.utils.data import DataLoader
 
-from src import ModelArgs, DefaultDataCollator, FileLogger, get_model_and_tokenizer, makedirs, apply_chat_template
+from src import (
+    ModelArgs,
+    DefaultDataCollator,
+    FileLogger,
+    get_model_and_tokenizer,
+    makedirs,
+    apply_chat_template,
+)
 from .longbench_utils import DATASET2PROMPT, DATASET2MAXNEWTOKENS, DATASET2CATEGORY, scorer
 
 logger = logging.get_logger(__name__)
@@ -21,47 +28,55 @@ logger = logging.get_logger(__name__)
 @dataclass
 class Args(ModelArgs):
     eval_data: str = field(
-        default="long-llm:longbench/",
-        metadata={'help': 'The evaluation json data path.'}
+        default="long-llm:longbench/", metadata={"help": "The evaluation json data path."}
     )
     output_dir: str = field(
         default="data/results/longbench/",
-        metadata={'help': 'The base directory for saving results and logs.'}
+        metadata={"help": "The base directory for saving results and logs."},
     )
     result_dir: Optional[str] = field(
-        default=None,
-        metadata={'help': 'The directory relative to output_dir for saving results.'}
+        default=None, metadata={"help": "The directory relative to output_dir for saving results."}
     )
 
     tasks: List[str] = field(
-        default_factory=lambda: ['narrativeqa', 'qasper', 'multifieldqa_en', 'hotpotqa', '2wikimqa', 'musique', 'gov_report', 'qmsum', 'multi_news', 'trec', 'triviaqa', 'samsum', 'lcc', 'repobench-p'],
-        metadata={'help': 'Which dataset to evaluate?'}
+        default_factory=lambda: [
+            "narrativeqa",
+            "qasper",
+            "multifieldqa_en",
+            "hotpotqa",
+            "2wikimqa",
+            "musique",
+            "gov_report",
+            "qmsum",
+            "multi_news",
+            "trec",
+            "triviaqa",
+            "samsum",
+            "lcc",
+            "repobench-p",
+        ],
+        metadata={"help": "Which dataset to evaluate?"},
     )
     newline_as_eos: bool = field(
         default=True,
-        metadata={'help': 'Whether to use new line as eos (for QA tasks only) or not.'}
+        metadata={"help": "Whether to use new line as eos (for QA tasks only) or not."},
     )
 
-    max_length: int = field(
-        default=31500,
-        metadata={'help': 'Max input length.'}
-    )
+    max_length: int = field(default=31500, metadata={"help": "Max input length."})
     truncate_from_middle: bool = field(
-        default=True,
-        metadata={'help': 'Truncate inputs from the middle.'}
+        default=True, metadata={"help": "Truncate inputs from the middle."}
     )
-    load_result: bool = field(
-        default=False,
-        metadata={'help': 'Load result from saved files?'}
-    )
+    load_result: bool = field(default=False, metadata={"help": "Load result from saved files?"})
 
     do_sample: bool = False
 
 
-def process_longbench(data, indices, tokenizer, chat_template, task, max_length=3500, truncate_from_middle=True):
-    outputs = {'input_ids': [], 'attention_mask': [], "index": []}
+def process_longbench(
+    data, indices, tokenizer, chat_template, task, max_length=3500, truncate_from_middle=True
+):
+    outputs = {"input_ids": [], "attention_mask": [], "index": []}
 
-    for input, context, index in zip(data['input'], data['context'], indices):
+    for input, context, index in zip(data["input"], data["context"], indices):
         prompt_template = DATASET2PROMPT[task]
         prompt = prompt_template.format(input=input, context=context)
 
@@ -69,7 +84,9 @@ def process_longbench(data, indices, tokenizer, chat_template, task, max_length=
             tokenized_prompt = tokenizer.encode(prompt)
             if len(tokenized_prompt) > max_length:
                 half = int(max_length / 2)
-                prompt = tokenizer.decode(tokenized_prompt[:half], skip_special_tokens=True) + tokenizer.decode(tokenized_prompt[-half:], skip_special_tokens=True)
+                prompt = tokenizer.decode(
+                    tokenized_prompt[:half], skip_special_tokens=True
+                ) + tokenizer.decode(tokenized_prompt[-half:], skip_special_tokens=True)
         else:
             tokenized_prompt = tokenizer.encode(prompt)
             prompt = tokenizer.decode(tokenized_prompt[-max_length:], skip_special_tokens=True)
@@ -77,8 +94,8 @@ def process_longbench(data, indices, tokenizer, chat_template, task, max_length=
         # in fewshot learning and code completion we do not need chat template
         if not any(x in DATASET2CATEGORY[task] for x in ["Few-Shot Learning", "Code Completion"]):
             encoded = apply_chat_template(
-                chat_template, 
-                messages=[{'role': 'user', 'content': prompt}],
+                chat_template,
+                messages=[{"role": "user", "content": prompt}],
                 tokenizer=tokenizer,
                 add_generation_prompt=True,
             ).encoded
@@ -129,8 +146,17 @@ def main():
             )
 
             path = os.path.join(args.eval_data, f"{task}.jsonl")
-            raw_dataset = datasets.load_dataset("json", data_files=path, cache_dir=args.dataset_cache_dir, split="train")
-            dataset = raw_dataset.map(process_fn, batched=True, num_proc=32, batch_size=10, with_indices=True, remove_columns=raw_dataset.column_names)
+            raw_dataset = datasets.load_dataset(
+                "json", data_files=path, cache_dir=args.dataset_cache_dir, split="train"
+            )
+            dataset = raw_dataset.map(
+                process_fn,
+                batched=True,
+                num_proc=32,
+                batch_size=10,
+                with_indices=True,
+                remove_columns=raw_dataset.column_names,
+            )
 
             all_datasets[task] = (raw_dataset, dataset)
 
@@ -149,8 +175,8 @@ def main():
         if not (args.load_result and os.path.exists(result_path)):
             data_collator = DefaultDataCollator(tokenizer=tokenizer)
             dataloader = DataLoader(
-                dataset, 
-                batch_size=args.batch_size, 
+                dataset,
+                batch_size=args.batch_size,
                 collate_fn=data_collator,
                 # only pin memory when no gpu
                 pin_memory=not args.cpu,
@@ -171,14 +197,19 @@ def main():
                     model.memory.reset()
 
                 kwargs = {"max_new_tokens": max_new_tokens}
-                if task in ["2wikimqa", "hotpotqa", "musique", "multifieldqa_en", "qasper", "narrativeqa", "samsum"]:
+                if task in [
+                    "2wikimqa",
+                    "hotpotqa",
+                    "musique",
+                    "multifieldqa_en",
+                    "qasper",
+                    "narrativeqa",
+                    "samsum",
+                ]:
                     kwargs["eos_token_id"] = eos_token_id
 
                 # NOTE: very important to include \n as an eos token for QA tasks, otherwise the F1 score is devastating
-                output = model.generate(
-                    **x,
-                    **kwargs
-                )
+                output = model.generate(**x, **kwargs)
                 if isinstance(output, torch.Tensor):
                     # 1, max_new_tokens
                     output = output[:, input_length:]
@@ -246,7 +277,7 @@ def main():
                 category_metrics[k] = category_metric
             else:
                 category_metrics[k] = round(sum(v) / len(v), 2)
-        
+
         # compute average score
         if isinstance(next(iter(metrics.values())), dict):
             avg = defaultdict(list)

@@ -11,14 +11,14 @@ def document2code(data, split="test"):
 
     for item in tqdm(data):
         doc = item["prompt"]
-        code = item["prompt"] + '\n' + item["canonical_solution"]
+        code = item["prompt"] + "\n" + item["canonical_solution"]
         doc_id = "{task_id}_doc".format_map(item)
         code_id = "{task_id}_code".format_map(item)
 
         queries.append({"_id": doc_id, "text": doc, "metadata": {}})
         docs.append({"_id": code_id, "title": item["entry_point"], "text": code, "metadata": {}})
         qrels.append({"query-id": doc_id, "corpus-id": code_id, "score": 1})
-    
+
     return queries, docs, qrels
 
 
@@ -39,9 +39,7 @@ def main():
     if not os.path.exists(args.canonical_file):
         canonical_solutions = []
         for doc in docs:
-            canonical_solutions.append([{
-                "text": doc["text"], "title": doc["title"]
-            }])
+            canonical_solutions.append([{"text": doc["text"], "title": doc["title"]}])
         canonical_dataset = dataset["test"].add_column("docs", canonical_solutions)
         canonical_dataset.to_json(args.canonical_file)
 
@@ -50,8 +48,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset_name", type=str, default="openai_humaneval")
     parser.add_argument("--output_name", type=str, default="humaneval")
-    parser.add_argument("--canonical_file", type=str, 
-                        default="datasets/canonical/humaneval_solutions.json")
+    parser.add_argument(
+        "--canonical_file", type=str, default="datasets/canonical/humaneval_solutions.json"
+    )
     parser.add_argument("--output_dir", type=str, default="datasets")
     args = parser.parse_args()
 

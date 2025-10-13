@@ -12,5 +12,5 @@ __all__ = [
     "MKQAEvalModelArgs",
     "MKQAEvalRunner",
     "MKQAEvalDataLoader",
-    "MKQAEvaluator"
+    "MKQAEvaluator",
 ]

@@ -2,6 +2,7 @@ import os
 import torch
 import logging
 from typing import Optional
+
 # from transformers.deepspeed import is_deepspeed_zero3_enabled
 from peft import get_peft_model_state_dict
 
@@ -14,6 +15,7 @@ class DecoderOnlyRerankerTrainer(AbsRerankerTrainer):
     """
     Trainer class for encoder only base reranker models.
     """
+
     def _save(self, output_dir: Optional[str] = None, state_dict=None):
         """Save the model to directory.
 
@@ -28,10 +30,10 @@ class DecoderOnlyRerankerTrainer(AbsRerankerTrainer):
         logger.info("Saving model checkpoint to %s", output_dir)
         # Save a trained model and configuration using `save_pretrained()`.
         # They can then be reloaded using `from_pretrained()`
-        if not hasattr(self.model, 'save'):
+        if not hasattr(self.model, "save"):
             raise NotImplementedError(
-                f'MODEL {self.model.__class__.__name__} '
-                f'does not support save interface')
+                f"MODEL {self.model.__class__.__name__} " f"does not support save interface"
+            )
         else:
             self.model.save(output_dir)
 

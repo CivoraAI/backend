@@ -9,7 +9,9 @@ logger = logging.get_logger(__name__)
 
 
 class CrossEncoder(torch.nn.Module):
-    def __init__(self, ranker, dtype:str="fp16", cache_dir=None, accelerator:Accelerator=None) -> None:
+    def __init__(
+        self, ranker, dtype: str = "fp16", cache_dir=None, accelerator: Accelerator = None
+    ) -> None:
         super().__init__()
         logger.info(f"Loading tokenizer and model from {ranker}...")
         self.tokenizer = AutoTokenizer.from_pretrained(ranker, cache_dir=cache_dir)
@@ -26,7 +28,9 @@ class CrossEncoder(torch.nn.Module):
         else:
             device = torch.device("cpu")
 
-        self.ranker = AutoModelForSequenceClassification.from_pretrained(ranker, num_labels=1, cache_dir=cache_dir, torch_dtype=dtype).to(device)
+        self.ranker = AutoModelForSequenceClassification.from_pretrained(
+            ranker, num_labels=1, cache_dir=cache_dir, torch_dtype=dtype
+        ).to(device)
 
     def gradient_checkpointing_enable(self):
         self.ranker.gradient_checkpointing_enable()
@@ -34,7 +38,9 @@ class CrossEncoder(torch.nn.Module):
     def forward(self, cross, batch_size, **kwds):
         output = self.ranker(**cross)
         scores = output.logits.view(batch_size, -1)
-        loss = nn.functional.cross_entropy(scores, scores.new_zeros(scores.shape[0], dtype=torch.long))
+        loss = nn.functional.cross_entropy(
+            scores, scores.new_zeros(scores.shape[0], dtype=torch.long)
+        )
         return {"loss": loss}
 
     @torch.no_grad()
@@ -55,7 +61,5 @@ class CrossEncoder(torch.nn.Module):
         return score, indice
 
     def save_pretrained(self, output_dir: str, *args, **kwargs):
-        self.tokenizer.save_pretrained(
-            os.path.join(output_dir, "ranker"))
-        self.ranker.save_pretrained(
-            os.path.join(output_dir, "ranker"))
+        self.tokenizer.save_pretrained(os.path.join(output_dir, "ranker"))
+        self.ranker.save_pretrained(os.path.join(output_dir, "ranker"))

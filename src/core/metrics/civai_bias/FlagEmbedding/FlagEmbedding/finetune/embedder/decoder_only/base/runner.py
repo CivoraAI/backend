@@ -3,8 +3,15 @@ from typing import Tuple
 from pathlib import Path
 from transformers import AutoConfig, AutoTokenizer, PreTrainedTokenizer
 
-from FlagEmbedding.abc.finetune.embedder.AbsArguments import AbsEmbedderDataArguments, AbsEmbedderTrainingArguments
-from FlagEmbedding.abc.finetune.embedder import AbsEmbedderRunner, AbsEmbedderModel, EmbedderTrainerCallbackForDataRefresh
+from FlagEmbedding.abc.finetune.embedder.AbsArguments import (
+    AbsEmbedderDataArguments,
+    AbsEmbedderTrainingArguments,
+)
+from FlagEmbedding.abc.finetune.embedder import (
+    AbsEmbedderRunner,
+    AbsEmbedderModel,
+    EmbedderTrainerCallbackForDataRefresh,
+)
 
 from .arguments import DecoderOnlyEmbedderModelArguments
 from .trainer import DecoderOnlyEmbedderTrainer
@@ -22,11 +29,12 @@ class DecoderOnlyEmbedderRunner(AbsEmbedderRunner):
         data_args (AbsEmbedderDataArguments): Data arguments instance.
         training_args (AbsEmbedderTrainingArguments): Trainer arguments.
     """
+
     def __init__(
         self,
         model_args: DecoderOnlyEmbedderModelArguments,
         data_args: AbsEmbedderDataArguments,
-        training_args: AbsEmbedderTrainingArguments
+        training_args: AbsEmbedderTrainingArguments,
     ):
         super().__init__(model_args, data_args, training_args)
         self.model_args: DecoderOnlyEmbedderModelArguments
@@ -40,7 +48,11 @@ class DecoderOnlyEmbedderRunner(AbsEmbedderRunner):
             Tuple[PreTrainedTokenizer, AbsEmbedderModel]: Tokenizer and model instances.
         """
         tokenizer = AutoTokenizer.from_pretrained(
-            self.model_args.tokenizer_name if self.model_args.tokenizer_name else self.model_args.model_name_or_path,
+            (
+                self.model_args.tokenizer_name
+                if self.model_args.tokenizer_name
+                else self.model_args.model_name_or_path
+            ),
             token=self.model_args.token,
             cache_dir=self.model_args.cache_dir,
             use_fast=self.model_args.use_fast_tokenizer,
@@ -55,28 +67,40 @@ class DecoderOnlyEmbedderRunner(AbsEmbedderRunner):
             else:
                 tokenizer.pad_token = tokenizer.eos_token
                 tokenizer.pad_token_id = tokenizer.eos_token_id
-        tokenizer.padding_side = 'left'
+        tokenizer.padding_side = "left"
 
         resize = False
         if self.model_args.additional_special_tokens is not None:
-            special_tokens_dict = {'additional_special_tokens': self.model_args.additional_special_tokens}
+            special_tokens_dict = {
+                "additional_special_tokens": self.model_args.additional_special_tokens
+            }
             add_num = tokenizer.add_special_tokens(special_tokens_dict)
             if add_num > 0:
                 resize = True
-                logger.info(f"Add {add_num} special tokens to the tokenizer. Special tokens: {self.model_args.additional_special_tokens}")
+                logger.info(
+                    f"Add {add_num} special tokens to the tokenizer. Special tokens: {self.model_args.additional_special_tokens}"
+                )
             else:
-                logger.warning(f"Special tokens {self.model_args.additional_special_tokens} already exists in the tokenizer.")
-        base_model = get_model(self.model_args, self.training_args.output_dir, resize, len(tokenizer))
+                logger.warning(
+                    f"Special tokens {self.model_args.additional_special_tokens} already exists in the tokenizer."
+                )
+        base_model = get_model(
+            self.model_args, self.training_args.output_dir, resize, len(tokenizer)
+        )
 
         num_labels = 1
         config = AutoConfig.from_pretrained(
-            self.model_args.config_name if self.model_args.config_name else self.model_args.model_name_or_path,
+            (
+                self.model_args.config_name
+                if self.model_args.config_name
+                else self.model_args.model_name_or_path
+            ),
             num_labels=num_labels,
             cache_dir=self.model_args.cache_dir,
             token=self.model_args.token,
             trust_remote_code=self.model_args.trust_remote_code,
         )
-        logger.info('Config: %s', config)
+        logger.info("Config: %s", config)
 
         model = BiDecoderOnlyEmbedderModel(
             base_model,
@@ -86,7 +110,7 @@ class DecoderOnlyEmbedderRunner(AbsEmbedderRunner):
             sub_batch_size=self.training_args.sub_batch_size,
             kd_loss_type=self.training_args.kd_loss_type,
             sentence_pooling_method=self.training_args.sentence_pooling_method,
-            normalize_embeddings=self.training_args.normalize_embeddings
+            normalize_embeddings=self.training_args.normalize_embeddings,
         )
 
         if self.training_args.gradient_checkpointing:
@@ -110,7 +134,7 @@ class DecoderOnlyEmbedderRunner(AbsEmbedderRunner):
             args=self.training_args,
             train_dataset=self.train_dataset,
             data_collator=self.data_collator,
-            tokenizer=self.tokenizer
+            tokenizer=self.tokenizer,
         )
         if self.data_args.same_dataset_within_batch:
             trainer.add_callback(EmbedderTrainerCallbackForDataRefresh(self.train_dataset))

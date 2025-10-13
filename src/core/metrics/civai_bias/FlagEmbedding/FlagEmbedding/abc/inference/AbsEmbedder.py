@@ -30,7 +30,7 @@ class AbsEmbedder(ABC):
         model_name_or_path (str): If it's a path to a local model, it loads the model from the path. Otherwise tries to download and
             load a model from HuggingFace Hub with the name.
         normalize_embeddings (bool, optional): If True, normalize the embedding vector. Defaults to :data:`True`.
-        use_fp16 (bool, optional): If true, use half-precision floating-point to speed up computation with a slight performance 
+        use_fp16 (bool, optional): If true, use half-precision floating-point to speed up computation with a slight performance
             degradation. Defaults to :data:`True`.
         query_instruction_for_retrieval: (Optional[str], optional): Query instruction for retrieval tasks, which will be used with
             with :attr:`query_instruction_format`. Defaults to :data:`None`.
@@ -39,7 +39,7 @@ class AbsEmbedder(ABC):
         batch_size (int, optional): Batch size for inference. Defaults to :data:`256`.
         query_max_length (int, optional): Maximum length for query. Defaults to :data:`512`.
         passage_max_length (int, optional): Maximum length for passage. Defaults to :data:`512`.
-        convert_to_numpy (bool, optional): If True, the output embedding will be a Numpy array. Otherwise, it will be a Torch Tensor. 
+        convert_to_numpy (bool, optional): If True, the output embedding will be a Numpy array. Otherwise, it will be a Torch Tensor.
             Defaults to :data:`True`.
         kwargs (Dict[Any], optional): Additional parameters for HuggingFace Transformers config or children classes.
     """
@@ -86,7 +86,7 @@ class AbsEmbedder(ABC):
             self.stop_multi_process_pool(self.pool)
             self.pool = None
         try:
-            self.model.to('cpu')
+            self.model.to("cpu")
             torch.cuda.empty_cache()
         except:
             pass
@@ -136,9 +136,13 @@ class AbsEmbedder(ABC):
                 else:
                     return [f"cuda:{device}" for device in devices]
             else:
-                raise ValueError("devices should be a string or an integer or a list of strings or a list of integers.")
+                raise ValueError(
+                    "devices should be a string or an integer or a list of strings or a list of integers."
+                )
         else:
-            raise ValueError("devices should be a string or an integer or a list of strings or a list of integers.")
+            raise ValueError(
+                "devices should be a string or an integer or a list of strings or a list of integers."
+            )
 
     @staticmethod
     def get_detailed_instruct(instruction_format: str, instruction: str, sentence: str):
@@ -162,7 +166,7 @@ class AbsEmbedder(ABC):
         batch_size: Optional[int] = None,
         max_length: Optional[int] = None,
         convert_to_numpy: Optional[bool] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ):
         """encode the queries using the instruction if provided.
 
@@ -170,15 +174,18 @@ class AbsEmbedder(ABC):
             queries (Union[List[str], str]): Input queries to encode.
             batch_size (Optional[int], optional): Number of sentences for each iter. Defaults to :data:`None`.
             max_length (Optional[int], optional): Maximum length of tokens. Defaults to :data:`None`.
-            convert_to_numpy (Optional[bool], optional): If True, the output embedding will be a Numpy array. Otherwise, it will 
+            convert_to_numpy (Optional[bool], optional): If True, the output embedding will be a Numpy array. Otherwise, it will
                 be a Torch Tensor. Defaults to :data:`None`.
 
         Returns:
             Union[torch.Tensor, np.ndarray]: Return the embedding vectors in a numpy array or tensor.
         """
-        if batch_size is None: batch_size = self.batch_size
-        if max_length is None: max_length = self.query_max_length
-        if convert_to_numpy is None: convert_to_numpy = self.convert_to_numpy
+        if batch_size is None:
+            batch_size = self.batch_size
+        if max_length is None:
+            max_length = self.query_max_length
+        if convert_to_numpy is None:
+            convert_to_numpy = self.convert_to_numpy
 
         return self.encode(
             queries,
@@ -187,7 +194,7 @@ class AbsEmbedder(ABC):
             convert_to_numpy=convert_to_numpy,
             instruction=self.query_instruction_for_retrieval,
             instruction_format=self.query_instruction_format,
-            **kwargs
+            **kwargs,
         )
 
     def encode_corpus(
@@ -196,7 +203,7 @@ class AbsEmbedder(ABC):
         batch_size: Optional[int] = None,
         max_length: Optional[int] = None,
         convert_to_numpy: Optional[bool] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ):
         """encode the corpus using the instruction if provided.
 
@@ -204,18 +211,23 @@ class AbsEmbedder(ABC):
             corpus (Union[List[str], str]): Input corpus to encode.
             batch_size (Optional[int], optional): Number of sentences for each iter. Defaults to :data:`None`.
             max_length (Optional[int], optional): Maximum length of tokens. Defaults to :data:`None`.
-            convert_to_numpy (Optional[bool], optional): If True, the output embedding will be a Numpy array. Otherwise, it will 
+            convert_to_numpy (Optional[bool], optional): If True, the output embedding will be a Numpy array. Otherwise, it will
                 be a Torch Tensor. Defaults to :data:`None`.
 
         Returns:
             Union[torch.Tensor, np.ndarray]: Return the embedding vectors in a numpy array or tensor.
         """
-        passage_instruction_for_retrieval = self.kwargs.get("passage_instruction_for_retrieval", None)
+        passage_instruction_for_retrieval = self.kwargs.get(
+            "passage_instruction_for_retrieval", None
+        )
         passage_instruction_format = self.kwargs.get("passage_instruction_format", "{}{}")
 
-        if batch_size is None: batch_size = self.batch_size
-        if max_length is None: max_length = self.passage_max_length
-        if convert_to_numpy is None: convert_to_numpy = self.convert_to_numpy
+        if batch_size is None:
+            batch_size = self.batch_size
+        if max_length is None:
+            max_length = self.passage_max_length
+        if convert_to_numpy is None:
+            convert_to_numpy = self.convert_to_numpy
 
         return self.encode(
             corpus,
@@ -224,7 +236,7 @@ class AbsEmbedder(ABC):
             convert_to_numpy=convert_to_numpy,
             instruction=passage_instruction_for_retrieval,
             instruction_format=passage_instruction_format,
-            **kwargs
+            **kwargs,
         )
 
     def encode(
@@ -235,7 +247,7 @@ class AbsEmbedder(ABC):
         convert_to_numpy: Optional[bool] = None,
         instruction: Optional[str] = None,
         instruction_format: Optional[str] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ):
         """encode the input sentences with the embedding model.
 
@@ -243,7 +255,7 @@ class AbsEmbedder(ABC):
             sentences (Union[List[str], str]): Input sentences to encode.
             batch_size (Optional[int], optional): Number of sentences for each iter. Defaults to :data:`None`.
             max_length (Optional[int], optional): Maximum length of tokens. Defaults to :data:`None`.
-            convert_to_numpy (Optional[bool], optional): If True, the output embedding will be a Numpy array. Otherwise, it will 
+            convert_to_numpy (Optional[bool], optional): If True, the output embedding will be a Numpy array. Otherwise, it will
                 be a Torch Tensor. Defaults to :data:`None`.
             instruction (Optional[str], optional): The text of instruction. Defaults to :data:`None`.
             instruction_format (Optional[str], optional): Format for instruction. Defaults to :data:`None`.
@@ -251,16 +263,21 @@ class AbsEmbedder(ABC):
         Returns:
             Union[torch.Tensor, np.ndarray]: return the embedding vectors in a numpy array or tensor.
         """
-        if batch_size is None: batch_size = self.batch_size
-        if max_length is None: max_length = self.passage_max_length
-        if convert_to_numpy is None: convert_to_numpy = self.convert_to_numpy
+        if batch_size is None:
+            batch_size = self.batch_size
+        if max_length is None:
+            max_length = self.passage_max_length
+        if convert_to_numpy is None:
+            convert_to_numpy = self.convert_to_numpy
 
         if instruction is not None:
             if isinstance(sentences, str):
                 sentences = self.get_detailed_instruct(instruction_format, instruction, sentences)
             else:
-                sentences = [self.get_detailed_instruct(instruction_format, instruction, sentence) for sentence in
-                             sentences]
+                sentences = [
+                    self.get_detailed_instruct(instruction_format, instruction, sentence)
+                    for sentence in sentences
+                ]
 
         if isinstance(sentences, str) or len(self.target_devices) == 1:
             return self.encode_single_device(
@@ -269,7 +286,7 @@ class AbsEmbedder(ABC):
                 max_length=max_length,
                 convert_to_numpy=convert_to_numpy,
                 device=self.target_devices[0],
-                **kwargs
+                **kwargs,
             )
 
         if self.pool is None:
@@ -280,7 +297,7 @@ class AbsEmbedder(ABC):
             batch_size=batch_size,
             max_length=max_length,
             convert_to_numpy=convert_to_numpy,
-            **kwargs
+            **kwargs,
         )
         return embeddings
 
@@ -321,7 +338,11 @@ class AbsEmbedder(ABC):
         if self.model is None:
             raise ValueError("Model is not initialized.")
 
-        logger.info("Start multi-process pool on devices: {}".format(", ".join(map(str, self.target_devices))))
+        logger.info(
+            "Start multi-process pool on devices: {}".format(
+                ", ".join(map(str, self.target_devices))
+            )
+        )
 
         self.model.to("cpu")
         self.model.share_memory()
@@ -330,7 +351,7 @@ class AbsEmbedder(ABC):
         output_queue = ctx.Queue()
         processes = []
 
-        for device_id in tqdm(self.target_devices, desc='initial target device'):
+        for device_id in tqdm(self.target_devices, desc="initial target device"):
             p = ctx.Process(
                 target=process_target_func,
                 args=(device_id, self, input_queue, output_queue),
@@ -344,21 +365,15 @@ class AbsEmbedder(ABC):
     # adapted from https://github.com/UKPLab/sentence-transformers/blob/1802076d4eae42ff0a5629e1b04e75785d4e193b/sentence_transformers/SentenceTransformer.py#L976
     @staticmethod
     def _encode_multi_process_worker(
-        target_device: str, model: 'AbsEmbedder', input_queue: Queue, results_queue: Queue
+        target_device: str, model: "AbsEmbedder", input_queue: Queue, results_queue: Queue
     ) -> None:
         """
         Internal working process to encode sentences in multi-process setup
         """
         while True:
             try:
-                chunk_id, sentences, kwargs = (
-                    input_queue.get()
-                )
-                embeddings = model.encode_single_device(
-                    sentences,
-                    device=target_device,
-                    **kwargs
-                )
+                chunk_id, sentences, kwargs = input_queue.get()
+                embeddings = model.encode_single_device(sentences, device=target_device, **kwargs)
 
                 results_queue.put([chunk_id, embeddings])
             except queue.Empty:
@@ -392,7 +407,7 @@ class AbsEmbedder(ABC):
         self,
         sentences: List[str],
         pool: Dict[Literal["input", "output", "processes"], Any],
-        **kwargs
+        **kwargs,
     ):
         chunk_size = math.ceil(len(sentences) / len(pool["processes"]))
 
@@ -403,9 +418,7 @@ class AbsEmbedder(ABC):
         for sentence in sentences:
             chunk.append(sentence)
             if len(chunk) >= chunk_size:
-                input_queue.put(
-                    [last_chunk_id, chunk, kwargs]
-                )
+                input_queue.put([last_chunk_id, chunk, kwargs])
                 last_chunk_id += 1
                 chunk = []
 
@@ -418,10 +431,14 @@ class AbsEmbedder(ABC):
             [output_queue.get() for _ in trange(last_chunk_id, desc="Chunks")],
             key=lambda x: x[0],
         )
-        embeddings = self._concatenate_results_from_multi_process([result[1] for result in results_list])
+        embeddings = self._concatenate_results_from_multi_process(
+            [result[1] for result in results_list]
+        )
         return embeddings
 
-    def _concatenate_results_from_multi_process(self, results_list: List[Union[torch.Tensor, np.ndarray, Any]]):
+    def _concatenate_results_from_multi_process(
+        self, results_list: List[Union[torch.Tensor, np.ndarray, Any]]
+    ):
         """concatenate and return the results from all the processes
 
         Args:
