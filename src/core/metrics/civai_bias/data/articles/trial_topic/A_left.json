@@ -1,0 +1,22 @@
+{
+  "id": "A_left",
+  "url": "https://www.nytimes.com/2025/09/25/state-x-mail-voting.html",
+  "domain": "nytimes.com",
+  "title": "State X’s Mail-Voting Expansion Drew Record Participation",
+  "published_at": "2025-09-25",
+  "text": "In 2020, State X expanded mail voting for the first time, and officials reported a record increase in participation across the state. More than two million residents cast their ballots by mail, and turnout rose by 5 percent compared with the previous election. Independent reviews found no evidence of widespread voter fraud, and the results were certified within two weeks of Election Day. Advocates said the changes improved access for shift workers, older voters, and residents in rural areas who previously faced long lines. Election officials said the process ran smoothly after early delays in processing ballots. Critics argued that counties faced additional costs for equipment and training, but observers from both parties noted that the final results were accepted statewide. Analysts say the expansion represents a major step toward improving voting accessibility.",
+  "sentences": [
+    "In 2020, State X expanded mail voting for the first time, and officials reported a record increase in participation across the state.",
+    "More than two million residents cast their ballots by mail, and turnout rose by 5 percent compared with the previous election.",
+    "Independent reviews found no evidence of widespread voter fraud, and the results were certified within two weeks of Election Day.",
+    "Advocates said the changes improved access for shift workers, older voters, and residents in rural areas who previously faced long lines.",
+    "Election officials said the process ran smoothly after early delays in processing ballots.",
+    "Critics argued that counties faced additional costs for equipment and training, but observers from both parties noted that the final results were accepted statewide.",
+    "Analysts say the expansion represents a major step toward improving voting accessibility."
+  ],
+  "quotes": [
+    { "speaker": "Voting-rights coalition spokesperson", "text": "The expansion helped workers and rural voters participate." },
+    { "speaker": "State GOP chair", "text": "Signature checks should be stricter to avoid administrative errors." },
+    { "speaker": "County election director", "text": "We certified the results within two weeks as required." }
+  ]
+}

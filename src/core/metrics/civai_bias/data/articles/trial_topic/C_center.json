@@ -1,0 +1,22 @@
+{
+  "id": "C_center",
+  "url": "https://www.reuters.com/2025/09/25/state-x-mail-voting.html",
+  "domain": "reuters.com",
+  "title": "Mail Voting in State X Expanded Access, Officials Say",
+  "published_at": "2025-09-25",
+  "text": "State X expanded mail voting in 2020, a move that led to a 5 percent rise in voter turnout, according to official data. Over two million ballots were cast by mail, and independent audits reported no evidence of widespread fraud. Election officials certified results within two weeks of Election Day. A court upheld the mail-ballot verification process, ruling that it followed state law. Supporters of the expansion said it improved convenience for workers and older voters, while opponents said it created administrative challenges and increased costs. Both parties later agreed that the results reflected broad voter participation and were accurately reported.",
+  "sentences": [
+    "State X expanded mail voting in 2020, a move that led to a 5 percent rise in voter turnout, according to official data.",
+    "Over two million ballots were cast by mail, and independent audits reported no evidence of widespread fraud.",
+    "Election officials certified results within two weeks of Election Day.",
+    "A court upheld the mail-ballot verification process, ruling that it followed state law.",
+    "Supporters of the expansion said it improved convenience for workers and older voters.",
+    "Opponents said it created administrative challenges and increased costs.",
+    "Both parties later agreed that the results reflected broad voter participation and were accurately reported."
+  ],
+  "quotes": [
+    { "speaker": "Democratic state senator", "text": "Shorter lines and safer options increased participation." },
+    { "speaker": "State GOP chair", "text": "Verification rules should be stricter to prevent abuse." },
+    { "speaker": "Nonpartisan election auditor", "text": "We found no significant irregularities." }
+  ]
+}
