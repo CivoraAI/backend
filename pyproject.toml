@@ -5,4 +5,24 @@ target-version = ["py310","py311","py312","py313"]
 [tool.ruff]
 line-length = 100
 target-version = "py310"
-extend-select = ["I"] # import sorting
+
+# Only lint our code. Exclude vendored libs, research dirs, and non-source stuff.
+extend-exclude = [
+  "src/core/metrics/civai_bias/FlagEmbedding",
+  "src/core/metrics/civai_bias/CivoraAI",
+  "src/core/metrics/civai_bias/data",
+  "src/core/metrics/civai_bias/notebooks",
+  "src/core/metrics/civai_bias/outputs",
+  "src/core/metrics/civai_bias/tests",
+  "src/core/metrics/civai_bias/.vscode",
+  "src/core/metrics/civai_bias/**/setup.py",
+  "scripts/**",
+  "docs/**",
+  "tests/**/__pycache__",
+]
+
+# Helpful defaults
+extend-select = ["I"]  # sort imports
+# Common ignores for package markers and init files
+[tool.ruff.lint.per-file-ignores]
+"**/__init__.py" = ["F401"]  # allow re-exports / empty markers
