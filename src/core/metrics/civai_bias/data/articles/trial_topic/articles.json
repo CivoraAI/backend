@@ -1,0 +1,70 @@
+[
+  {
+    "id": 1,
+    "group": 1,
+    "url": "https://www.nytimes.com/2025/09/25/state-x-mail-voting.html",
+    "domain": "nytimes.com",
+    "title": "State X's Mail-Voting Expansion Drew Record Participation",
+    "published_at": "2025-09-25",
+    "text": "In 2020, State X expanded mail voting for the first time, and officials reported a record increase in participation across the state. \"The expansion helped workers and rural voters participate,\" said a spokesperson for a voting-rights coalition. More than two million residents cast their ballots by mail, and turnout rose by 5 percent compared with the previous election. Independent reviews found no evidence of widespread voter fraud, and the results were certified within two weeks of Election Day. Election officials said the process ran smoothly after early delays in processing ballots. \"We certified the results within two weeks as required,\" said County Election Director Maria Lopez. Critics argued that counties faced additional costs for equipment and training, but observers from both parties noted that the final results were accepted statewide.",
+    "sentences": [
+      "In 2020, State X expanded mail voting for the first time, and officials reported a record increase in participation across the state.",
+      "\"The expansion helped workers and rural voters participate,\" said a spokesperson for a voting-rights coalition.",
+      "More than two million residents cast their ballots by mail, and turnout rose by 5 percent compared with the previous election.",
+      "Independent reviews found no evidence of widespread voter fraud, and the results were certified within two weeks of Election Day.",
+      "Election officials said the process ran smoothly after early delays in processing ballots.",
+      "\"We certified the results within two weeks as required,\" said County Election Director Maria Lopez.",
+      "Critics argued that counties faced additional costs for equipment and training, but observers from both parties noted that the final results were accepted statewide."
+    ],
+    "quotes": [
+      { "speaker": "Voting-rights coalition spokesperson", "text": "The expansion helped workers and rural voters participate." },
+      { "speaker": "County Election Director Maria Lopez", "text": "We certified the results within two weeks as required." }
+    ]
+  },
+  {
+    "id": "2",
+    "group": 1,
+    "url": "https://www.foxnews.com/2025/09/25/state-x-mail-voting.html",
+    "domain": "foxnews.com",
+    "title": "Officials Defend Mail-Ballot Rules After Expansion in State X",
+    "published_at": "2025-09-25",
+    "text": "State X's 2020 decision to expand mail voting triggered months of confusion and costly adjustments for local officials. \"Signature checks should be stricter to avoid administrative errors,\" said State GOP Chair Michael Owens. Conservative groups warned that loosening verification procedures would make it easier for mistakes or fraud to occur. County officials said hiring and training temporary staff was difficult and expensive, and several counties reported delays in counting ballots. \"We faced major staffing burdens during the expansion,\" said County Clerk Jenna Price. A court later upheld the mail-ballot verification system, ruling that it met constitutional standards, though Republican leaders said the safeguards were barely sufficient. Officials defended the effort as necessary during the pandemic but acknowledged that the rollout was challenging.",
+    "sentences": [
+      "State X's 2020 decision to expand mail voting triggered months of confusion and costly adjustments for local officials.",
+      "\"Signature checks should be stricter to avoid administrative errors,\" said State GOP Chair Michael Owens.",
+      "Conservative groups warned that loosening verification procedures would make it easier for mistakes or fraud to occur.",
+      "County officials said hiring and training temporary staff was difficult and expensive, and several counties reported delays in counting ballots.",
+      "\"We faced major staffing burdens during the expansion,\" said County Clerk Jenna Price.",
+      "A court later upheld the mail-ballot verification system, ruling that it met constitutional standards, though Republican leaders said the safeguards were barely sufficient.",
+      "Officials defended the effort as necessary during the pandemic but acknowledged that the rollout was challenging."
+    ],
+    "quotes": [
+      { "speaker": "State GOP Chair Michael Owens", "text": "Signature checks should be stricter to avoid administrative errors." },
+      { "speaker": "County Clerk Jenna Price", "text": "We faced major staffing burdens during the expansion." }
+    ]
+  },
+  {
+    "id": "3",
+    "group": 1,
+    "url": "https://www.reuters.com/2025/09/25/state-x-mail-voting.html",
+    "domain": "reuters.com",
+    "title": "Mail Voting in State X Expanded Access, Officials Say",
+    "published_at": "2025-09-25",
+    "text": "State X expanded mail voting in 2020, a move that led to a 5 percent rise in voter turnout, according to official data. Over two million ballots were cast by mail, and independent audits reported no evidence of widespread fraud. \"We found no significant irregularities,\" said a nonpartisan election auditor. Election officials certified results within two weeks of Election Day. A court upheld the mail-ballot verification process, ruling that it followed state law. \"Verification rules should be stricter to prevent abuse,\" said State GOP Chair Michael Owens, while Democratic state senator Alicia Park said the change \"shortened lines and offered safer options for voters.\" Both parties later agreed that the results reflected broad participation and were accurately reported.",
+    "sentences": [
+      "State X expanded mail voting in 2020, a move that led to a 5 percent rise in voter turnout, according to official data.",
+      "Over two million ballots were cast by mail, and independent audits reported no evidence of widespread fraud.",
+      "\"We found no significant irregularities,\" said a nonpartisan election auditor.",
+      "Election officials certified results within two weeks of Election Day.",
+      "A court upheld the mail-ballot verification process, ruling that it followed state law.",
+      "\"Verification rules should be stricter to prevent abuse,\" said State GOP Chair Michael Owens, while Democratic state senator Alicia Park said the change \"shortened lines and offered safer options for voters.\"",
+      "Both parties later agreed that the results reflected broad participation and were accurately reported."
+    ],
+    "quotes": [
+      { "speaker": "Nonpartisan election auditor", "text": "We found no significant irregularities." },
+      { "speaker": "State GOP Chair Michael Owens", "text": "Verification rules should be stricter to prevent abuse." },
+      { "speaker": "Democratic state senator Alicia Park", "text": "Shortened lines and offered safer options for voters." }
+    ]
+  }
+]
+

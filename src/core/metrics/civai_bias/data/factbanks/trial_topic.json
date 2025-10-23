@@ -1,7 +1,7 @@
 {
   "topic_id": "trial_topic",
   "core_facts": [
-    { "id": "F1", "text": "State X expanded mail voting in 2020." },
+    { "id": "F1", "text": "State California expanded mail voting in 2020." },
     { "id": "F2", "text": "Turnout increased by about 5 percent in State X." },
     { "id": "F3", "text": "Over two million ballots were cast by mail in State X." },
     { "id": "F4", "text": "Independent reviews found no widespread voter fraud in State X." },

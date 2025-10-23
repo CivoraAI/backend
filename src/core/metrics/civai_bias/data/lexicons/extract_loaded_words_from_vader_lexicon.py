@@ -1,6 +1,6 @@
 import csv
 
-with open("/Users/arav/civai_bias/data/lexicons/loaded_vader_terms.csv", "w", newline="") as file:
+with open("/Users/arav/Documents/GitHub/backend/src/core/metrics/civai_bias/data/lexicons/loaded_vader_terms.csv", "w", newline="") as file:
     writer = csv.writer(file)
     writer.writerow(["token", "mean_sentiment_rating", "standard deviation"])
     blacklist = [
@@ -20,7 +20,7 @@ with open("/Users/arav/civai_bias/data/lexicons/loaded_vader_terms.csv", "w", ne
         "afraid",
         "sorry",
     ]
-    with open("data/lexicons/vader_lexicon.txt", "r") as f:
+    with open("/Users/arav/Documents/GitHub/backend/src/core/metrics/civai_bias/data/lexicons/vader_lexicon.txt", "r") as f:
         words = []
         lines = f.readlines()
         for line in lines:
@@ -31,9 +31,7 @@ with open("/Users/arav/civai_bias/data/lexicons/loaded_vader_terms.csv", "w", ne
                         sentiment = float(parts[1].strip())
                         std_dev = float(parts[2].strip())
                         if (
-                            abs(sentiment) >= 1.5
-                            and std_dev <= 1.5
-                            and len(parts[0]) > 2
+                            len(parts[0]) > 2
                             and parts[0] not in blacklist
                         ):
                             words.append([parts[0], sentiment, std_dev])
@@ -48,9 +46,7 @@ with open("/Users/arav/civai_bias/data/lexicons/loaded_vader_terms.csv", "w", ne
                         sentiment = float(parts[1].strip())
                         std_dev = float(parts[2].strip())
                         if (
-                            abs(sentiment) >= 1.5
-                            and std_dev <= 1.5
-                            and len(parts[0]) > 2
+                            len(parts[0]) > 2
                             and parts[0] not in blacklist
                         ):
                             words.append([parts[0], sentiment, std_dev])

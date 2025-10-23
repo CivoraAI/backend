@@ -1,0 +1,159 @@
+{
+  "topic": "extracted_topic",
+  "core_facts": [
+    {
+      "text": "In 2020, State X expanded mail voting for the first time, and officials reported a record increase in participation across the state.",
+      "consensus": 6,
+      "bias_classification": "left"
+    },
+    {
+      "text": "Advocates said the changes improved access for shift workers, older voters, and residents in rural areas who previously faced long lines.",
+      "consensus": 6,
+      "bias_classification": "left"
+    },
+    {
+      "text": "The expansion helped workers and rural voters participate.",
+      "consensus": 2,
+      "bias_classification": "general"
+    },
+    {
+      "text": "Signature checks should be stricter to avoid administrative errors.",
+      "consensus": 4,
+      "bias_classification": "right"
+    },
+    {
+      "text": "A court later upheld the mail-ballot verification system, ruling that it met constitutional standards, though Republican leaders said the safeguards were barely sufficient.",
+      "consensus": 3,
+      "bias_classification": "right"
+    },
+    {
+      "text": "While turnout increased modestly, critics said the process strained local budgets and left voters uncertain.",
+      "consensus": 2,
+      "bias_classification": "right"
+    }
+  ],
+  "claims_left": [
+    {
+      "text": "In 2020, State X expanded mail voting for the first time, and officials reported a record increase in participation across the state.",
+      "attribution": "",
+      "source": "nytimes.com",
+      "article_id": "A_left"
+    },
+    {
+      "text": "More than two million residents cast their ballots by mail, and turnout rose by 5 percent compared with the previous election.",
+      "attribution": "",
+      "source": "nytimes.com",
+      "article_id": "A_left"
+    },
+    {
+      "text": "Independent reviews found no evidence of widespread voter fraud, and the results were certified within two weeks of Election Day.",
+      "attribution": "",
+      "source": "nytimes.com",
+      "article_id": "A_left"
+    },
+    {
+      "text": "Advocates said the changes improved access for shift workers, older voters, and residents in rural areas who previously faced long lines.",
+      "attribution": "",
+      "source": "nytimes.com",
+      "article_id": "A_left"
+    },
+    {
+      "text": "Election officials said the process ran smoothly after early delays in processing ballots.",
+      "attribution": "",
+      "source": "nytimes.com",
+      "article_id": "A_left"
+    },
+    {
+      "text": "Critics argued that counties faced additional costs for equipment and training, but observers from both parties noted that the final results were accepted statewide.",
+      "attribution": "",
+      "source": "nytimes.com",
+      "article_id": "A_left"
+    },
+    {
+      "text": "Analysts say the expansion represents a major step toward improving voting accessibility.",
+      "attribution": "",
+      "source": "nytimes.com",
+      "article_id": "A_left"
+    },
+    {
+      "text": "The expansion helped workers and rural voters participate.",
+      "attribution": "Voting-rights coalition spokesperson",
+      "source": "nytimes.com",
+      "article_id": "A_left"
+    },
+    {
+      "text": "Signature checks should be stricter to avoid administrative errors.",
+      "attribution": "State GOP chair",
+      "source": "nytimes.com",
+      "article_id": "A_left"
+    },
+    {
+      "text": "We certified the results within two weeks as required.",
+      "attribution": "County election director",
+      "source": "nytimes.com",
+      "article_id": "A_left"
+    }
+  ],
+  "claims_right": [
+    {
+      "text": "State X\u2019s 2020 decision to expand mail voting triggered months of confusion and costly adjustments for local officials.",
+      "attribution": "",
+      "source": "foxnews.com",
+      "article_id": "B_right"
+    },
+    {
+      "text": "Conservative groups warned that loosening verification procedures would make it easier for errors or fraud to occur.",
+      "attribution": "",
+      "source": "foxnews.com",
+      "article_id": "B_right"
+    },
+    {
+      "text": "A court later upheld the mail-ballot verification system, ruling that it met constitutional standards, though Republican leaders said the safeguards were barely sufficient.",
+      "attribution": "",
+      "source": "foxnews.com",
+      "article_id": "B_right"
+    },
+    {
+      "text": "County officials said hiring and training temporary staff was difficult and expensive, and several counties reported delays in counting ballots.",
+      "attribution": "",
+      "source": "foxnews.com",
+      "article_id": "B_right"
+    },
+    {
+      "text": "Election integrity advocates said stricter signature matching should be mandatory to prevent potential abuse.",
+      "attribution": "",
+      "source": "foxnews.com",
+      "article_id": "B_right"
+    },
+    {
+      "text": "While turnout increased modestly, critics said the process strained local budgets and left voters uncertain.",
+      "attribution": "",
+      "source": "foxnews.com",
+      "article_id": "B_right"
+    },
+    {
+      "text": "Officials defended the effort as necessary during the pandemic but acknowledged the rollout was challenging.",
+      "attribution": "",
+      "source": "foxnews.com",
+      "article_id": "B_right"
+    },
+    {
+      "text": "We faced major staffing burdens during the expansion.",
+      "attribution": "State GOP chair",
+      "source": "foxnews.com",
+      "article_id": "B_right"
+    },
+    {
+      "text": "Extra verification was essential to prevent mistakes.",
+      "attribution": "Conservative policy institute",
+      "source": "foxnews.com",
+      "article_id": "B_right"
+    }
+  ],
+  "metadata": {
+    "total_articles": 3,
+    "total_claims": 29,
+    "consensus_threshold": 2,
+    "similarity_threshold": 0.65
+  }
+}
