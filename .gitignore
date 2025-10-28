@@ -9,3 +9,21 @@ venv/
 coverage.xml
 dist/
 build/
+
+# Data files
+*.npz
+src/core/metrics/civai_bias/data/*.json
+src/core/metrics/civai_bias/data/articles/
+src/core/metrics/civai_bias/data/factbanks/
+src/core/metrics/civai_bias/data/styles/
+
+# Log files
+*.log
+
+# Output directories
+src/core/metrics/civai_bias/outputs/
+src/core/metrics/civai_bias/notebooks/
+
+# Vendored/research code
+src/core/metrics/civai_bias/FlagEmbedding/
+src/core/metrics/civai_bias/CivoraAI/

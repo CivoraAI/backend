@@ -15,10 +15,12 @@
     "time.com": -7.43,
     "washingtonpost.com": -7.16,
 
+    "newsweek.com":-1.77,
     "bbc.com": -1.34,
     "reuters.com": -1.27,
     "thehill.com": -1.46,
     "wsj.com": 4.16,
+    "san.com": 0.92,
 
     "theepochtimes.com": 8.43,
     "justthenews.com": 10.90,
@@ -27,5 +29,7 @@
     "thedispatch.com": 5.50,
 
     "foxnews.com": 11.05,
-    "dailywire.com":13.15
+    "dailywire.com":13.15,
+    "freebeacon.com":14.13,
+    "ijr.com":12.68
 }

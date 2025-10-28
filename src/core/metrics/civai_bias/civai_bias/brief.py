@@ -37,11 +37,17 @@ def call_openrouter(prompt: str, model: str = "gpt-4o-mini") -> str:
         final_text = content
     return final_text.strip()
 
-def generate_brief(factbank_path: str, use_all_facts: bool = True, seed: int | None = None, use_llm: bool = True) -> dict:
-    # 1) load
-    with open(factbank_path, "r") as f:
-        factbank = json.load(f)
-
+def generate_brief_from_factbank(factbank: dict, use_llm: bool = True) -> dict:
+    """
+    Generate a brief from a factbank object.
+    
+    Args:
+        factbank: Factbank dict with core_facts, claims_left, claims_right
+        use_llm: Whether to use LLM for generation
+    
+    Returns:
+        Brief dict with topic_id and brief_text
+    """
     core = factbank.get("core_facts", [])
     left_claims = factbank.get("claims_left", [])
     right_claims = factbank.get("claims_right", [])
@@ -58,9 +64,7 @@ def generate_brief(factbank_path: str, use_all_facts: bool = True, seed: int | N
             first_seen[key] = t
     facts = list(first_seen.values())
 
-    # (optional) if you ever want to *not* use all facts
-    if not use_all_facts and len(facts) > 3:
-        facts = facts[:3]
+    # Use all facts (always true for automated pipeline)
 
     # 3) clean + dedupe left/right claims (keep attribution)
     def clean_pairs(pairs):
@@ -136,10 +140,60 @@ def generate_brief(factbank_path: str, use_all_facts: bool = True, seed: int | N
         except Exception as e:
             print(f"[WARN] LLM call failed: {e}")
             llm_brief = None
-    return {
+    brief_obj = {
+        "topic_id": factbank.get("topic_id"),
+        "brief_text": llm_brief if llm_brief else None,
         "facts_bullets": facts_bullets,
         "left_bullets": left_bullets,
         "right_bullets": right_bullets,
-        "neutral_bullets": neutral_bullets,
-        "llm_brief": llm_brief
+        "neutral_bullets": neutral_bullets
     }
+    
+    return brief_obj
+
+def generate_all_briefs(data_path: str) -> list:
+    """
+    Generate briefs for all factbanks in news_data.json.
+    Only regenerates if factbanks have changed.
+    
+    Returns list of briefs
+    """
+    import hashlib
+    
+    with open(data_path) as f:
+        data = json.load(f)
+    
+    factbanks = data.get('factbanks', [])
+    
+    if not factbanks:
+        print("  No factbanks to generate briefs for")
+        return []
+    
+    # Check if factbanks changed
+    factbank_hash = hashlib.md5(json.dumps(factbanks, sort_keys=True).encode()).hexdigest()
+    last_hash = data.get('_factbank_hash')
+    
+    if last_hash == factbank_hash and 'briefs' in data and data['briefs']:
+        print("  Factbanks unchanged, skipping brief generation")
+        return data['briefs']
+    
+    print(f"  Generating briefs for {len(factbanks)} factbanks...")
+    
+    briefs = []
+    for i, factbank in enumerate(factbanks):
+        if (i + 1) % 5 == 0:
+            print(f"    {i+1}/{len(factbanks)} briefs...")
+        
+        brief = generate_brief_from_factbank(factbank, use_llm=True)
+        briefs.append(brief)
+    
+    # Save briefs and hash
+    data['briefs'] = briefs
+    data['_factbank_hash'] = factbank_hash
+    
+    with open(data_path, 'w') as f:
+        json.dump(data, f, indent=4)
+    
+    print(f"  ✅ Generated {len(briefs)} briefs")
+    
+    return briefs
