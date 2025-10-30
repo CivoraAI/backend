@@ -110,12 +110,25 @@ def normalize_lean(raw_val: float) -> float:
 def fact_coverage(file_path_article: str, file_path_factbank: str):
     check_and_switch_python()
     with open(file_path_article, "r") as f:
-        article = json.load(f)
-        sentences = article["sentences"]
-        sentences_sets = [tokenize(sentence) for sentence in sentences]
+        article_data = json.load(f)
     with open(file_path_factbank, "r") as f:
-        data = json.load(f)
-        core_facts = data["core_facts"]
+        factbank_data = json.load(f)
+
+    if isinstance(article_data, dict) and "articles" in article_data:
+        groups = article_data.get("groups", [])
+        factbanks = factbank_data.get("factbanks", []) if isinstance(factbank_data, dict) else []
+        topic_id = factbanks[0]["topic_id"] if factbanks else 0
+        group_ids = groups[topic_id] if groups and topic_id < len(groups) else []
+        articles = [a for a in article_data.get("articles", []) if a.get("article_id") in group_ids]
+        sentences = []
+        for a in articles:
+            sentences.extend(a.get("sentences", []))
+        core_facts = factbanks[0].get("core_facts", []) if factbanks else []
+        core_facts_texts = [fact.get("text", "") for fact in core_facts]
+        core_facts_sets = [tokenize(fact.get("text", "")) for fact in core_facts]
+    else:
+        sentences = article_data["sentences"]
+        core_facts = factbank_data["core_facts"]
         core_facts_texts = [fact["text"] for fact in core_facts]
         core_facts_sets = [tokenize(fact["text"]) for fact in core_facts]
 
@@ -158,14 +171,29 @@ def source_diversity(file_path_article) -> float:
     os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
     
     with open(file_path_article, "r") as f:
-        article = json.load(f)
+        article_data = json.load(f)
     alias_map={}
     uniq = set()
-    for quote in article["quotes"]:
-        raw_speaker=quote["speaker"]
-        key=normalize_speaker(raw_speaker, alias_map)
-        if key is not None and key != "":
-            uniq.add(key)
+    if isinstance(article_data, dict) and "articles" in article_data:
+        groups = article_data.get("groups", [])
+        topic_id = 0
+        if groups:
+            group_ids = groups[topic_id]
+            articles = [a for a in article_data.get("articles", []) if a.get("article_id") in group_ids]
+        else:
+            articles = article_data.get("articles", [])
+        for a in articles:
+            for quote in a.get("quotes", []):
+                raw_speaker = quote.get("speaker", "")
+                key = normalize_speaker(raw_speaker, alias_map)
+                if key is not None and key != "":
+                    uniq.add(key)
+    else:
+        for quote in article_data["quotes"]:
+            raw_speaker=quote["speaker"]
+            key=normalize_speaker(raw_speaker, alias_map)
+            if key is not None and key != "":
+                uniq.add(key)
     sd = min(1.0, len(uniq)/3)
     return sd
 
@@ -181,11 +209,23 @@ def opposition_coverage(file_path_article, file_path_factbank) -> float:
     os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
     
     with open(file_path_article, "r") as f:
-        article = json.load(f)
-    article_domain = article["domain"]
-
+        article_data = json.load(f)
     with open(file_path_factbank, "r") as f:
-        factbank = json.load(f)
+        factbank_data = json.load(f)
+
+    if isinstance(article_data, dict) and "articles" in article_data:
+        groups = article_data.get("groups", [])
+        factbanks = factbank_data.get("factbanks", []) if isinstance(factbank_data, dict) else []
+        topic_id = factbanks[0]["topic_id"] if factbanks else 0
+        group_ids = groups[topic_id] if groups and topic_id < len(groups) else []
+        articles = [a for a in article_data.get("articles", []) if a.get("article_id") in group_ids]
+        article = articles[0] if articles else {}
+        article_domain = article.get("source_domain", "")
+        factbank = factbanks[0] if factbanks else {}
+    else:
+        article = article_data
+        article_domain = article.get("source_domain", article.get("domain", ""))
+        factbank = factbank_data
 
     with open("data/outlet_lean.json", "r") as f:
         outlet_lean = json.load(f)
@@ -204,8 +244,8 @@ def opposition_coverage(file_path_article, file_path_factbank) -> float:
     )
 
     scores={}
-    article_sentences_embeddings = model.encode_queries(article["sentences"])
-    quote_texts = [quote["text"] for quote in article["quotes"]]
+    article_sentences_embeddings = model.encode_queries(article.get("sentences", []))
+    quote_texts = [quote.get("text", "") for quote in article.get("quotes", [])]
     article_quotes_embeddings = model.encode_queries(quote_texts)
     opposing_claims_embeddings = model.encode_corpus(opposing_claims)
 
@@ -236,8 +276,20 @@ def opposition_coverage(file_path_article, file_path_factbank) -> float:
 def loaded_intensity(file_path_article: str, weights: dict, trim: float = 0.10) -> float:
     check_and_switch_python()
     with open(file_path_article, "r") as f:
-        article = json.load(f)
-    sentences = article["sentences"]
+        article_data = json.load(f)
+    if isinstance(article_data, dict) and "articles" in article_data:
+        groups = article_data.get("groups", [])
+        topic_id = 0
+        if groups:
+            group_ids = groups[topic_id]
+            articles = [a for a in article_data.get("articles", []) if a.get("article_id") in group_ids]
+        else:
+            articles = article_data.get("articles", [])
+        sentences = []
+        for a in articles:
+            sentences.extend(a.get("sentences", []))
+    else:
+        sentences = article_data.get("sentences", [])
     if not sentences:
         return 0.0
     scores = [sentence_loaded(s, weights) for s in sentences]

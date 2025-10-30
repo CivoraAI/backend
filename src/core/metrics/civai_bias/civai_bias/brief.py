@@ -114,35 +114,81 @@ def generate_brief_from_factbank(factbank: dict, use_llm: bool = True) -> dict:
 
     llm_brief = None
     if use_llm:
-        prompt = f"""
-        You are a neutral journalist AI. Summarize the material below into a clear, easy-to-read brief for Gen Z readers.
+        core_facts_prompt = f"""
+        You are a neutral journalist AI. Summarize the material below into a clear, easy-to-read bullet points for Gen Z readers.
 
-        Rules:
-        - Do NOT add new facts or numbers.
-        - Keep the meaning exactly the same.
-        - Keep it neutral (no loaded language).
-        - Present it in a smooth, casual but factual tone.
-        - 120–160 words max.
-        - Mention both sides briefly if given.
+        Guidelines:
+        - Do NOT add opinions, speculation, or numbers not provided.
+        - Avoid emotional or persuasive language.
+        - Present the facts in a simple, conversational tone suitable for Gen Z readers.
+        - 100–140 words max.
+        - Focus only on what happened, who was involved, and the objective outcome.
 
         Facts:
+        {chr(10).join(facts_bullets)}""".strip()
+        
+        left_claims_prompt = f"""
+        You are writing the LEFT-SIDE panel of a split-screen brief that contrasts how each political side frames a news event.
+
+        Task:
+        Summarize how LEFT-leaning or progressive sources present the story using the information below.
+
+        Tone & Style:
+        - Sound like how the left would *frame* the situation, but without sarcasm or exaggeration.
+        - Keep the language clear, factual, and conversational — not preachy.
+        - Capture *what the left emphasizes, values, or is concerned about.*
+        - 80–120 words max.
+        - Focus on what narrative the left is telling — not your own opinion.
+        - Avoid adding or removing facts.
+
+        Facts (context):
         {chr(10).join(facts_bullets)}
 
-        The left's perspective:
+        How the left discusses it:
         {chr(10).join(left_bullets)}
 
-        The right's perspective:
+        Goal:
+        Produce a short paragraph that could appear on the LEFT half of a split-screen explainer. It should read like a quick, punchy summary that reflects progressive framing of the same event.
+        """.strip()
+
+        right_claims_prompt = f"""
+        You are writing the RIGHT-SIDE panel of a split-screen brief that contrasts how each political side frames a news event.
+
+        Task:
+        Summarize how RIGHT-leaning or conservative sources present the story using the information below.
+
+        Tone & Style:
+        - Reflect how the right would *frame* the situation, but keep it calm, factual, and articulate.
+        - Use straightforward, journalistic language (no mockery or opinion).
+        - Capture *what the right emphasizes or is concerned about* in this event.
+        - 80–120 words max.
+        - Avoid adding or removing facts.
+        - Keep the tone confident, not confrontational.
+
+        Facts (context):
+        {chr(10).join(facts_bullets)}
+
+        How the right discusses it:
         {chr(10).join(right_bullets)}
-                """.strip()
+
+        Goal:
+        Produce a short paragraph that could appear on the RIGHT half of a split-screen explainer. It should read like a concise summary that mirrors the left’s tone but reflects conservative framing of the same event.
+        """.strip()
 
         try:
-            llm_brief = call_openrouter(prompt)
+            core_facts_brief = call_openrouter(core_facts_prompt)
+            left_claims_brief = call_openrouter(left_claims_prompt)
+            right_claims_brief = call_openrouter(right_claims_prompt)
         except Exception as e:
             print(f"[WARN] LLM call failed: {e}")
-            llm_brief = None
+            core_facts_brief = None
+            left_claims_brief = None
+            right_claims_brief = None
     brief_obj = {
         "topic_id": factbank.get("topic_id"),
-        "brief_text": llm_brief if llm_brief else None,
+        "core_facts_brief": core_facts_brief,
+        "left_claims_brief": left_claims_brief,
+        "right_claims_brief": right_claims_brief,
         "facts_bullets": facts_bullets,
         "left_bullets": left_bullets,
         "right_bullets": right_bullets,
